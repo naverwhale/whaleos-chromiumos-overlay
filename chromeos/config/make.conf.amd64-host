@@ -1,0 +1,37 @@
+# See "man make.conf" for the available options.
+
+# Common settings across all sdks.
+source /mnt/host/source/src/third_party/chromiumos-overlay/chromeos/config/make.conf.common
+
+# We initialize PORTDIR_OVERLAY here to clobber any redefinitions elsewhere.
+# This has to be the first overlay so crossdev finds the correct gcc and
+# glibc ebuilds.
+PORTDIR_OVERLAY="
+  /usr/local/portage/crossdev
+  /usr/local/portage/chromiumos
+  /usr/local/portage/eclass-overlay
+"
+
+# Where to store built packages.
+PKGDIR="/var/lib/portage/pkgs"
+
+PORT_LOGDIR="/var/log/portage"
+
+source /usr/local/portage/chromiumos/chromeos/binhost/host/amd64-PREFLIGHT_BINHOST.conf
+FULL_BINHOST="gs://chromeos-prebuilt/host/amd64/amd64-host/chroot-2021.10.05.002450/packages/"
+PORTAGE_BINHOST="$PREFLIGHT_BINHOST $FULL_BINHOST"
+
+GENTOO_MIRRORS="https://commondatastorage.googleapis.com/chromeos-localmirror"
+GENTOO_MIRRORS="$GENTOO_MIRRORS https://commondatastorage.googleapis.com/chromeos-mirror/gentoo"
+
+# Remove all .la files for non-plugin libraries.
+# Remove Gentoo init files since we use upstart.
+# Remove logrotate.d files since we don't use logrotate.
+INSTALL_MASK="
+  /usr/lib*/*.la
+  /etc/init.d /etc/conf.d
+  /etc/logrotate.d
+"
+PKG_INSTALL_MASK="${INSTALL_MASK}"
+
+source make.conf.host_setup

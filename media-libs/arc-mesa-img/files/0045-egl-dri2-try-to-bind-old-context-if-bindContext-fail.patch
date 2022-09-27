@@ -1,0 +1,131 @@
+From d97b545eaf16c518109b6e6986a64f7e33fa36cd Mon Sep 17 00:00:00 2001
+From: Luigi Santivetti <luigi.santivetti@imgtec.com>
+Date: Mon, 14 Jan 2019 13:56:13 +0000
+Subject: [PATCH 11/11] egl/dri2: try to bind old context if bindContext failed
+
+Before this change, if bindContext() failed then dri2_make_current() would
+rebind the old EGL context and surfaces and return EGL_BAD_MATCH. However,
+it wouldn't rebind the DRI context and surfaces, thus leaving it in an
+inconsistent and unrecoverable state.
+
+After this change, dri2_make_current() tries to bind the old DRI context
+and surfaces when bindContext() failed. If unable to do so, it leaves EGL
+and the DRI driver in a consistent state, it reports an error and returns
+EGL_BAD_MATCH.
+
+Fixes: 4e8f95f64d004aa1 ("egl_dri2: Always unbind old contexts")
+
+Signed-off-by: Luigi Santivetti <luigi.santivetti@imgtec.com>
+Reviewed-by: Frank Binns <frank.binns@imgtec.com>
+---
+ src/egl/drivers/dri2/egl_dri2.c | 60 ++++++++++++++++++++++++++-------
+ 1 file changed, 47 insertions(+), 13 deletions(-)
+
+diff --git a/src/egl/drivers/dri2/egl_dri2.c b/src/egl/drivers/dri2/egl_dri2.c
+index 007d31405e6..5bc2b55e862 100644
+--- a/src/egl/drivers/dri2/egl_dri2.c
++++ b/src/egl/drivers/dri2/egl_dri2.c
+@@ -1446,8 +1446,9 @@ dri2_make_current(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *dsurf,
+    _EGLSurface *old_dsurf, *old_rsurf;
+    _EGLSurface *tmp_dsurf, *tmp_rsurf;
+    __DRIdrawable *ddraw, *rdraw;
+-   __DRIcontext *cctx;
++   __DRIcontext *cctx, *old_cctx;
+    EGLBoolean unbind;
++   EGLint egl_error;
+ 
+    if (!dri2_dpy)
+       return _eglError(EGL_NOT_INITIALIZED, "eglMakeCurrent");
+@@ -1472,7 +1473,7 @@ dri2_make_current(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *dsurf,
+    cctx = (dri2_ctx) ? dri2_ctx->dri_context : NULL;
+ 
+    if (old_ctx) {
+-      __DRIcontext *old_cctx = dri2_egl_context(old_ctx)->dri_context;
++      old_cctx = dri2_egl_context(old_ctx)->dri_context;
+ 
+       if (old_dsurf)
+          dri2_surf_update_fence_fd(old_ctx, disp, old_dsurf);
+@@ -1489,17 +1490,25 @@ dri2_make_current(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *dsurf,
+    unbind = (cctx == NULL && ddraw == NULL && rdraw == NULL);
+ 
+    if (!unbind && !dri2_dpy->core->bindContext(cctx, ddraw, rdraw)) {
++      __DRIdrawable *old_ddraw, *old_rdraw;
++      _EGLContext *tmp_ctx;
++
++      /* dri2_dpy->core->bindContext failed. We cannot tell for sure why, but
++       * setting the error to EGL_BAD_MATCH is surely better than leaving it
++       * as EGL_SUCCESS.
++       */
++      egl_error = EGL_BAD_MATCH;
++
++      old_ddraw = (old_dsurf) ? dri2_dpy->vtbl->get_dri_drawable(old_dsurf) : NULL;
++      old_rdraw = (old_rsurf) ? dri2_dpy->vtbl->get_dri_drawable(old_rsurf) : NULL;
++      old_cctx = (old_ctx) ? dri2_egl_context(old_ctx)->dri_context : NULL;
++
+       /* undo the previous _eglBindContext */
+-      _eglBindContext(old_ctx, old_dsurf, old_rsurf, &ctx, &tmp_dsurf, &tmp_rsurf);
+-      assert(&dri2_ctx->base == ctx &&
++      _eglBindContext(old_ctx, old_dsurf, old_rsurf, &tmp_ctx, &tmp_dsurf, &tmp_rsurf);
++      assert(tmp_ctx == ctx &&
+              tmp_dsurf == dsurf &&
+              tmp_rsurf == rsurf);
+ 
+-      if (old_dsurf && _eglSurfaceInSharedBufferMode(old_dsurf) &&
+-          old_dri2_dpy->vtbl->set_shared_buffer_mode) {
+-         old_dri2_dpy->vtbl->set_shared_buffer_mode(old_disp, old_dsurf, true);
+-      }
+-
+       _eglPutSurface(dsurf);
+       _eglPutSurface(rsurf);
+       _eglPutContext(ctx);
+@@ -1508,11 +1517,33 @@ dri2_make_current(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *dsurf,
+       _eglPutSurface(old_rsurf);
+       _eglPutContext(old_ctx);
+ 
+-      /* dri2_dpy->core->bindContext failed. We cannot tell for sure why, but
+-       * setting the error to EGL_BAD_MATCH is surely better than leaving it
+-       * as EGL_SUCCESS.
++      /* undo the previous dri2_dpy->core->unbindContext */
++      if (dri2_dpy->core->bindContext(old_cctx, old_ddraw, old_rdraw)) {
++         if (old_dsurf && _eglSurfaceInSharedBufferMode(old_dsurf) &&
++             old_dri2_dpy->vtbl->set_shared_buffer_mode) {
++            old_dri2_dpy->vtbl->set_shared_buffer_mode(old_disp, old_dsurf, true);
++         }
++
++         return _eglError(egl_error, "eglMakeCurrent");
++      }
++
++      /* We cannot restore the same state as it was before calling
++       * eglMakeCurrent(), but we can keep EGL in a consistent state with
++       * the DRI driver by unbinding the old EGL context and surfaces.
+        */
+-      return _eglError(EGL_BAD_MATCH, "eglMakeCurrent");
++      ctx = NULL;
++      dsurf = rsurf = NULL;
++      unbind = true;
++
++      _eglBindContext(ctx, dsurf, rsurf, &tmp_ctx, &tmp_dsurf, &tmp_rsurf);
++      assert(tmp_ctx == old_ctx &&
++             tmp_dsurf == old_dsurf &&
++             tmp_rsurf == old_rsurf);
++
++      _eglLog(_EGL_WARNING, "DRI2: failed to rebind the previous context");
++   } else {
++      /* We can no longer fail at this point. */
++      egl_error = EGL_SUCCESS;
+    }
+ 
+    dri2_destroy_surface(drv, disp, old_dsurf);
+@@ -1538,6 +1569,9 @@ dri2_make_current(_EGLDriver *drv, _EGLDisplay *disp, _EGLSurface *dsurf,
+       dri2_dpy->vtbl->set_shared_buffer_mode(disp, dsurf, mode);
+    }
+ 
++   if (egl_error != EGL_SUCCESS)
++      return _eglError(egl_error, "eglMakeCurrent");
++
+    return EGL_TRUE;
+ }
+ 
+-- 
+2.22.0
+

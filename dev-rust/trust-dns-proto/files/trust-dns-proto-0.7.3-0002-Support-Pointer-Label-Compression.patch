@@ -1,0 +1,95 @@
+Support pointer ending label compression. Pull request merged: https://github.com/bluejekyll/trust-dns/pull/1182
+--- a/src/rr/domain/name.rs
++++ b/src/rr/domain/name.rs
+@@ -1322,6 +1322,42 @@ mod tests {
+         assert_eq!(fourth, r_test);
+     }
+ 
++    #[test]
++    fn test_pointer_with_pointer_ending_labels() {
++        let mut bytes: Vec<u8> = Vec::with_capacity(512);
++
++        let first = Name::from_str("ra.rb.rc").unwrap();
++        let second = Name::from_str("ra.rc").unwrap();
++        let third = Name::from_str("ra.rc").unwrap();
++
++        {
++            let mut e = BinEncoder::new(&mut bytes);
++
++            first.emit(&mut e).unwrap();
++            assert_eq!(e.len(), 10);
++
++            second.emit(&mut e).unwrap();
++            // +5 with the first +3 being the text form of "ra" and +2 for the pointer to "rc".
++            assert_eq!(e.len(), 15);
++
++            // +2 with the pointer to "ra.rc" as previously seen.
++            third.emit(&mut e).unwrap();
++            assert_eq!(e.len(), 17);
++        }
++
++        // now read them back
++        let mut d = BinDecoder::new(&bytes);
++
++        let r_test = Name::read(&mut d).unwrap();
++        assert_eq!(first, r_test);
++
++        let r_test = Name::read(&mut d).unwrap();
++        assert_eq!(second, r_test);
++
++        let r_test = Name::read(&mut d).unwrap();
++        assert_eq!(third, r_test);
++    }
++
+     #[test]
+     fn test_recursive_pointer() {
+         // points to an invalid begining label marker
+--- a/src/serialize/binary/encoder.rs
++++ b/src/serialize/binary/encoder.rs
+@@ -91,8 +91,8 @@ mod private {
+ pub struct BinEncoder<'a> {
+     offset: usize,
+     buffer: private::MaximalBuf<'a>,
+-    /// start and end of label pointers, smallvec here?
+-    name_pointers: Vec<(usize, usize)>,
++    /// start of label pointers with their labels in fully decompressed form for easy comparison, smallvec here?
++    name_pointers: Vec<(usize, Vec<u8>)>,
+     mode: EncodeMode,
+     canonical_names: bool,
+ }
+@@ -211,8 +211,7 @@ impl<'a> BinEncoder<'a> {
+     pub fn trim(&mut self) {
+         let offset = self.offset;
+         self.buffer.truncate(offset);
+-        self.name_pointers
+-            .retain(|&(start, end)| start < offset && end <= offset);
++        self.name_pointers.retain(|&(start, _)| start < offset);
+     }
+ 
+     // /// returns an error if the maximum buffer size would be exceeded with the addition number of elements
+@@ -243,7 +242,8 @@ impl<'a> BinEncoder<'a> {
+         assert!(end <= (u16::max_value() as usize));
+         assert!(start <= end);
+         if self.offset < 0x3FFF_usize {
+-            self.name_pointers.push((start, end)); // the next char will be at the len() location
++            self.name_pointers
++                .push((start, self.slice_of(start, end).to_vec())); // the next char will be at the len() location
+         }
+     }
+ 
+@@ -251,11 +251,10 @@ impl<'a> BinEncoder<'a> {
+     pub fn get_label_pointer(&self, start: usize, end: usize) -> Option<u16> {
+         let search = self.slice_of(start, end);
+ 
+-        for &(match_start, match_end) in &self.name_pointers {
+-            let matcher = self.slice_of(match_start as usize, match_end as usize);
+-            if matcher == search {
+-                assert!(match_start <= (u16::max_value() as usize));
+-                return Some(match_start as u16);
++        for (match_start, matcher) in &self.name_pointers {
++            if matcher.as_slice() == search {
++                assert!(match_start <= &(u16::max_value() as usize));
++                return Some(*match_start as u16);
+             }
+         }
+ 

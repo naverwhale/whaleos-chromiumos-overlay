@@ -1,0 +1,7 @@
+DEFINED_PHASES=-
+DESCRIPTION=Virtual package for private Tast variables. This package can be overridden by overlays to bring in private variables.
+EAPI=7
+KEYWORDS=*
+LICENSE=metapackage
+SLOT=0
+_md5_=3b3193a7af8eaf1f2d1562858da4eb6c

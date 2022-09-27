@@ -1,0 +1,10 @@
+DEFINED_PHASES=unpack
+DESCRIPTION=Source code for the open-source version of Google Chrome web browser
+EAPI=6
+HOMEPAGE=http://www.chromium.org/
+IUSE=chrome_internal
+KEYWORDS=*
+LICENSE=BSD-Google chrome_internal? ( Google-TOS )
+SLOT=0
+_eclasses_=chromium-source	02ac5d86b66541750756714fe10f8f49	cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-credentials	4fd98ebbff6a1534ca9a89547e13dc92
+_md5_=291ca4eadc26429efa91579c3fd47bc9

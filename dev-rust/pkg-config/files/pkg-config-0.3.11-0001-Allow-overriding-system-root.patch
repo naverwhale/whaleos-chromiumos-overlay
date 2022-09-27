@@ -1,0 +1,109 @@
+From fb29a312143d2a271f7243c834f5b34281af523d Mon Sep 17 00:00:00 2001
+From: Daniel Verkamp <dverkamp@chromium.org>
+Date: Mon, 22 Apr 2019 15:55:09 -0700
+Subject: [PATCH] Allow overriding system root via environment
+
+Use the PKG_CONFIG_SYSROOT_DIR (preferred) or SYSROOT (fallback)
+environment variables to override the default path used to determine
+whether a library is a system library or not (/usr).
+
+This enables cross-compilation scenarios where the system root is not a
+subdirectory of /usr. Specifically, when building Rust packages in the
+Chomium OS SDK, each board's sysroot is located in /build/$BOARD rather
+than a subdirectory of /usr. Additionally, cros_sdk only specifies
+SYSROOT (PKG_CONFIG_SYSROOT_DIR is set by the pkg-config-$BOARD cross
+compilation helpers, but that isn't available in pkg-config-rs).
+
+This has only been tested on Linux, as I don't have a macOS machine
+handy, but I believe the macOS path should work as before (it does not
+consider the new sysroot variables).
+
+Signed-off-by: Daniel Verkamp <dverkamp@chromium.org>
+---
+ src/lib.rs | 34 ++++++++++++++++++++--------------
+ 1 file changed, 20 insertions(+), 14 deletions(-)
+
+diff --git a/src/lib.rs b/src/lib.rs
+index d85dd98..bd7f800 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -71,7 +71,7 @@ use std::error;
+ use std::ffi::{OsStr, OsString};
+ use std::fmt;
+ use std::io;
+-use std::path::{PathBuf, Path};
++use std::path::PathBuf;
+ use std::process::{Command, Output};
+ use std::str;
+ 
+@@ -470,6 +470,16 @@ impl Library {
+     }
+ 
+     fn parse_libs_cflags(&mut self, name: &str, output: &[u8], config: &Config) {
++        let system_roots = if cfg!(target_os = "macos") {
++            vec![PathBuf::from("/Library"), PathBuf::from("/System")]
++        } else {
++            let sysroot = config
++                .env_var("PKG_CONFIG_SYSROOT_DIR")
++                .or_else(|_| config.env_var("SYSROOT"))
++                .unwrap_or_else(|_| "/usr".to_owned());
++            vec![PathBuf::from(&sysroot)]
++        };
++
+         let words = split_flags(output);
+         let parts = words.iter()
+                           .filter(|l| l.len() > 2)
+@@ -496,7 +506,7 @@ impl Library {
+                 }
+                 "-l" => {
+                     self.libs.push(val.to_string());
+-                    if statik && is_static_available(val, &dirs) {
++                    if statik && is_static_available(val, &system_roots, &dirs) {
+                         let meta = format!("rustc-link-lib=static={}", val);
+                         config.print_metadata(&meta);
+                     } else {
+@@ -542,13 +552,8 @@ fn envify(name: &str) -> String {
+ }
+ 
+ /// System libraries should only be linked dynamically
+-fn is_static_available(name: &str, dirs: &[PathBuf]) -> bool {
++fn is_static_available(name: &str, system_roots: &[PathBuf], dirs: &[PathBuf]) -> bool {
+     let libname = format!("lib{}.a", name);
+-    let system_roots = if cfg!(target_os = "macos") {
+-        vec![Path::new("/Library"), Path::new("/System")]
+-    } else {
+-        vec![Path::new("/usr")]
+-    };
+ 
+     dirs.iter().any(|dir| {
+         !system_roots.iter().any(|sys| dir.starts_with(sys)) &&
+@@ -616,19 +621,20 @@ fn split_flags(output: &[u8]) -> Vec<String> {
+ #[test]
+ #[cfg(target_os = "macos")]
+ fn system_library_mac_test() {
+-    assert!(!is_static_available("PluginManager", &[PathBuf::from("/Library/Frameworks")]));
+-    assert!(!is_static_available("python2.7", &[PathBuf::from("/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/config")]));
+-    assert!(!is_static_available("ffi_convenience", &[PathBuf::from("/Library/Ruby/Gems/2.0.0/gems/ffi-1.9.10/ext/ffi_c/libffi-x86_64/.libs")]));
++    let system_roots = vec![PathBuf::from("/Library"), PathBuf::from("/System")];
++    assert!(!is_static_available("PluginManager", &system_roots, &[PathBuf::from("/Library/Frameworks")]));
++    assert!(!is_static_available("python2.7", &system_roots, &[PathBuf::from("/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/config")]));
++    assert!(!is_static_available("ffi_convenience", &system_roots, &[PathBuf::from("/Library/Ruby/Gems/2.0.0/gems/ffi-1.9.10/ext/ffi_c/libffi-x86_64/.libs")]));
+ 
+     // Homebrew is in /usr/local, and it's not a part of the OS
+     if Path::new("/usr/local/lib/libpng16.a").exists() {
+-        assert!(is_static_available("png16", &[PathBuf::from("/usr/local/lib")]));
++        assert!(is_static_available("png16", &system_roots, &[PathBuf::from("/usr/local/lib")]));
+     }
+ }
+ 
+ #[test]
+ #[cfg(target_os = "linux")]
+ fn system_library_linux_test() {
+-    assert!(!is_static_available("util", &[PathBuf::from("/usr/lib/x86_64-linux-gnu")]));
+-    assert!(!is_static_available("dialog", &[PathBuf::from("/usr/lib")]));
++    assert!(!is_static_available("util", &[PathBuf::from("/usr")], &[PathBuf::from("/usr/lib/x86_64-linux-gnu")]));
++    assert!(!is_static_available("dialog", &[PathBuf::from("/usr")], &[PathBuf::from("/usr/lib")]));
+ }
+-- 
+2.21.0.593.g511ec345e18-goog
+

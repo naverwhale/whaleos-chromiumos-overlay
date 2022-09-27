@@ -1,0 +1,9 @@
+DEFINED_PHASES=-
+DESCRIPTION=Chrome OS ARC++ hardware features virtual package.
+EAPI=7
+HOMEPAGE=http://src.chromium.org
+KEYWORDS=*
+LICENSE=metapackage
+RDEPEND=chromeos-base/arc-hardware-features-default
+SLOT=0
+_md5_=ef71c8ec1fe8972a83275e475a347c70

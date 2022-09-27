@@ -1,0 +1,140 @@
+From 95c08130319d8d141d4cc6cffb8fd53642bc59e1 Mon Sep 17 00:00:00 2001
+From: Dmitry Torokhov <dtor@chromium.org>
+Date: Wed, 5 Jun 2019 11:25:28 -0700
+Subject: [PATCH 09/11] CHROMIUM: linux_usbfs: make use of port data from
+ USBFS_CONNINFO_EX
+
+Add a new backend operation get_port_numbers() and use information
+returned by IOCTL_USBFS_CONNINFO_EX, when available, to return
+connection path for the device. If backend or data is not available, let
+core continue traversing the device tree and get the data from there.
+
+This especially is useful in cases where we are interfacing via file
+descriptors passed to clients and device tree is not available.
+
+Signed-off-by: Dmitry Torokhov <dtor@chromium.org>
+---
+ libusb/core.c           |  7 +++++++
+ libusb/libusbi.h        | 17 +++++++++++++++++
+ libusb/os/linux_usbfs.c | 31 +++++++++++++++++++++++++++++++
+ 3 files changed, 55 insertions(+)
+
+diff --git a/libusb/core.c b/libusb/core.c
+index a3b9cc1..4d6fda4 100644
+--- a/libusb/core.c
++++ b/libusb/core.c
+@@ -933,6 +933,13 @@ int API_EXPORTED libusb_get_port_numbers(libusb_device *dev,
+ 	if (port_numbers_len <= 0)
+ 		return LIBUSB_ERROR_INVALID_PARAM;
+ 
++	if (usbi_backend.get_port_numbers) {
++		int ret = usbi_backend.get_port_numbers(dev, port_numbers,
++				port_numbers_len);
++		if (ret != LIBUSB_ERROR_OTHER)
++			return ret;
++	}
++
+ 	// HCDs can be listed as devices with port #0
+ 	while((dev) && (dev->port_number != 0)) {
+ 		if (--i < 0) {
+diff --git a/libusb/libusbi.h b/libusb/libusbi.h
+index e47ee72..2dc6a3b 100644
+--- a/libusb/libusbi.h
++++ b/libusb/libusbi.h
+@@ -854,6 +854,23 @@ struct usbi_os_backend {
+ 		uint8_t bConfigurationValue, unsigned char **buffer,
+ 		int *host_endian);
+ 
++	/* Get the list of all port numbers from root for the specified device.
++	 *
++	 * Optional, if not present the core will attempt traversing device
++	 * tree to collect this data.
++	 *
++	 * Copies the list of port numbers into port_numbers (up to
++	 * port_numbers_len entries).
++	 *
++	 * Returns:
++	 * - number of entries in port_numbers array
++	 * - LIBUSB_ERROR_OVERFLOW if the array is too small
++	 * - LIBUSB_ERROR_OTHER if backend was not able to provide this
++	 * information
++	 */
++	int (*get_port_numbers)(struct libusb_device *device,
++		uint8_t* port_numbers, int port_numbers_len);
++
+ 	/* Get the bConfigurationValue for the active configuration for a device.
+ 	 * Optional. This should only be implemented if you can retrieve it from
+ 	 * cache (don't generate I/O).
+diff --git a/libusb/os/linux_usbfs.c b/libusb/os/linux_usbfs.c
+index a00d51a..3695023 100644
+--- a/libusb/os/linux_usbfs.c
++++ b/libusb/os/linux_usbfs.c
+@@ -160,6 +160,8 @@ struct linux_device_priv {
+ 	unsigned char *descriptors;
+ 	int descriptors_len;
+ 	int active_config; /* cache val for !sysfs_can_relate_devices  */
++	uint8_t *ports;
++	int num_ports;
+ };
+ 
+ struct linux_device_handle_priv {
+@@ -955,6 +957,21 @@ static int op_get_config_descriptor(struct libusb_device *dev,
+ 	return len;
+ }
+ 
++int op_get_port_numbers(struct libusb_device *dev,
++	uint8_t* port_numbers, int port_numbers_len)
++{
++	struct linux_device_priv *priv = _device_priv(dev);
++
++	if (!priv->ports)
++		return LIBUSB_ERROR_OTHER;
++
++	if (priv->num_ports > port_numbers_len)
++		return LIBUSB_ERROR_OVERFLOW;
++
++	memcpy(port_numbers, priv->ports, priv->num_ports);
++	return priv->num_ports;
++}
++
+ /* send a control message to retrieve active configuration */
+ static int usbfs_get_active_config(struct libusb_device *dev, int fd)
+ {
+@@ -1134,6 +1151,17 @@ static int initialize_from_usbfs(struct libusb_device *dev, int fd)
+ 		dev->bus_number = ci.busnum;
+ 		dev->device_address = ci.devnum;
+ 		dev->speed = device_speed_from_kernel(ctx, ci.speed);
++
++		/* Save port information */
++		if (ci.num_ports > 0 &&
++		    ci.num_ports <= sizeof(ci.ports) / sizeof(ci.ports[0])) {
++			dev->port_number = ci.ports[0];
++			priv->ports = malloc(ci.num_ports);
++			if (!priv->ports)
++				return LIBUSB_ERROR_NO_MEM;
++			priv->num_ports = ci.num_ports;
++			memcpy(priv->ports, ci.ports, ci.num_ports);
++		}
+ 	}
+ 
+ 	return LIBUSB_SUCCESS;
+@@ -2006,6 +2034,8 @@ static int op_release_interface(struct libusb_device_handle *handle, int iface)
+ static void op_destroy_device(struct libusb_device *dev)
+ {
+ 	struct linux_device_priv *priv = _device_priv(dev);
++	if (priv->ports)
++		free(priv->ports);
+ 	if (priv->descriptors)
+ 		free(priv->descriptors);
+ 	if (priv->sysfs_dir)
+@@ -2961,6 +2991,7 @@ const struct usbi_os_backend usbi_backend = {
+ 	.get_active_config_descriptor = op_get_active_config_descriptor,
+ 	.get_config_descriptor = op_get_config_descriptor,
+ 	.get_config_descriptor_by_value = op_get_config_descriptor_by_value,
++	.get_port_numbers = op_get_port_numbers,
+ 
+ 	.wrap_sys_device = op_wrap_sys_device,
+ 	.open = op_open,
+-- 
+2.22.0.rc2.383.gf4fbbf30c2-goog
+

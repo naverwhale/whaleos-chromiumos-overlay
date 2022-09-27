@@ -1,0 +1,8 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# If the device belongs to the NFC subsystem, then run neard. Since neard is
+# managed by upstart, there will be at most one neard process, as long as it
+# is run using "start".
+ACTION=="add|change", SUBSYSTEM=="nfc", RUN+="/sbin/start neard"

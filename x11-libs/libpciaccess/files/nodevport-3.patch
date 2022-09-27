@@ -1,0 +1,27 @@
+From 1d71669e577f5f2eb02542851696d3bcb722a80b Mon Sep 17 00:00:00 2001
+From: Adam Jackson <ajax@redhat.com>
+Date: Thu, 11 Jul 2019 12:56:40 -0400
+Subject: [PATCH] linux: Don't try to include <sys/io.h> on arm
+
+It no longer exists in newer glibc, and didn't work like you'd have
+hoped on anything but strongarm anyway.
+---
+ src/linux_sysfs.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/linux_sysfs.c b/src/linux_sysfs.c
+index e74ad72c9859..d02264412f05 100644
+--- a/src/linux_sysfs.c
++++ b/src/linux_sysfs.c
+@@ -50,7 +50,7 @@
+ #include <dirent.h>
+ #include <errno.h>
+ 
+-#if defined(__i386__) || defined(__x86_64__) || defined(__arm__)
++#if defined(__i386__) || defined(__x86_64__)
+ #include <sys/io.h>
+ #else
+ #define inb(x) -1
+-- 
+2.32.0.272.g935e593368-goog
+

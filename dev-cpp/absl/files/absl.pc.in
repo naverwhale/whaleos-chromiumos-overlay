@@ -1,0 +1,4 @@
+Name: absl
+Description: Abseil
+Version: 20200923
+Libs: @LIBS@

@@ -1,0 +1,10 @@
+Remove dev dependency on tokio to prevent circular dependency.
+--- a/Cargo.toml	1970-01-01 08:00:00.000000000 +0800
++++ b/Cargo.toml	2019-08-15 16:20:14.888936007 +0800
+@@ -51,6 +51,3 @@
+ version = "0.1.1"
+ [dev-dependencies.tempfile]
+ version = "3"
+-
+-[dev-dependencies.tokio]
+-version = "0.1.6"

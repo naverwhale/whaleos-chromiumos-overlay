@@ -1,0 +1,4 @@
+# chromiumos-sdk build bot service account, so it
+# can make upgrades automatically without OWNERS approval.
+# See: b/192581987
+per-file sdk_version.conf = 3su6n15k.default@developer.gserviceaccount.com

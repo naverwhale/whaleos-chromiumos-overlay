@@ -1,0 +1,43 @@
+Remove optional features so their dependencies are not needed.
+diff --git a/Cargo.toml b/Cargo.toml
+index f109bf3..7f73bc3 100644
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -33,10 +33,6 @@ version = "1.2"
+ [dependencies.cfg-if]
+ version = "1.0"
+ 
+-[dependencies.dirs]
+-version = "3.0"
+-optional = true
+-
+ [dependencies.fs2]
+ version = "0.4"
+ 
+@@ -54,25 +50,12 @@ version = "1.0"
+ 
+ [dependencies.unicode-width]
+ version = "0.1"
+-[features]
+-default = ["with-dirs"]
+-with-dirs = ["dirs"]
+-with-fuzzy = ["skim"]
+ [target."cfg(unix)".dependencies.nix]
+ version = "0.19"
+ 
+-[target."cfg(unix)".dependencies.skim]
+-version = "0.7"
+-optional = true
+-
+ [target."cfg(unix)".dependencies.utf8parse]
+ version = "0.2"
+-[target."cfg(windows)".dependencies.scopeguard]
+-version = "1.1"
+ 
+-[target."cfg(windows)".dependencies.winapi]
+-version = "0.3"
+-features = ["consoleapi", "handleapi", "minwindef", "processenv", "winbase", "wincon", "winuser"]
+ [badges.github-actions]
+ repository = "kkawakam/rustyline"
+ workflow = "Rust"
+ 

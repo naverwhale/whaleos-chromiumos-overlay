@@ -1,0 +1,324 @@
+From 97e6eab3d71d3c49ee5ae799f4fd88928dae03ce Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Fran=C3=A7ois=20Degros?= <fdegros@chromium.org>
+Date: Mon, 15 Jun 2020 10:56:27 +1000
+Subject: [PATCH] Detect filename encoding and convert filenames to UTF-8 using
+ ICU
+
+---
+ Makefile            |  15 ++--
+ lib/Makefile        |  14 ++--
+ lib/fuseZipData.cpp | 192 ++++++++++++++++++++++++++++++++++++++++----
+ 3 files changed, 193 insertions(+), 28 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 1b40859..e72ce52 100644
+--- a/Makefile
++++ b/Makefile
+@@ -7,13 +7,14 @@ docdir=$(datarootdir)/doc/$(DEST)
+ mandir=$(datarootdir)/man
+ man1dir=$(mandir)/man1
+ manext=.1
+-LIBS=-Llib -lfusezip $(shell $(PKG_CONFIG) fuse --libs) $(shell $(PKG_CONFIG) libzip --libs)
++PKG_CONFIG ?= pkg-config
++PC_DEPS = fuse libzip icu-uc icu-i18n
++PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
++LIBS := -Llib -lfusezip $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
++COMMON_CXXFLAGS = -Wall -Wextra -Wconversion -Wno-sign-compare -Wlogical-op -Wshadow -pedantic -std=c++17
++CXXFLAGS = -g -O0 $(COMMON_CXXFLAGS)
++RELEASE_CXXFLAGS = -O2 $(COMMON_CXXFLAGS)
+ LIB=lib/libfusezip.a
+-CXXFLAGS=-g -O0 -Wall -Wextra -Wconversion -Wsign-conversion -Wlogical-op -Wshadow -pedantic -Werror -std=c++11
+-RELEASE_CXXFLAGS=-O2 -Wall -Wextra -Wconversion -Wsign-conversion -Wlogical-op -Wshadow -pedantic -Werror -std=c++11
+-PKG_CONFIG?=pkg-config
+-FUSEFLAGS=$(shell $(PKG_CONFIG) fuse --cflags)
+-ZIPFLAGS=$(shell $(PKG_CONFIG) libzip --cflags)
+ SOURCES=main.cpp
+ OBJECTS=$(SOURCES:.cpp=.o)
+ MANSRC=fuse-zip.1
+@@ -35,7 +36,7 @@ $(DEST): $(OBJECTS) $(LIB)
+ 	    -o $@
+ 
+ main.o: main.cpp
+-	$(CXX) -c $(CXXFLAGS) $(FUSEFLAGS) $(ZIPFLAGS) $< \
++	$(CXX) -c $(CXXFLAGS) $(PC_CFLAGS) $< \
+ 	    -Ilib \
+ 	    -o $@
+ 
+diff --git a/lib/Makefile b/lib/Makefile
+index d092e0e..4e4b23a 100644
+--- a/lib/Makefile
++++ b/lib/Makefile
+@@ -1,10 +1,10 @@
+ DEST=libfusezip.a
+-PKG_CONFIG?=pkg-config
+-LIBS=$(shell $(PKG_CONFIG) fuse --libs) $(shell $(PKG_CONFIG) libzip --libs)
+-CXXFLAGS=-g -O0 -Wall -Wextra -Wconversion -Wsign-conversion -Wlogical-op -Wshadow -pedantic -Werror -std=c++11
+-RELEASE_CXXFLAGS=-O2 -Wall -Wextra -Wconversion -Wsign-conversion -Wlogical-op -Wshadow -pedantic -Werror -std=c++11
+-FUSEFLAGS=$(shell $(PKG_CONFIG) fuse --cflags)
+-ZIPFLAGS=$(shell $(PKG_CONFIG) libzip --cflags)
++PKG_CONFIG ?= pkg-config
++PC_DEPS = fuse libzip icu-uc icu-i18n
++PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
++COMMON_CXXFLAGS = -Wall -Wextra -Wconversion -Wno-sign-compare -Wlogical-op -Wshadow -pedantic -std=c++17
++CXXFLAGS = -g -O0 $(COMMON_CXXFLAGS)
++RELEASE_CXXFLAGS = -O2 $(COMMON_CXXFLAGS)
+ SOURCES=$(sort $(wildcard *.cpp))
+ OBJECTS=$(SOURCES:.cpp=.o)
+ CLEANFILES=$(OBJECTS) $(DEST)
+@@ -18,7 +18,7 @@ $(DEST): $(OBJECTS)
+ 	$(AR) -cr $@ $(OBJECTS)
+ 
+ .cpp.o:
+-	$(CXX) -c $(CXXFLAGS) $(FUSEFLAGS) $(ZIPFLAGS) $< -o $@
++	$(CXX) -c $(CXXFLAGS) $(PC_CFLAGS) $< -o $@
+ 
+ clean:
+ 	rm -f $(DEST) $(OBJECTS)
+diff --git a/lib/fuseZipData.cpp b/lib/fuseZipData.cpp
+index 36a3451..29ff2c4 100644
+--- a/lib/fuseZipData.cpp
++++ b/lib/fuseZipData.cpp
+@@ -24,6 +24,13 @@
+ #include <cstring>
+ #include <iostream>
+ #include <stdexcept>
++#include <functional>
++#include <memory>
++#include <vector>
++
++#include <syslog.h>
++#include <unicode/ucnv.h>
++#include <unicode/ucsdet.h>
+ 
+ #include "fuseZipData.h"
+ #include "extraField.h"
+@@ -53,6 +60,118 @@ static void SetPassword(zip_t *const archive) {
+         throw ZipError("Cannot set default password", archive);
+ }
+ 
++namespace {
++
++struct Closer {
++    void operator()(UConverter *const conv) const { ucnv_close(conv); }
++    void operator()(UCharsetDetector *const csd) const { ucsdet_close(csd); }
++};
++
++using ConverterPtr = std::unique_ptr<UConverter, Closer>;
++using CharsetDetectorPtr = std::unique_ptr<UCharsetDetector, Closer>;
++
++class ConverterToUtf8 {
++  public:
++    // Creates a converter that will convert strings from the given encoding to
++    // UTF-8. Allocates internal buffers to handle strings up to
++    // `maxInputLength`. Throws an exception in case of error.
++    ConverterToUtf8(const char *const fromEncoding, const size_t maxInputLength)
++        : from(Open(fromEncoding)), to(Open("UTF-8")) {
++        utf16.resize(maxInputLength + 1);
++        utf8.resize(3 * maxInputLength + 1);
++    }
++
++    // Converts the given string to UTF-8. Returns a pointer to the internal
++    // buffer holding the null-terminated result. Returns a null pointer in case
++    // of error.
++    const char *operator()(const char *const in) {
++        if (!in)
++            return nullptr;
++
++        const int32_t inlen = static_cast<int32_t>(strlen(in));
++
++        UErrorCode error = U_ZERO_ERROR;
++        const int32_t len16 = ucnv_toUChars(from.get(), utf16.data(),
++                                            static_cast<int32_t>(utf16.size()),
++                                            in, inlen, &error);
++
++        if (U_FAILURE(error)) {
++            syslog(LOG_ERR, "Cannot convert to UTF-16: %s", u_errorName(error));
++            return nullptr;
++        }
++
++        const int32_t len8 = ucnv_fromUChars(to.get(), utf8.data(),
++                                             static_cast<int32_t>(utf8.size()),
++                                             utf16.data(), len16, &error);
++
++        if (U_FAILURE(error)) {
++            syslog(LOG_ERR, "Cannot convert to UTF-8: %s", u_errorName(error));
++            return nullptr;
++        }
++
++        assert(!utf8[len8]);
++        return utf8.data();
++    }
++
++  private:
++    // Opens an ICU converter for the given encoding.
++    // Throws a runtime_error in case of error.
++    static ConverterPtr Open(const char *const encoding) {
++        UErrorCode error = U_ZERO_ERROR;
++        ConverterPtr conv(ucnv_open(encoding, &error));
++
++        if (U_FAILURE(error)) {
++            std::string msg = "Cannot open converter for ";
++            msg += encoding;
++            msg += ": ";
++            msg += u_errorName(error);
++            throw std::runtime_error(std::move(msg));
++        }
++
++        assert(conv);
++        return conv;
++    }
++
++    const ConverterPtr from, to;
++    std::vector<UChar> utf16;
++    std::vector<char> utf8;
++};
++
++// Detects the encoding of the given string.
++// Returns the encoding name, or an empty string in case of error.
++std::string DetectEncoding(const std::string_view bytes) {
++    UErrorCode error = U_ZERO_ERROR;
++    const CharsetDetectorPtr csd(ucsdet_open(&error));
++    ucsdet_setText(csd.get(), bytes.data(), static_cast<int32_t>(bytes.size()),
++                   &error);
++
++    // Get most plausible encoding.
++    const UCharsetMatch *const ucm = ucsdet_detect(csd.get(), &error);
++    const char *const encoding = ucsdet_getName(ucm, &error);
++    if (U_FAILURE(error)) {
++        syslog(LOG_ERR, "Cannot detect encoding: %s", u_errorName(error));
++        return std::string();
++    }
++
++    syslog(LOG_INFO, "Detected encoding %s with %d%% confidence", encoding,
++           ucsdet_getConfidence(ucm, &error));
++
++    // Check if we want to convert the detected encoding via ICU.
++    const std::string_view candidates[] = {
++        "Shift_JIS",   "Big5",        "EUC-JP",      "EUC-KR", "GB18030",
++        "ISO-2022-CN", "ISO-2022-JP", "ISO-2022-KR", "KOI8-R"};
++
++    for (const std::string_view candidate : candidates) {
++        if (candidate == encoding)
++            return encoding;
++    }
++
++    // Not handled by ICU.
++    return std::string();
++}
++
++} // namespace
++
+ FuseZipData::FuseZipData(const char *archiveName, struct zip *z, const char *cwd,
+         bool force_precise_time):
+     m_zip(z), m_archiveName(archiveName), m_cwd(cwd), m_force_precise_time(force_precise_time) {
+@@ -90,18 +209,56 @@ void FuseZipData::build_tree(bool readonly) {
+     m_root->parent = NULL;
+     files[m_root->full_name.c_str()] = m_root;
+     zip_int64_t n = zip_get_num_entries(m_zip, 0);
++
++    // Concatenate all the names in a buffer in order to guess the encoding.
++    std::string allNames;
++    allNames.reserve(10000);
++
++    size_t maxNameLength = 0;
++
+     // search for absolute or parent-relative paths
+     bool needPrefix = false;
+-    if (readonly) {
+-        for (zip_int64_t i = 0; i < n; ++i) {
+-            const char *name = zip_get_name(m_zip, static_cast<zip_uint64_t>(i), ZIP_FL_ENC_GUESS);
+-            if (!name)
+-                throw ZipError("Cannot get file name", m_zip);
+-
+-            if ((name[0] == '/') || (strncmp(name, "../", 3) == 0)) {
+-                needPrefix = true;
+-                break;
+-            }
++    for (zip_int64_t i = 0; i < n; ++i) {
++        const char *name =
++            zip_get_name(m_zip, static_cast<zip_uint64_t>(i), ZIP_FL_ENC_RAW);
++        if (!name)
++            continue;
++
++        const size_t nameLength = strlen(name);
++        if (maxNameLength < nameLength)
++            maxNameLength = nameLength;
++
++        if (allNames.size() + nameLength <= allNames.capacity())
++            allNames.append(name, nameLength);
++
++        if (readonly && !needPrefix) {
++            needPrefix = (name[0] == '/' || strncmp(name, "../", 3) == 0);
++        }
++    }
++
++    // Detect filename encoding.
++    const std::string encoding = DetectEncoding(allNames);
++    allNames.clear();
++
++    // Prepare functor to convert filenames to UTF-8.
++    // By default, just rely on the conversion to UTF-8 provided by libzip.
++    std::function<const char *(const char *)> toUtf8 = [](const char *s) {
++        return s;
++    };
++    zip_flags_t zipFlags = ZIP_FL_ENC_GUESS;
++
++    // But if the filename encoding is one of the encodings we want to convert
++    // using ICU, prepare and use the ICU converter.
++    if (!encoding.empty()) {
++        try {
++            toUtf8 = [converter = std::make_shared<ConverterToUtf8>(
++                          encoding.c_str(), maxNameLength)](const char *s) {
++                return (*converter)(s);
++            };
++            zipFlags = ZIP_FL_ENC_RAW;
++        } catch (const std::exception &e) {
++            syslog(LOG_ERR, "Cannot create converter for %s: %s",
++                   encoding.c_str(), e.what());
+         }
+     }
+ 
+@@ -114,13 +271,16 @@ void FuseZipData::build_tree(bool readonly) {
+         zip_uint64_t id = static_cast<zip_uint64_t>(i);
+         bool isHardlink;
+ 
+-        if (zip_stat_index(m_zip, id, ZIP_FL_ENC_GUESS, &sb) < 0)
++        if (zip_stat_index(m_zip, id, zipFlags, &sb) < 0)
+             throw ZipError("Cannot read file entry", m_zip);
+ 
+         if ((sb.valid & ZIP_STAT_NAME) == 0)
+             continue;
+ 
+-        const char *const name = sb.name;
++        const char *name = toUtf8(sb.name);
++        if (!name)
++            continue;
++
+         mode_t mode = getEntryAttributes(id, name, isHardlink);
+         if (S_ISLNK(mode))
+             continue;
+@@ -153,7 +313,11 @@ void FuseZipData::build_tree(bool readonly) {
+     for (zip_int64_t i = 0; i < n; ++i) {
+         zip_uint64_t id = static_cast<zip_uint64_t>(i);
+         bool isHardlink;
+-        const char *name = zip_get_name(m_zip, id, ZIP_FL_ENC_GUESS);
++
++        const char *name = toUtf8(zip_get_name(m_zip, id, zipFlags));
++        if (!name)
++            continue;
++
+         mode_t mode = getEntryAttributes(id, name, isHardlink);
+         if (S_ISLNK(mode))
+             continue;
+@@ -570,7 +734,7 @@ void FuseZipData::save () {
+             if (node->isTemporaryDir()) {
+                 // persist temporary directory
+                 zip_int64_t idx = zip_dir_add(m_zip,
+-                        node->full_name.c_str(), ZIP_FL_ENC_GUESS);
++                        node->full_name.c_str(), ZIP_FL_ENC_UTF_8);
+                 if (idx < 0) {
+                     syslog(LOG_ERR, "Unable to save directory %s in ZIP archive",
+                         node->full_name.c_str());
+-- 
+2.33.0.464.g1972c5931b-goog
+

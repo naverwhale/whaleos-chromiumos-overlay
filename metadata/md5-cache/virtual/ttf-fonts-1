@@ -1,0 +1,9 @@
+DEFINED_PHASES=-
+DESCRIPTION=True and opentype fonts for Chromium OS
+EAPI=7
+HOMEPAGE=http://src.chromium.org
+KEYWORDS=*
+LICENSE=metapackage
+RDEPEND=chromeos-base/chromeos-fonts
+SLOT=0
+_md5_=086ab8742dc5b55c60a9bc7739ce89eb

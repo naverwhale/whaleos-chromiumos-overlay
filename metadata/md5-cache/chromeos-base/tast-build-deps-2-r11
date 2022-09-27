@@ -1,0 +1,14 @@
+BDEPEND=dev-vcs/git
+DEFINED_PHASES=info setup unpack
+DEPEND=chromeos-base/aosp-frameworks-base-proto chromeos-base/cros-config-api chromeos-base/hardware_verifier_proto chromeos-base/modemfwd-proto chromeos-base/policy-go-proto chromeos-base/system_api chromeos-base/vm_protos chromeos-base/wilco-dtc-grpc-protos dev-go/boringssl-acvptool dev-go/cdp dev-go/clock dev-go/cmp dev-go/crypto dev-go/dbus dev-go/docker dev-go/dst dev-go/exif dev-go/fscrypt dev-go/gapi-drive dev-go/genproto dev-go/godebug dev-go/golang-evdev dev-go/golint dev-go/gopacket dev-go/gopsutil dev-go/go-matroska dev-go/go-sys dev-go/grpc dev-go/mdns dev-go/mock dev-go/mp4 dev-go/oauth2 dev-go/perfetto-protos dev-go/protobuf dev-go/selinux dev-go/subcommands dev-go/sync dev-go/tarm-serial dev-go/uuid dev-go/vsock dev-go/yaml
+DESCRIPTION=Build-time dependencies of Tast binaries
+EAPI=7
+HOMEPAGE=https://chromium.googlesource.com/chromiumos/platform/tast/
+IUSE=cros_host cros_workon_tree_8ce164efd78fcb4a68e898d8c92c7579657a49b1
+KEYWORDS=*
+LICENSE=BSD-Google
+PROPERTIES=live
+RDEPEND=chromeos-base/aosp-frameworks-base-proto chromeos-base/cros-config-api chromeos-base/hardware_verifier_proto chromeos-base/modemfwd-proto chromeos-base/policy-go-proto chromeos-base/system_api chromeos-base/vm_protos chromeos-base/wilco-dtc-grpc-protos dev-go/boringssl-acvptool dev-go/cdp dev-go/clock dev-go/cmp dev-go/crypto dev-go/dbus dev-go/docker dev-go/dst dev-go/exif dev-go/fscrypt dev-go/gapi-drive dev-go/genproto dev-go/godebug dev-go/golang-evdev dev-go/golint dev-go/gopacket dev-go/gopsutil dev-go/go-matroska dev-go/go-sys dev-go/grpc dev-go/mdns dev-go/mock dev-go/mp4 dev-go/oauth2 dev-go/perfetto-protos dev-go/protobuf dev-go/selinux dev-go/subcommands dev-go/sync dev-go/tarm-serial dev-go/uuid dev-go/vsock dev-go/yaml
+SLOT=0/2-r11
+_eclasses_=cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-credentials	4fd98ebbff6a1534ca9a89547e13dc92	cros-workon	ff100259492312ff6570e490bcb9a320	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=691be6ab36fee99dc2cbe5ca08bcec5f

@@ -1,0 +1,57 @@
+From 95d377b58a849061de4d0ab803038ec16351e7e7 Mon Sep 17 00:00:00 2001
+From: Brendan King <Brendan.King@imgtec.com>
+Date: Wed, 12 Feb 2020 17:20:19 +0000
+Subject: [PATCH] GL_EXT_clip_control entry point
+
+Change-Id: I68614edca09b0b6a50480162e80022d17f816e95
+---
+ src/mapi/glapi/gen/EXT_clip_control.xml | 24 ++++++++++++++++++++++++
+ src/mapi/glapi/gen/es_EXT.xml           |  3 +++
+ 2 files changed, 27 insertions(+)
+ create mode 100644 src/mapi/glapi/gen/EXT_clip_control.xml
+
+diff --git a/src/mapi/glapi/gen/EXT_clip_control.xml b/src/mapi/glapi/gen/EXT_clip_control.xml
+new file mode 100644
+index 00000000000..d0076042362
+--- /dev/null
++++ b/src/mapi/glapi/gen/EXT_clip_control.xml
+@@ -0,0 +1,24 @@
++<?xml version="1.0"?>
++<!DOCTYPE OpenGLAPI SYSTEM "gl_API.dtd">
++
++<OpenGLAPI>
++
++<category name="GL_EXT_clip_control" number="290">
++
++    <enum name="LOWER_LEFT" value = "0x8CA1"/>
++    <enum name="UPPER_LEFT" value = "0x8CA2"/>
++
++    <enum name="NEGATIVE_ONE_TO_ONE" value = "0x935E"/>
++    <enum name="ZERO_TO_ONE" value = "0x935F"/>
++
++    <enum name="CLIP_ORIGIN" value = "0x935C"/>
++    <enum name="CLIP_DEPTH_MODE" value = "0x935D"/>
++
++    <function name="ClipControlEXT" es2="2.0" exec="dynamic">
++        <param name="origin" type="GLenum"/>
++        <param name="depth" type="GLenum"/>
++    </function>
++
++</category>
++
++</OpenGLAPI>
+diff --git a/src/mapi/glapi/gen/es_EXT.xml b/src/mapi/glapi/gen/es_EXT.xml
+index 917fed62f98..768d061030b 100644
+--- a/src/mapi/glapi/gen/es_EXT.xml
++++ b/src/mapi/glapi/gen/es_EXT.xml
+@@ -1475,4 +1475,7 @@
+    </function>
+ </category>
+ 
++<!-- 290. GL_EXT_clip_control -->
++<xi:include href="EXT_clip_control.xml" xmlns:xi="http://www.w3.org/2001/XInclude"/>
++
+ </OpenGLAPI>
+-- 
+2.24.1
+

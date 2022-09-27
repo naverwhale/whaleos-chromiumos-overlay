@@ -1,0 +1,1 @@
+qc-netmgr-0.1_p20201006.ebuild

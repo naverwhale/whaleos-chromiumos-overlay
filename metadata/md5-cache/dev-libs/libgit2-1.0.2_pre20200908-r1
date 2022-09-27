@@ -1,0 +1,15 @@
+BDEPEND=dev-util/ninja dev-util/cmake
+DEFINED_PHASES=compile configure install prepare setup test
+DEPEND=!libressl? ( dev-libs/openssl:0= ) libressl? ( dev-libs/libressl:0= ) sys-libs/zlib net-libs/http-parser:= gssapi? ( virtual/krb5 ) ssh? ( net-libs/libssh2 ) || ( dev-lang/python:3.8 dev-lang/python:3.7 dev-lang/python:3.6 ) virtual/pkgconfig
+DESCRIPTION=A linkable library for Git
+EAPI=7
+HOMEPAGE=https://libgit2.org
+IUSE=examples gssapi libressl +ssh test +threads trace
+KEYWORDS=*
+LICENSE=GPL-2-with-linking-exception
+RDEPEND=!libressl? ( dev-libs/openssl:0= ) libressl? ( dev-libs/libressl:0= ) sys-libs/zlib net-libs/http-parser:= gssapi? ( virtual/krb5 ) ssh? ( net-libs/libssh2 )
+RESTRICT=!test? ( test )
+SLOT=0/1.0.2_pre20200908-r1
+SRC_URI=https://github.com/libgit2/libgit2/archive/1e987525b3bd86fc29e7ff67d973861efd22faf7.tar.gz -> libgit2-1.0.2_pre20200908.tar.gz
+_eclasses_=cmake	b22e256fd899c7e0c747e8834eff121a	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	ninja-utils	132cbb376048d079b5a012f5467c4e7f	python-any-r1	54a3178500786b0a7ede4a23b7f2a6ad	python-utils-r1	157a6a7a3e99c7dbdf81acc9dd4f57cd	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	xdg-utils	ff2ff954e6b17929574eee4efc5152ba
+_md5_=2dcf6650ce28083276746bcf7df84231

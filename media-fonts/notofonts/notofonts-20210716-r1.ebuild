@@ -1,0 +1,1 @@
+notofonts-20210716.ebuild

@@ -1,0 +1,162 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Distributed under the terms of the GNU General Public License v2
+
+# Dummy setting so we can use the same append form below.
+USE=""
+
+USE="${USE} acpi bluetooth cros_p2p -fbconsole pam usb vlan -vtconsole"
+USE="${USE} zlib bindist cros-debug -introspection"
+USE="${USE} -acl -cracklib -gpm ipv6 -openmp -python -sha512 xattr"
+USE="${USE} -fortran -abiword -perl -poppler-data -nls -openrc"
+USE="${USE} -mime -peerd scanner"
+USE="${USE} -gtk2 -gtk3 -qt4"
+USE="${USE} cups crosfonts -postscript"
+USE="${USE} dlp"
+USE="${USE} tpm"
+USE="${USE} compupdates"
+USE="${USE} containers"
+USE="${USE} kerberos_daemon"
+USE="${USE} mist"
+USE="${USE} cellular mbim"
+USE="${USE} ime"
+USE="${USE} memd"
+USE="${USE} ml_service ondevice_grammar"
+USE="${USE} pinweaver"
+USE="${USE} resourced"
+USE="${USE} smartdim"
+USE="${USE} smbprovider"
+USE="${USE} system_proxy"
+USE="${USE} usb_bouncer"
+USE="${USE} usbguard"
+USE="${USE} -split-usr"
+
+# All chromeos-based boards created after 2019-01 must be unibuild-enabled. See
+# https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/chromeos-config/README.md
+# for further details about chromeos-config, which is the required entry point
+# for unified builds.
+USE="${USE} unibuild"
+
+# Board overlays can unset this to disable the ACPI AC kernel driver.
+USE="${USE} acpi_ac"
+
+# Enable general security hardening by default.
+USE="${USE} hardened"
+
+# Formerly project-freon configs
+# Disable X11.
+USE="${USE} -X"
+
+# Use opengles instead of opengl
+USE="${USE} opengles"
+
+# Enable gestures support in Chrome.
+USE="${USE} evdev_gestures"
+
+# Enable xkbcommon in Chrome for keyboard layouts.
+USE="${USE} xkbcommon"
+
+# Enable the freon console
+USE="${USE} frecon"
+
+# Enable udev support
+USE="${USE} udev"
+
+# Disable vala
+USE="${USE} -vala"
+
+# Enable fwupd support
+USE="${USE} fwupd"
+
+# Chrome OS needs deprecated tools: hcitool and hciconfig.
+USE="${USE} bt_deprecated_tools"
+
+# We don't provide this package anymore due to AGPL usage.
+USE="${USE} -berkdb"
+
+# Enable the diagnostics and telemetry daemon.
+USE="${USE} diagnostics"
+
+# Enable Perfetto daemons.
+USE="${USE} perfetto"
+
+# Enable the missive (ERP) daemon.
+USE="${USE} missive"
+
+# Enable CPU zero-copy for Chrome camera stack.
+USE="${USE} video_capture_use_gpu_memory_buffer"
+
+# Run Camera v3 stack by default.
+USE="${USE} arc-camera3"
+
+# Enable document scanning by default.
+USE="${USE} ondevice_document_scanner"
+
+# Enable Downloadable Content (DLC).
+USE="${USE} dlc"
+
+# Enable security-anomaly detection daemon.
+USE="${USE} secanomalyd"
+
+# Enable rootfs Lacros.
+USE="${USE} lacros_rootfs"
+
+# Enable dns-proxy daemon.
+USE="${USE} dns-proxy"
+
+# Enable iioservice to gather sensor information.
+USE="${USE} iioservice"
+
+# Enable feature daemon.
+USE="${USE} featured"
+
+# Disable tty2 console.
+TTY_CONSOLE="-tty2"
+
+# Ozone platforms to build into Chrome.
+OZONE_PLATFORM="gbm headless"
+
+# Of the above, platform to use by default at runtime.
+OZONE_PLATFORM_DEFAULT="gbm"
+
+# Most targets will override these.
+VIDEO_CARDS="-*"
+INPUT_DEVICES="-* evdev cmt"
+
+# USB firmware.
+LINUX_FIRMWARE="rt2870"
+
+# Realtek USB ethernet dongle firmware.
+LINUX_FIRMWARE="${LINUX_FIRMWARE} rtl8153"
+
+# Various runtime features that control emerge behavior.
+# See "man 5 make.conf" for details.
+FEATURES="allow-missing-manifests buildpkg clean-logs -collision-protect
+          -ebuild-locks force-mirror nodoc noinfo noman -merge-sync -pid-sandbox
+          parallel-install -preserve-libs sandbox splitdebug -strict userfetch
+          userpriv usersandbox -unknown-features-warn network-sandbox"
+
+# We reset compiler settings as the base ones are generic (just -O2) and our
+# common make.conf already adds those and more.
+CFLAGS=""
+CXXFLAGS=""
+LDFLAGS=""
+
+# C++ exception support disabled by default. This can be re-enabled by reseting
+# the CXXEXCEPTIONS_FLAGS for a whole board or, package by package, by calling
+# cros_enable_cxx_exceptions().
+CXXEXCEPTIONS=0
+CXXEXCEPTIONS_FLAGS="-fno-exceptions -fno-unwind-tables -fno-asynchronous-unwind-tables"
+
+# Don't strip NaCl executables. These are not linux executables and the
+# linux host's strip command doesn't know how to handle them correctly.
+STRIP_MASK="*.nexe"
+
+# Don't strip ELF files that land in the firmware directory. The symbols
+# of firmware ELF files are needed, but the tools don't support splitdebug.
+# Therefore, stripping should not be done. It's OK not to strip the ELF
+# files because these files are not installed into the image.
+STRIP_MASK="${STRIP_MASK} /firmware/*.elf"
+
+# We don't want legacy symlink lib cruft anywhere.
+SYMLINK_LIB="no"
+LIBDIR_x86="lib"

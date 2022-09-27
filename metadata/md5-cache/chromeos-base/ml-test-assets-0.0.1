@@ -1,0 +1,10 @@
+DEFINED_PHASES=install
+DESCRIPTION=TFLite models and supporting assets used for testing ML & NNAPI.
+EAPI=7
+HOMEPAGE=https://chromium.googlesource.com/aosp/platform/test/mlts/models/
+IUSE=label_image benchmark_model
+KEYWORDS=*
+LICENSE=Apache-2.0
+SLOT=0
+SRC_URI=label_image? ( gs://chromeos-localmirror/distfiles/ml-test-assets-label-image-assets_20200721.tar.xz ) benchmark_model? ( gs://chromeos-localmirror/distfiles/aosp-mlts-models-7331369.tar.xz )
+_md5_=157adb2b9881a2c8ebe15007ecd9e7a9

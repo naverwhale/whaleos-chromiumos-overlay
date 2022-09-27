@@ -1,0 +1,14 @@
+BDEPEND=dev-vcs/git dev-vcs/git
+DEFINED_PHASES=compile configure info install setup test unpack
+DEPEND=chromeos-base/metrics !chromeos-base/screenshot media-libs/libpng:0= media-libs/minigbm:= net-libs/libvncserver x11-libs/libdrm:= virtual/opengles x11-drivers/opengles-headers >=chromeos-base/libchrome-0.0.1-r117:0=[cros-debug=] cros_host? ( dev-util/gn ) >=dev-cpp/gtest-1.10.0:=
+DESCRIPTION=Utilities for screen capturing
+EAPI=7
+HOMEPAGE=https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/screen-capture-utils/
+IUSE=cros_host cros_workon_tree_ cros-debug fuzzer asan coverage fuzzer msan tsan ubsan cros_host cros_workon_tree_ cros-debug compilation_database cros_host test
+KEYWORDS=~*
+LICENSE=BSD-Google
+PROPERTIES=live live
+RDEPEND=chromeos-base/metrics !chromeos-base/screenshot media-libs/libpng:0= media-libs/minigbm:= net-libs/libvncserver x11-libs/libdrm:= virtual/opengles >=chromeos-base/libchrome-0.0.1-r117:0=[cros-debug=] >=chromeos-base/libbrillo-0.0.1-r1651:=
+SLOT=0/9999
+_eclasses_=cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-credentials	4fd98ebbff6a1534ca9a89547e13dc92	cros-debug	d2750757005d6a444f8eb12bb9eb9944	cros-fuzzer	e815e6e711300a7010da60d6030db0c9	cros-sanitizers	fcc8f96c24bfce0853f07c00f65fb50a	cros-workon	ff100259492312ff6570e490bcb9a320	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	libchrome	b0adbfd1a2eae79766f7256eaad1da23	libchrome-version	f89118941e7f3c3825d2fe216c977c57	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	platform	55fa3d5a49ef92fdfb31c827e2d8fc5d	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=184ef971c0fbfd6635bd68aba3544115

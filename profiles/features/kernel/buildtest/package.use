@@ -1,0 +1,12 @@
+# This profile is used to build Linux kernels with GCC/GNU binutils based
+# toolchain instead of LLVM based toolchain.
+sys-kernel/chromeos-kernel-3_18 buildtest frozen_gcc -clang -lld -llvm_ias
+sys-kernel/chromeos-kernel-4_4 buildtest frozen_gcc -clang -lld -llvm_ias
+# We can build chromeos-4.14 with clang, but not with lld.
+sys-kernel/chromeos-kernel-4_14 buildtest -lld -kernel_afdo -llvm_ias
+# For chromeos-4.19 and later we can build with clang and lld.
+sys-kernel/chromeos-kernel-4_19 buildtest -llvm_ias
+sys-kernel/chromeos-kernel-5_4 buildtest
+sys-kernel/chromeos-kernel-5_10 buildtest
+sys-kernel/chromeos-kernel-experimental buildtest
+sys-kernel/chromeos-kernel-next buildtest

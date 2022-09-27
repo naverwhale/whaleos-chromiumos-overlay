@@ -1,0 +1,12 @@
+DEFINED_PHASES=install postinst postrm setup
+DEPEND=X? ( x11-apps/mkfontdir media-fonts/encodings ) >=media-libs/fontconfig-2.4.0
+DESCRIPTION=Noto Pan Unicode fonts developed by Monotype
+EAPI=7
+IUSE=X
+KEYWORDS=*
+LICENSE=OFL-1.1
+RESTRICT=strip binchecks
+SLOT=0
+SRC_URI=http://commondatastorage.googleapis.com/chromeos-localmirror/distfiles/notofonts-20210716.tar.xz
+_eclasses_=eutils	fcb2aa98e1948b835b5ae66ca52868c5	font	bc3df4ed373e09f86a90e8fad39034d6
+_md5_=977846bf56587ee434ad535c9539f9f9

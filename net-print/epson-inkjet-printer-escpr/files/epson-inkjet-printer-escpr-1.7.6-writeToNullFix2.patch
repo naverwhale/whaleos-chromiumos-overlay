@@ -1,0 +1,28 @@
+This patch fixes a bug in the original driver: write to NULL descriptor.
+
+b/182179434
+
+--- a/src/wrapper.c
++++ b/src/wrapper.c
+@@ -244,6 +244,10 @@ main (int argc, char *argv[])
+ 				break;
+ 			}
+ 
++			if(pfp == NULL){ // do not write anything if pipe is not open
++				break;
++			}
++
+ 			if(first_fwrite){//最初のfwriteだけ、ページ数を送信
+ 				fwrite (&pageNum, 1, 1, pfp);
+ 				first_fwrite = FALSE;
+@@ -404,7 +408,9 @@ main (int argc, char *argv[])
+ 	free (page_raw);
+ 	free (page_raw_cache);
+ 
+-	pclose (pfp);
++	if(pfp != NULL){
++		pclose (pfp);
++	}
+ 	cupsRasterClose (ras);
+ 
+ 	return 0;

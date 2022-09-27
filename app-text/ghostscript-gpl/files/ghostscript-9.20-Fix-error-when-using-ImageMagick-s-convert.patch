@@ -1,0 +1,68 @@
+From e374e21f52d049b2f56c8cd29dcfe1b3de0975bf Mon Sep 17 00:00:00 2001
+From: "David Kaspar [Dee'Kej]" <dkaspar@redhat.com>
+Date: Fri, 7 Oct 2016 12:20:29 +0200
+Subject: [PATCH 1/6] Fix error when using ImageMagick's convert:
+
+  Error: /undefined in .runlibfileexists
+---
+ Resource/Init/gs_fonts.ps | 15 ++++++++++++---
+ Resource/Init/gs_init.ps  |  9 +++++++++
+ 2 files changed, 21 insertions(+), 3 deletions(-)
+
+diff --git a/Resource/Init/gs_fonts.ps b/Resource/Init/gs_fonts.ps
+index f1e26b093..46fff5576 100644
+--- a/Resource/Init/gs_fonts.ps
++++ b/Resource/Init/gs_fonts.ps
+@@ -139,10 +139,19 @@ userdict /.nativeFontmap .FontDirectory maxlength dict put
+       } if
+       1 index type /stringtype eq
+       1 index type /nametype eq and 1 index xcheck and
+-      1 index /run eq 2 index /.runlibfile eq or and {
++      1 index /run eq 2 index /.runlibfile eq 3 index /.runlibfileifexists eq or or and {
+                 % This is an inclusion entry.
+-        pop findlibfile { exch pop } { file } ifelse
+-        2 index exch .readFontmap pop
++        0 index /.runlibfileifexists eq {
++          pop findlibfile {
++            exch pop
++            2 index exch .readFontmap pop
++          } {
++            pop
++          } ifelse
++        } {
++          pop findlibfile { exch pop } { file } ifelse
++          2 index exch .readFontmap pop
++        } ifelse
+       } {
+                 % This is a real entry.
+                 % Read and pop tokens until a semicolon.
+diff --git a/Resource/Init/gs_init.ps b/Resource/Init/gs_init.ps
+index 088c8583e..9b6ffffe3 100644
+--- a/Resource/Init/gs_init.ps
++++ b/Resource/Init/gs_init.ps
+@@ -870,6 +870,14 @@ currentdict /.makeinternaldict .undef
+            { /undefinedfilename signalerror }
+           ifelse
+         } bind def
++/runlibfileifexists
++        {		% We don't want to bind 'run' into this procedure,
++                        % since run may get redefined.
++          findlibfile
++           { exch pop /run .systemvar exec }
++           { pop }
++          ifelse
++        } bind def
+ /selectdevice
+         { finddevice setdevice .setdefaultscreen } bind def
+ /signalerror		% <object> <errorname> signalerror -
+@@ -998,6 +1006,7 @@ def
+         } bind def
+ % Temporarily substitute it for the real runlibfile.
+ /.runlibfile /runlibfile load def
++/.runlibfileifexists /runlibfileifexists load def
+ /runlibfile //runlibfile0 def
+ currentdict /runlibfile0 .undef
+ 
+-- 
+2.31.0.208.g409f899ff0-goog
+

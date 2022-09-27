@@ -1,0 +1,100 @@
+From 1dc6c8598aea58ac7fd5a8a0233c91a2b35ea12a Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Vianney=20le=20Cl=C3=A9ment=20de=20Saint-Marcq?=
+ <code@quartic.eu>
+Date: Tue, 13 Dec 2016 16:30:56 +0100
+Subject: [PATCH 03/11] UPSTREAM: linux_usbfs: Get device address from file
+ descriptor
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Extend linux_get_device_address() to try to read the device address from
+a file descriptor as a last resort, if provided.
+
+Additionally, linux_get_device_address() will now return an error if the
+path could not be parsed.
+
+Signed-off-by: Vianney le Clément de Saint-Marcq <code@quartic.eu>
+Signed-off-by: Nathan Hjelm <hjelmn@me.com>
+---
+ libusb/os/linux_udev.c  |  2 +-
+ libusb/os/linux_usbfs.c | 15 +++++++++++++--
+ libusb/os/linux_usbfs.h |  2 +-
+ 3 files changed, 15 insertions(+), 4 deletions(-)
+
+diff --git a/libusb/os/linux_udev.c b/libusb/os/linux_udev.c
+index c97806b..bea03e3 100644
+--- a/libusb/os/linux_udev.c
++++ b/libusb/os/linux_udev.c
+@@ -232,7 +232,7 @@ static int udev_device_info(struct libusb_context *ctx, int detached,
+ 	}
+ 
+ 	return linux_get_device_address(ctx, detached, busnum, devaddr,
+-					dev_node, *sys_name);
++					dev_node, *sys_name, -1);
+ }
+ 
+ static void udev_hotplug_event(struct udev_device* udev_dev)
+diff --git a/libusb/os/linux_usbfs.c b/libusb/os/linux_usbfs.c
+index dfbb6c4..addde88 100644
+--- a/libusb/os/linux_usbfs.c
++++ b/libusb/os/linux_usbfs.c
+@@ -687,14 +687,23 @@ static int sysfs_get_active_config(struct libusb_device *dev, int *config)
+ 
+ int linux_get_device_address (struct libusb_context *ctx, int detached,
+ 	uint8_t *busnum, uint8_t *devaddr,const char *dev_node,
+-	const char *sys_name)
++	const char *sys_name, int fd)
+ {
++	char proc_path[PATH_MAX], fd_path[PATH_MAX];
+ 	int sysfs_attr;
++	ssize_t r;
+ 
+ 	usbi_dbg("getting address for device: %s detached: %d", sys_name, detached);
+ 	/* can't use sysfs to read the bus and device number if the
+ 	 * device has been detached */
+ 	if (!sysfs_can_relate_devices || detached || NULL == sys_name) {
++		if (NULL == dev_node && fd >= 0) {
++			/* try to retrieve the device node from fd */
++			snprintf(proc_path, PATH_MAX, "/proc/self/fd/%d", fd);
++			r = readlink(proc_path, fd_path, PATH_MAX);
++			if (r > 0)
++				dev_node = fd_path;
++		}
+ 		if (NULL == dev_node) {
+ 			return LIBUSB_ERROR_OTHER;
+ 		}
+@@ -704,6 +713,8 @@ int linux_get_device_address (struct libusb_context *ctx, int detached,
+ 			sscanf (dev_node, "/dev/bus/usb/%hhu/%hhu", busnum, devaddr);
+ 		} else if (!strncmp(dev_node, "/proc/bus/usb", 13)) {
+ 			sscanf (dev_node, "/proc/bus/usb/%hhu/%hhu", busnum, devaddr);
++		} else {
++			return LIBUSB_ERROR_OTHER;
+ 		}
+ 
+ 		return LIBUSB_SUCCESS;
+@@ -1287,7 +1298,7 @@ static int sysfs_scan_device(struct libusb_context *ctx, const char *devname)
+ 	uint8_t busnum, devaddr;
+ 	int ret;
+ 
+-	ret = linux_get_device_address (ctx, 0, &busnum, &devaddr, NULL, devname);
++	ret = linux_get_device_address (ctx, 0, &busnum, &devaddr, NULL, devname, -1);
+ 	if (LIBUSB_SUCCESS != ret) {
+ 		return ret;
+ 	}
+diff --git a/libusb/os/linux_usbfs.h b/libusb/os/linux_usbfs.h
+index 2449632..a57eb41 100644
+--- a/libusb/os/linux_usbfs.h
++++ b/libusb/os/linux_usbfs.h
+@@ -187,7 +187,7 @@ void linux_device_disconnected(uint8_t busnum, uint8_t devaddr);
+ 
+ int linux_get_device_address (struct libusb_context *ctx, int detached,
+ 	uint8_t *busnum, uint8_t *devaddr, const char *dev_node,
+-	const char *sys_name);
++	const char *sys_name, int fd);
+ int linux_enumerate_device(struct libusb_context *ctx,
+ 	uint8_t busnum, uint8_t devaddr, const char *sysfs_dir);
+ 
+-- 
+2.22.0.rc2.383.gf4fbbf30c2-goog
+

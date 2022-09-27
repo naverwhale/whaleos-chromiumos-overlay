@@ -1,0 +1,9 @@
+DEFINED_PHASES=-
+DESCRIPTION=List of packages that make up the base OS image; by default, we build a Chromium OS image
+EAPI=7
+HOMEPAGE=http://dev.chromium.org/
+KEYWORDS=*
+LICENSE=metapackage
+RDEPEND=virtual/target-chromium-os
+SLOT=0
+_md5_=535b34f4df4a88f07676f86cb004fe09

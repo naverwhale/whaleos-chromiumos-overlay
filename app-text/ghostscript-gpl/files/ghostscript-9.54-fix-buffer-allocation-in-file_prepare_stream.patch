@@ -1,0 +1,27 @@
+From 62d2e5626b88e5abadffadf1d9a9a4471dd8fa41 Mon Sep 17 00:00:00 2001
+From: Marcin Wojtas <mw@semihalf.com>
+Date: Thu, 8 Jul 2021 22:09:16 +0000
+Subject: [PATCH] Fix uninitialized buffer allocation in file_prepare_stream()
+
+The buffer allocated via gs_alloc_bytes() in file_prepare_stream()
+remained uninitialized. Zero entire allocated heap memory,
+in order to fix that.
+---
+ base/sfxcommon.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/base/sfxcommon.c b/base/sfxcommon.c
+index e506bd64f..9b707efd0 100644
+--- a/base/sfxcommon.c
++++ b/base/sfxcommon.c
+@@ -201,6 +201,7 @@ file_prepare_stream(const char *fname, uint len, const char *file_access,
+         gs_free_object(mem, s, "file_prepare_stream");
+         return_error(gs_error_VMerror);
+     }
++    memset(buffer, 0, buffer_size);
+     if (fname != 0) {
+         memcpy(buffer, fname, len);
+         buffer[len] = 0;	/* terminate string */
+-- 
+2.32.0.93.g670b81a890-goog
+

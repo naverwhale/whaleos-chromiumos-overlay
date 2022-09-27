@@ -1,0 +1,13 @@
+DEFINED_PHASES=compile configure info install setup test unpack
+DEPEND=libglvnd? ( media-libs/libglvnd ) !libglvnd? ( !media-libs/libglvnd ) virtual/libelf dev-libs/expat x11-libs/libdrm !media-libs/mesa sys-devel/bison sys-devel/flex virtual/pkgconfig x11-base/xorg-proto x11-libs/libva sys-devel/llvm >=dev-util/meson-0.56.0 >=dev-util/ninja-1.8.2 dev-util/meson-format-array
+DESCRIPTION=The Mesa 3D Graphics Library
+EAPI=6
+HOMEPAGE=http://mesa3d.org/
+IUSE=video_cards_intel video_cards_amdgpu video_cards_radeon video_cards_freedreno video_cards_llvmpipe debug vulkan libglvnd cros_host cros_workon_tree_55afc873edb87a9fbc88fea984156a8c1d3de9ca
+KEYWORDS=*
+LICENSE=MIT
+PROPERTIES=live
+RDEPEND=libglvnd? ( media-libs/libglvnd ) !libglvnd? ( !media-libs/libglvnd ) virtual/libelf dev-libs/expat x11-libs/libdrm !media-libs/mesa
+SLOT=0
+_eclasses_=base	ec46b36a6f6fd1d0b505a33e0b74e413	cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-credentials	4fd98ebbff6a1534ca9a89547e13dc92	cros-workon	ff100259492312ff6570e490bcb9a320	desktop	b1d22ac8bdd4679ab79c71aca235009d	eapi7-ver	756b3f27d8e46131d5cf3c51bd876446	epatch	ed88001f77c6dd0d5f09e45c1a5b480e	estack	686eaab303305a908fd57b2fd7617800	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	ltprune	2729691420b6deeda2a90b1f1183fb55	meson	5ec14fdbc5446b8767e87e186e3b1a52	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	ninja-utils	132cbb376048d079b5a012f5467c4e7f	preserve-libs	ef207dc62baddfddfd39a164d9797648	python-utils-r1	157a6a7a3e99c7dbdf81acc9dd4f57cd	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	vcs-clean	2a0f74a496fa2b1552c4f3398258b7bf
+_md5_=86d2adfc32f79bb2e9a4d8396b4e2392

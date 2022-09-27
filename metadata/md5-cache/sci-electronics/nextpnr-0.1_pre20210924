@@ -1,0 +1,14 @@
+BDEPEND=dev-util/ninja dev-util/cmake
+DEFINED_PHASES=compile configure install prepare pretend test unpack
+DEPEND=dev-cpp/eigen:3 dev-libs/boost nexus? ( sci-electronics/prjoxide )
+DESCRIPTION=nextpnr -- a portable FPGA place and route tool.
+EAPI=7
+HOMEPAGE=https://github.com/YosysHQ/nextpnr
+IUSE=+nexus test
+KEYWORDS=*
+LICENSE=ISC
+RDEPEND=dev-cpp/eigen:3 dev-libs/boost nexus? ( sci-electronics/prjoxide ) sci-electronics/yosys
+SLOT=0
+SRC_URI=https://github.com/YosysHQ/nextpnr/archive/9782a46a9b4edb24cc73ea65f1ad7697ed74ab41.tar.gz -> nextpnr-9782a46a9b4edb24cc73ea65f1ad7697ed74ab41.tar.gz https://github.com/YosysHQ/nextpnr-tests/archive/ccc61e5ec7cc04410462ec3196ad467354787afb.tar.gz -> nextpnr-tests-ccc61e5ec7cc04410462ec3196ad467354787afb.tar.gz
+_eclasses_=cmake	b22e256fd899c7e0c747e8834eff121a	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	ninja-utils	132cbb376048d079b5a012f5467c4e7f	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	xdg-utils	ff2ff954e6b17929574eee4efc5152ba
+_md5_=05e734b8e0742d651fde3db6f57f3e60

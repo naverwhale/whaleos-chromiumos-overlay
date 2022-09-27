@@ -1,0 +1,5 @@
+# Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+# Distributed under the terms of the GNU General Public License v2
+
+# Chrome cannot compile WebKit with gperf 3.0.4
+>dev-util/gperf-3.0.3

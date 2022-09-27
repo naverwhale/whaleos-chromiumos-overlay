@@ -1,0 +1,14 @@
+DEFINED_PHASES=compile configure install postinst preinst prepare prerm setup test unpack
+DEPEND==dev-rust/bitflags-1*:= =dev-rust/cfg-if-1*:= >=dev-rust/foreign-types-0.3.1:= <dev-rust/foreign-types-0.4.0 =dev-rust/lazy_static-1*:= =dev-rust/libc-0.2*:= >=dev-rust/openssl-sys-0.9.60:= <dev-rust/openssl-sys-0.10.0 >=virtual/rust-1.39.0:=
+DESCRIPTION=OpenSSL bindings for the Rust programming language.
+EAPI=7
+HOMEPAGE=https://github.com/sfackler/rust-openssl
+IUSE=cros-debug asan coverage fuzzer msan tsan ubsan amd64 asan cros_host fuzzer lsan +lto msan sccache test tsan ubsan x86
+KEYWORDS=*
+LICENSE=Apache-2.0
+RDEPEND==dev-rust/bitflags-1*:= =dev-rust/cfg-if-1*:= >=dev-rust/foreign-types-0.3.1:= <dev-rust/foreign-types-0.4.0 =dev-rust/lazy_static-1*:= =dev-rust/libc-0.2*:= >=dev-rust/openssl-sys-0.9.60:= <dev-rust/openssl-sys-0.10.0 !=dev-rust/openssl-0.10*
+REQUIRED_USE=?? ( asan lsan msan tsan )
+SLOT=0.10.32/r0
+SRC_URI=https://crates.io/api/v1/crates/openssl/0.10.32/download -> openssl-0.10.32.crate
+_eclasses_=cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-debug	d2750757005d6a444f8eb12bb9eb9944	cros-rust	bfd52d742752ee9912dcb3a33b2e4642	cros-sanitizers	fcc8f96c24bfce0853f07c00f65fb50a	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=3c1e808483a4c9a32b3c9f5782ee77e7

@@ -1,0 +1,512 @@
+Add support for cros-specific completions
+
+This patch adds support for cros variations of gentoo commands like
+equery-$BOARD, qsize-$BOARD, etc.  The basic idea is that the cros-specific
+verions of these commands will export a local variable called BOARDROOT, derived
+from the invocation of the command, that gets prepended to any path lookup done
+by the completer function, ensuring that board-specific completions are provided
+for the commands.  For example, shill and power_manager will be provided as
+completions for 'emerge-link' but will not be provided for 'emerge'.
+
+
+diff --git a/_gentoo_packages b/_gentoo_packages
+index 9a747b7..8581e10 100644
+--- a/_gentoo_packages
++++ b/_gentoo_packages
+@@ -10,14 +10,14 @@ setopt extendedglob bareglobqual
+ _portdir() {
+     local mainreponame mainrepopath overlayname overlaypath
+ 
+-    if [[ -e /usr/share/portage/config/repos.conf ]]; then
++    if [[ -e ${BOARDROOT}/usr/share/portage/config/repos.conf ]]; then
+         if [[ ${1} == -o ]]; then
+             for overlayname in $(_parsereposconf -l); do
+                 overlaypath+=($(_parsereposconf ${overlayname} location))
+             done
+ 
+-            source /etc/make.conf 2>/dev/null
+-            source /etc/portage/make.conf 2>/dev/null
++            source ${BOARDROOT}/etc/make.conf 2>/dev/null
++            source ${BOARDROOT}/etc/portage/make.conf 2>/dev/null
+ 
+             overlaypath+=(${(@)PORTDIR_OVERLAY})
+ 
+@@ -29,9 +29,9 @@ _portdir() {
+             echo "${mainrepopath}"
+         fi
+     else
+-        source /usr/share/portage/config/make.globals 2>/dev/null
+-        source /etc/make.conf 2>/dev/null
+-        source /etc/portage/make.conf 2>/dev/null
++        source ${BOARDROOT}/usr/share/portage/config/make.globals 2>/dev/null
++        source ${BOARDROOT}/etc/make.conf 2>/dev/null
++        source ${BOARDROOT}/etc/portage/make.conf 2>/dev/null
+ 
+         if [[ "-o" == ${1} ]]; then
+             echo "${(@u)PORTDIR_OVERLAY}"
+@@ -44,9 +44,9 @@ _portdir() {
+ _parsereposconf() {
+     local v f insection section arr;
+ 
+-    for f in /usr/share/portage/config/repos.conf \
+-        /etc/portage/repos.conf \
+-        /etc/portage/repos.conf/*.conf; do
++    for f in ${BOARDROOT}/usr/share/portage/config/repos.conf \
++        ${BOARDROOT}/etc/portage/repos.conf \
++        ${BOARDROOT}/etc/portage/repos.conf/*.conf; do
+ 
+         [[ -f ${f} ]] || continue
+         insection=0;
+@@ -135,14 +135,14 @@ _parsesetsconf() {
+ 
+ _gentoo_packages_update_installed_sets() {
+     local sets;
+-    sets=($(</var/lib/portage/world_sets));
++    sets=($(<${BOARDROOT}/var/lib/portage/world_sets));
+     if [[ ((${#sets} > 0)) ]]; then
+          _wanted installed_sets expl 'installed set' compadd "$@" "${(o@)^sets}"
+     fi
+ }
+ 
+ _gentoo_packages_update_available_sets() {
+-    trees=($(_portdir -o) /etc/portage /usr/share/portage/config)
++    trees=($(_portdir -o) ${BOARDROOT}/etc/portage ${BOARDROOT}/usr/share/portage/config)
+     for PORTDIR in ${(@)trees}; do
+         if [[ -d ${PORTDIR} ]]; then
+             setsdir="$(_parsesetsconf ${PORTDIR})"
+@@ -181,10 +181,10 @@ _gentoo_packages_update_useflag(){
+ _gentoo_packages_update_active_useflag(){
+     local flags USE
+     var=USE
+-    [[ -z ${(P)var} && -r /etc/portage/make.conf ]] &&
+-      local $var="`. /etc/portage/make.conf 2>/dev/null; echo ${(P)var}`"
+-    [[ -z ${(P)var} && -r /etc/make.conf ]] &&
+-      local $var="`. /etc/make.conf 2>/dev/null; echo ${(P)var}`"
++    [[ -z ${(P)var} && -r ${BOARDROOT}/etc/portage/make.conf ]] &&
++      local $var="`. ${BOARDROOT}/etc/portage/make.conf 2>/dev/null; echo ${(P)var}`"
++    [[ -z ${(P)var} && -r ${BOARDROOT}/etc/make.conf ]] &&
++      local $var="`. ${BOARDROOT}/etc/make.conf 2>/dev/null; echo ${(P)var}`"
+     flags=(${${${=USE}%-*}%\\*})
+     compadd $flags
+ }
+@@ -198,7 +198,7 @@ _gentoo_packages_update_category(){
+ 
+ _gentoo_packages_update_installed(){
+    local installed_dir installed_portage installed_list expl
+-   installed_dir="/var/db/pkg"
++   installed_dir="${BOARDROOT}/var/db/pkg"
+    installed_portage=($installed_dir/*-*/*)
+ 
+    installed_pkgname=(${${installed_portage:t}%%-[0-9]*})
+@@ -211,7 +211,7 @@ _gentoo_packages_update_installed(){
+ _gentoo_packages_update_installed_versions(){
+     local installed_list installed_portage expl
+ 
+-    installed_portage=(/var/db/pkg/*-*/*)
++    installed_portage=(${BOARDROOT}/var/db/pkg/*-*/*)
+     _wanted packages expl 'package' compadd "$@" ${installed_portage:t}
+ 
+     installed_list=(${installed_portage##*/pkg/})
+@@ -270,12 +270,12 @@ _gentoo_packages_update_available_versions(){
+ 
+ #Function to show tbz2 files available
+ _gentoo_packages_update_binary() {
+-    [[ -z $PKGDIR && -r /etc/portage/make.conf ]] &&
+-        local PKGDIR="`. /etc/portage/make.conf 2>/dev/null; echo $PKGDIR`"
+-    [[ -z $PKGDIR && -r /etc/make.conf ]] &&
+-        local PKGDIR="`. /etc/make.conf 2>/dev/null; echo $PKGDIR`"
+-    [[ -z $PKGDIR && -r /usr/share/portage/config/make.globals ]] &&
+-        local PKGDIR="`. /usr/share/portage/config/make.globals 2>/dev/null; echo $PKGDIR`"
++    [[ -z $PKGDIR && -r ${BOARDROOT}/etc/portage/make.conf ]] &&
++        local PKGDIR="`. ${BOARDROOT}/etc/portage/make.conf 2>/dev/null; echo $PKGDIR`"
++    [[ -z $PKGDIR && -r ${BOARDROOT}/etc/make.conf ]] &&
++        local PKGDIR="`. ${BOARDROOT}/etc/make.conf 2>/dev/null; echo $PKGDIR`"
++    [[ -z $PKGDIR && -r ${BOARDROOT}/usr/share/portage/config/make.globals ]] &&
++        local PKGDIR="`. ${BOARDROOT}/usr/share/portage/config/make.globals 2>/dev/null; echo $PKGDIR`"
+ 
+     # this doesn't take care of ${PORTAGE_BINHOST}. If Gentoo official
+     # binary mirror will be available we should rewrite it accordingly.
+diff --git a/_gentoolkit b/_gentoolkit
+index ef3db9a..3004b11 100644
+--- a/_gentoolkit
++++ b/_gentoolkit
+@@ -1,4 +1,4 @@
+-#compdef equery euse eclean eclean-dist eclean-pkg epkginfo genpkgindex glsa-check revdep-rebuild
++#compdef equery euse eclean eclean-dist eclean-pkg epkginfo genpkgindex glsa-check revdep-rebuild -P equery-* eclean-*
+ 
+ # gentoolkit-0.2.4-rc3
+ #
+@@ -232,7 +232,7 @@ _eclean_wrapper () {
+             _arguments -s $global_opts $dist_opts &&
+                 return 0
+         ;;
+-        eclean)
++        eclean*)
+         # eclean. complete only specifics options if an action has been given,
+         # global_opts and packages|distfiles otherwhise.
+             if (( $words[(I)(packages)] )); then
+@@ -363,7 +363,18 @@ case "$service" in
+     equery)
+         _equery "$@" && return 0
+     ;;
+-    eclean*)
++    equery-*)
++        local -x BOARDROOT=/build/${service#equery-}
++        _equery "$@" && return 0
++    ;;
++    eclean-pkg|eclean-dist)
++        _eclean_wrapper "$@" && return 0
++    ;;
++    eclean-*)
++        local -x BOARDROOT=/build/${service#eclean-}
++        _eclean_wrapper "$@" && return 0
++    ;;
++    eclean)
+         _eclean_wrapper "$@" && return 0
+     ;;
+     epkginfo)
+diff --git a/_portage b/_portage
+index 57fc0a5..954ecc9 100644
+--- a/_portage
++++ b/_portage
+@@ -1,4 +1,4 @@
+-#compdef emerge ebuild quickpkg emaint env-update portageq repoman tbz2tool
++#compdef emerge ebuild quickpkg emaint env-update portageq repoman tbz2tool -P ebuild-* emaint-* emerge-*
+ 
+ # Already done:
+ # emerge        (fully done)
+@@ -339,15 +339,27 @@ case "$service" in
+ 	emerge)
+ 		_emerge "$@" && return 0
+ 		;;
++	emerge-*)
++		local -x BOARDROOT=/build/${service#emerge-}
++		_emerge "$@" && return 0
++		;;
+ 	ebuild)
+ 		_ebuild "$@" && return 0
+ 		;;
++	ebuild-*)
++		local -x BOARDROOT=/build/${service#ebuild-}
++		_ebuild "$@" && return 0
++		;;
+ 	quickpkg)
+ 		_quickpkg "$@" && return 0
+ 		;;
+ 	emaint)
+ 		_emaint "$@" && return 0
+ 		;;
++	emaint-*)
++		local -x BOARDROOT=/build/${service#emaint-}
++		_emaint "$@" && return 0
++		;;
+ 	env-update)
+ 		_env-update "$@" && return 0
+ 		;;
+diff --git a/_portage_utils b/_portage_utils
+index dbb45d6..380f400 100644
+--- a/_portage_utils
++++ b/_portage_utils
+@@ -1,4 +1,4 @@
+-#compdef qatom qcache qcheck qdepends qfile qgrep qlist qlop qpkg qsearch qsize qtbz2 quse qxpak
++ #compdef qatom qcache qcheck qdepends qfile qgrep qlist qlop qpkg qsearch qsize qtbz2 quse qxpak -P qcheck-* qdepends-* qfile-* qlist-* qmerge-* qsize-*
+ 
+ # portage-utils-0.53
+ 
+@@ -6,21 +6,18 @@
+ _portdir() {
+     local mainreponame mainrepopath overlayname overlaypath
+ 
+-    if [[ -e /usr/share/portage/config/repos.conf ]]; then
++    if [[ -e ${BOARDROOT}/usr/share/portage/config/repos.conf ]]; then
+         if [[ ${1} == -o ]]; then
+             for overlayname in $(_parsereposconf -l); do
+                 overlaypath+=($(_parsereposconf ${overlayname} location))
+             done
+ 
+-            source /etc/make.conf 2>/dev/null
+-            source /etc/portage/make.conf 2>/dev/null
++            source ${BOARDROOT}/etc/make.conf 2>/dev/null
++            source ${BOARDROOT}/etc/portage/make.conf 2>/dev/null
+ 
+-            overlaypath+=(${PORTDIR_OVERLAY})
++            overlaypath+=(${(@)PORTDIR_OVERLAY})
+ 
+-            # strip out duplicates
+-            overlaypath=($(printf "%s\n" "${overlaypath[@]}" | sort -u))
+-
+-            echo "${overlaypath[@]}"
++            echo "${(@u)overlaypath}"
+         else
+             mainreponame=$(_parsereposconf DEFAULT main-repo)
+             mainrepopath=$(_parsereposconf ${mainreponame} location)
+@@ -28,61 +25,131 @@ _portdir() {
+             echo "${mainrepopath}"
+         fi
+     else
+-        source /usr/share/portage/config/make.globals 2>/dev/null
+-        source /etc/make.conf 2>/dev/null
+-        source /etc/portage/make.conf 2>/dev/null
+-
+-        echo "${PORTDIR}"
++        source ${BOARDROOT}/usr/share/portage/config/make.globals 2>/dev/null
++        source ${BOARDROOT}/etc/make.conf 2>/dev/null
++        source ${BOARDROOT}/etc/portage/make.conf 2>/dev/null
+ 
+-        if [[ ${1} == -o ]]; then⋅
+-            echo "${PORTDIR_OVERLAY}"
+-        fi⋅⋅⋅
++        if [[ "-o" == ${1} ]]; then
++            echo "${(@u)PORTDIR_OVERLAY}"
++        else
++            echo "${PORTDIR}"
++        fi
+     fi
+ }
+ 
+ _parsereposconf() {
+-    local f insection line section v value var
++    local v f insection section arr;
+ 
+-    for f in /usr/share/portage/config/repos.conf \
+-        /etc/portage/repos.conf \
+-        /etc/portage/repos.conf/*.conf; do
++    for f in ${BOARDROOT}/usr/share/portage/config/repos.conf \
++        ${BOARDROOT}/etc/portage/repos.conf \
++        ${BOARDROOT}/etc/portage/repos.conf/*.conf; do
+ 
+         [[ -f ${f} ]] || continue
+-        insection=0
++        insection=0;
++        declare -A arr;
++        IFS='= ';
+ 
+-        while read -r line; do
+-            # skip comments and blank lines
+-            [[ -z ${line} || ${line} == '#'* ]] && continue
++        while read -r name value; do
++            [[ -z ${name} || ${name} == '#'* ]] && continue
+ 
+-            if [[ ${insection} == 1 && ${line} == '['*']' ]]; then
+-                # End of the section we were interested in so stop
+-                secname+=(${line//[(\[|\])]/}) # record name for -l
++            if [[ (${name} == '['*']') && (-z ${value}) ]]; then
++                value=${name//(\]|\[)};
++                name="section";
++            fi;
++            arr[${name}]=${value};
++
++            if [[ ${insection} == 1 && ${name} == "section" ]]; then
+                 break
+-            elif [[ ${line} == '['*']' ]]; then
+-                # Entering a new section, check if it's the one we want
+-                section=${line//[(\[|\])]/}
+-                [[ ${section} == "${1}" ]] && insection=1
+-                secname+=(${section}) # record name for -l
++            elif [[ ${name} == "section" ]]; then
++                [[ ${value} == ${1} ]] && insection=1
++                secname+=(${value})
+             elif [[ ${insection} == 1 ]]; then
+-                # We're in the section we want, grab the values
+-                var=${line%%=*}
+-                var=${var// /}
+-                value=${line#*=}
+-                value=${value# }
+-                [[ ${var} == ${2} ]] && v=${value}
++                if [[ ${name} == ${2} ]]; then
++                    v=${value};
++                fi
+             fi
+             continue
+-        done < "${f}"
++        done < ${f}
+     done
+ 
+-    if [[ ${1} == -l ]]; then
+-        echo "${secname[@]}"
++    if [[ "-l" == ${1} ]]; then
++        echo "${(@)secname}"
+     else
+         echo "${v}"
+     fi
+ }
+ 
+ 
++_qcheck() {
++	_arguments -s $common_args \
++		{'(--all)-a','(-a)--all'}'[List all packages]' \
++		{'(--exact)-e','(-e)--exact'}'[Exact match (only CAT/PN or PN without PV)]' \
++		{'(--skip)-s','(-s)--skip'}'[Ignore files matching regular expression]:regex' \
++		{'(--update)-u','(-u)--update'}'[Update missing files, chksum and mtimes for packages]' \
++		{'(--noafk)-A','(-A)--noafk'}'[Ignore missing files]' \
++		{'(--badonly)-B','(-B)--badonly'}'[Only print pkgs containing bad files]' \
++		{'(--nohash)-H','(-H)--nohash'}'[Ignore differing/unknown file chksums]' \
++		{'(--nomtime)-T','(-T)--nomtime'}'[Ignore differing file mtimes]' \
++		'--skip-protected[Ignore files in CONFIG_PROTECT-ed paths]' \
++		{'(--prelink)-p','(-p)--prelink'}'[Undo prelink when calculating checksums]' \
++		'*:packages:_gentoo_packages installed'
++}
++
++_qdepends() {
++	_arguments -s $common_args \
++		{'(--depend)-d','(-d)--depend'}'[Show DEPEND info (default)]' \
++		{'(--rdepend)-r','(-r)--rdepend'}'[Show RDEPEND info]' \
++		{'(--pdepend)-p','(-p)--pdepend'}'[Show PDEPEND info]' \
++		{'(--key)-k','(-k)--key'}'[User defined vdb key]:vdb key' \
++		{'(--query)-Q','(-Q)--query'}'[Query reverse deps]' \
++		{'(--name-only)-N','(-N)--name-only'}'[Only show package name]' \
++		{'(--all)-a','(-a)--all'}'[Show all DEPEND info]' \
++		{'(--format)-f','(-f)--format'}'[Pretty format specified depend strings]' \
++		'*:packages:_gentoo_packages installed'
++}
++
++_qfile() {
++	_arguments -s $common_args \
++		{'(--slots)-S','(-S)--slots'}'[Display installed packages with slots]' \
++		{'(--root-prefix)-R','(-R)--root-prefix'}'[Assume arguments are already prefixed by $ROOT]' \
++		{'(--from)-f','(-f)--from'}'[Read arguments from file <arg> ("-" for stdin)]' \
++		{'(--max-args)-m','(-m)--max-args'}'[Treat from file arguments by groups of <arg> (defaults to 5000)]:number' \
++		{'(--basename)-b','(-b)--basename'}'[Match any component of the path]' \
++		{'(--orphans)-o','(-o)--orphans'}'[List orphan files]' \
++		{'(--exclude)-x','(-x)--exclude'}"[Don't look in package <arg> (used with --orphans)]:package:_gentoo_packages installed" \
++		{'(--exact)-e','(-e)--exact'}'[Exact match (used with --exclude)]' \
++		'*:filename:_files'
++}
++
++_qlist() {
++	_arguments -s $common_args \
++		{'(--installed)-I','(-I)--installed'}'[Just show installed packages]' \
++		{'(--slots)-S','(-S)--slots'}'[Display installed packages with slots]' \
++		{'(--repo)-R','(-R)--repo'}'[Display installed packages with repository]' \
++		{'(--umap)-U','(-U)--umap'}'[Display installed packages with flags used]' \
++		{'(--columns)-c','(-c)--columns'}'[Display column view]' \
++		'--show-debug[Show /usr/lib/debug files]' \
++		{'(--exact)-e','(-e)--exact'}'[Exact match (only CAT/PN or PN without PV)]' \
++		{'(--all)-a','(-a)--all'}'[Show every installed package]' \
++		{'(--dir)-d','(-d)--dir'}'[Only show directories]' \
++		{'(--obj)-o','(-o)--obj'}'[Only show objects]' \
++		{'(--sym)-s','(-s)--sym'}'[Only show symlinks]' \
++		'*:packages:_gentoo_packages installed'
++}
++
++_qsize() {
++	_arguments -s $common_args \
++		{'(--filesystem)-f','(-f)--filesystem'}'[Show size used on disk]' \
++		{'(--all)-a','(-a)--all'}'[Size all installed packages]' \
++		{'(--sum)-s','(-s)--sum'}'[Include a summary]' \
++		{'(--sum-only)-S','(-S)--sum-only'}'[Show just the summary]' \
++		{'(--megabytes)-m','(-m)--megabytes'}'[Display size in megabytes]' \
++		{'(--kilobytes)-k','(-k)--kilobytes'}'[Display size in kilobytes]' \
++		{'(--bytes)-b','(-b)--bytes'}'[Display size in bytes]' \
++		{'(--ignore)-i','(-i)--ignore'}'[Ignore regexp string]:pattern' \
++		'*:packages:_gentoo_packages installed'
++}
++
+ local common_args PORTDIR
+ 
+ PORTDIR="$(_portdir)"
+@@ -125,42 +192,25 @@ case $service in
+ 			'*:arch:show_archs'
+ 		;;
+ 	qcheck)
+-		_arguments -s $common_args \
+-			{'(--all)-a','(-a)--all'}'[List all packages]' \
+-			{'(--exact)-e','(-e)--exact'}'[Exact match (only CAT/PN or PN without PV)]' \
+-			{'(--skip)-s','(-s)--skip'}'[Ignore files matching regular expression]:regex' \
+-			{'(--update)-u','(-u)--update'}'[Update missing files, chksum and mtimes for packages]' \
+-			{'(--noafk)-A','(-A)--noafk'}'[Ignore missing files]' \
+-			{'(--badonly)-B','(-B)--badonly'}'[Only print pkgs containing bad files]' \
+-			{'(--nohash)-H','(-H)--nohash'}'[Ignore differing/unknown file chksums]' \
+-			{'(--nomtime)-T','(-T)--nomtime'}'[Ignore differing file mtimes]' \
+-			'--skip-protected[Ignore files in CONFIG_PROTECT-ed paths]' \
+-			{'(--prelink)-p','(-p)--prelink'}'[Undo prelink when calculating checksums]' \
+-			'*:packages:_gentoo_packages installed'
++		_qcheck "$@" && return 0
++		;;
++	qcheck-*)
++		local -x BOARDROOT=/build/${service#qcheck-}
++		_qcheck "$@" && return 0
+ 		;;
+ 	qdepends)
+-		_arguments -s $common_args \
+-			{'(--depend)-d','(-d)--depend'}'[Show DEPEND info (default)]' \
+-			{'(--rdepend)-r','(-r)--rdepend'}'[Show RDEPEND info]' \
+-			{'(--pdepend)-p','(-p)--pdepend'}'[Show PDEPEND info]' \
+-			{'(--key)-k','(-k)--key'}'[User defined vdb key]:vdb key' \
+-			{'(--query)-Q','(-Q)--query'}'[Query reverse deps]' \
+-			{'(--name-only)-N','(-N)--name-only'}'[Only show package name]' \
+-			{'(--all)-a','(-a)--all'}'[Show all DEPEND info]' \
+-			{'(--format)-f','(-f)--format'}'[Pretty format specified depend strings]' \
+-			'*:packages:_gentoo_packages installed'
++		_qdepends "$@" && return 0
++		;;
++	qdepends-*)
++		local -x BOARDROOT=/build/${service#qdepends-}
++		_qdepends "$@" && return 0
+ 		;;
+ 	qfile)
+-		_arguments -s $common_args \
+-			{'(--slots)-S','(-S)--slots'}'[Display installed packages with slots]' \
+-			{'(--root-prefix)-R','(-R)--root-prefix'}'[Assume arguments are already prefixed by $ROOT]' \
+-			{'(--from)-f','(-f)--from'}'[Read arguments from file <arg> ("-" for stdin)]' \
+-			{'(--max-args)-m','(-m)--max-args'}'[Treat from file arguments by groups of <arg> (defaults to 5000)]:number' \
+-			{'(--basename)-b','(-b)--basename'}'[Match any component of the path]' \
+-			{'(--orphans)-o','(-o)--orphans'}'[List orphan files]' \
+-			{'(--exclude)-x','(-x)--exclude'}"[Don't look in package <arg> (used with --orphans)]:package:_gentoo_packages installed" \
+-			{'(--exact)-e','(-e)--exact'}'[Exact match (used with --exclude)]' \
+-			'*:filename:_files'
++		_qfile "$@" && return 0
++		;;
++	qfile-*)
++		local -x BOARDROOT=/build/${service#qfile-}
++		_qfile "$@" && return 0
+ 		;;
+ 	qgrep)
+ 		_arguments -s $common_args \
+@@ -182,19 +232,11 @@ case $service in
+ 			'*:pattern::'
+ 		;;
+ 	qlist)
+-		_arguments -s $common_args \
+-			{'(--installed)-I','(-I)--installed'}'[Just show installed packages]' \
+-			{'(--slots)-S','(-S)--slots'}'[Display installed packages with slots]' \
+-			{'(--repo)-R','(-R)--repo'}'[Display installed packages with repository]' \
+-			{'(--umap)-U','(-U)--umap'}'[Display installed packages with flags used]' \
+-			{'(--columns)-c','(-c)--columns'}'[Display column view]' \
+-			'--show-debug[Show /usr/lib/debug files]' \
+-			{'(--exact)-e','(-e)--exact'}'[Exact match (only CAT/PN or PN without PV)]' \
+-			{'(--all)-a','(-a)--all'}'[Show every installed package]' \
+-			{'(--dir)-d','(-d)--dir'}'[Only show directories]' \
+-			{'(--obj)-o','(-o)--obj'}'[Only show objects]' \
+-			{'(--sym)-s','(-s)--sym'}'[Only show symlinks]' \
+-			'*:packages:_gentoo_packages installed'
++		_qlist "$@" && return 0
++		;;
++	qlist-*)
++		local -x BOARDROOT=/build/${service#qlist-}
++		_qlist "$@" && return 0
+ 		;;
+ 	qlop)
+ 		_arguments -s $common_args \
+@@ -220,16 +262,11 @@ case $service in
+ 			'*:pattern::'
+ 		;;
+ 	qsize)
+-		_arguments -s $common_args \
+-			{'(--filesystem)-f','(-f)--filesystem'}'[Show size used on disk]' \
+-			{'(--all)-a','(-a)--all'}'[Size all installed packages]' \
+-			{'(--sum)-s','(-s)--sum'}'[Include a summary]' \
+-			{'(--sum-only)-S','(-S)--sum-only'}'[Show just the summary]' \
+-			{'(--megabytes)-m','(-m)--megabytes'}'[Display size in megabytes]' \
+-			{'(--kilobytes)-k','(-k)--kilobytes'}'[Display size in kilobytes]' \
+-			{'(--bytes)-b','(-b)--bytes'}'[Display size in bytes]' \
+-			{'(--ignore)-i','(-i)--ignore'}'[Ignore regexp string]:pattern' \
+-			'*:packages:_gentoo_packages installed'
++		_qsize "$@" && return 0
++		;;
++	qsize-*)
++		local -x BOARDROOT=/build/${service#qsize-}
++		_qsize "$@" && return 0
+ 		;;
+ 	quse)
+ 		_arguments -s $common_args \

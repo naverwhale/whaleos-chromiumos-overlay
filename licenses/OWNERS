@@ -1,0 +1,2 @@
+set noparent
+include chromiumos/overlays/portage-stable:/licenses/OWNERS

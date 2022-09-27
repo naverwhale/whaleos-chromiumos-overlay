@@ -1,0 +1,14 @@
+BDEPEND=dev-lang/go nls? ( sys-devel/gettext ) verify-sig? ( app-crypt/openpgp-keys-linuxcontainers ) >=app-portage/elt-patches-20170815 virtual/pkgconfig verify-sig? ( app-crypt/gnupg >=app-portage/gemato-16 )
+DEFINED_PHASES=compile configure install postinst setup test unpack
+DEPEND=app-arch/xz-utils >=app-emulation/lxc-3.0.0:4[apparmor?,seccomp(+)] dev-db/sqlite dev-libs/libuv app-arch/lz4 dev-libs/lzo net-dns/dnsmasq[dhcp,ipv6?] virtual/libudev !<sys-devel/gettext-0.18.1.1-r3 || ( >=sys-devel/automake-1.16.1:1.16 >=sys-devel/automake-1.15.1:1.15 ) >=sys-devel/autoconf-2.69 >=sys-devel/libtool-2.4 dev-lang/go sys-apps/baselayout
+DESCRIPTION=Fast, dense and secure container management
+EAPI=7
+HOMEPAGE=https://linuxcontainers.org/lxd/introduction/ https://github.com/lxc/lxd
+IUSE=apparmor ipv6 nls verify-sig kernel_linux verify-sig
+KEYWORDS=*
+LICENSE=Apache-2.0 BSD BSD-2 LGPL-3 MIT MPL-2.0
+RDEPEND=app-arch/xz-utils >=app-emulation/lxc-3.0.0:4[apparmor?,seccomp(+)] dev-db/sqlite dev-libs/libuv app-arch/lz4 dev-libs/lzo net-dns/dnsmasq[dhcp,ipv6?] virtual/libudev net-firewall/ebtables net-firewall/iptables[ipv6?] sys-apps/iproute2[ipv6?] sys-fs/fuse:0= sys-fs/lxcfs:4 sys-fs/squashfs-tools[lzma] virtual/acl sys-apps/baselayout
+SLOT=4
+SRC_URI=https://linuxcontainers.org/downloads/lxd/lxd-4.0.7.tar.gz verify-sig? ( https://linuxcontainers.org/downloads/lxd/lxd-4.0.7.tar.gz.asc )
+_eclasses_=autotools	d0e5375d47f4c809f406eb892e531513	bash-completion-r1	47a7402d95930413ce25ba8d857339bb	cros-go	157c7bac0e032e424ec1c3316c127db8	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	libtool	f143db5a74ccd9ca28c1234deffede96	linux-info	327865b9921771330775d971263dc234	multilib	2477ebe553d3e4d2c606191fe6c33602	optfeature	f4941a15f8b66955c45f7b0e7c4ae890	systemd	71fd8d2065d102753fb9e4d20eaf3e9f	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	user	7c566af8c48023219fd63246e88d6621	verify-sig	40b4f4f782cf67118f594ce604cc4c0a
+_md5_=45f03d2e8f8aa0c25150dd26c00c11b2

@@ -1,0 +1,13 @@
+DEFINED_PHASES=compile configure info install setup unpack
+DEPEND=virtual/opengles || ( media-libs/mesa[gbm] media-libs/minigbm ) media-libs/libsync v4lplugin? ( media-libs/libv4lplugins ) vulkan? ( media-libs/vulkan-loader virtual/vulkan-icd ) x11-drivers/opengles-headers
+DESCRIPTION=Chrome OS DRM Tests
+EAPI=6
+HOMEPAGE=https://chromium.googlesource.com/chromiumos/platform/drm-tests/
+IUSE=v4lplugin vulkan asan coverage fuzzer msan tsan ubsan cros_host cros_workon_tree_
+KEYWORDS=~*
+LICENSE=BSD-Google
+PROPERTIES=live
+RDEPEND=virtual/opengles || ( media-libs/mesa[gbm] media-libs/minigbm ) media-libs/libsync v4lplugin? ( media-libs/libv4lplugins ) vulkan? ( media-libs/vulkan-loader virtual/vulkan-icd )
+SLOT=0
+_eclasses_=cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-credentials	4fd98ebbff6a1534ca9a89547e13dc92	cros-sanitizers	fcc8f96c24bfce0853f07c00f65fb50a	cros-workon	ff100259492312ff6570e490bcb9a320	desktop	b1d22ac8bdd4679ab79c71aca235009d	epatch	ed88001f77c6dd0d5f09e45c1a5b480e	estack	686eaab303305a908fd57b2fd7617800	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	ltprune	2729691420b6deeda2a90b1f1183fb55	multilib	2477ebe553d3e4d2c606191fe6c33602	preserve-libs	ef207dc62baddfddfd39a164d9797648	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	vcs-clean	2a0f74a496fa2b1552c4f3398258b7bf
+_md5_=39827fa353f31892513a7ee2e5220b06

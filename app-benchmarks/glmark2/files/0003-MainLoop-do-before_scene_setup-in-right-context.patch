@@ -1,0 +1,30 @@
+From b81594958c6daab966e4f6c5b3aa3e1be7f4cbed Mon Sep 17 00:00:00 2001
+From: Frank Henigman <fjhenigman@google.com>
+Date: Thu, 7 May 2015 00:27:30 -0400
+Subject: [PATCH 3/6] MainLoop: do before_scene_setup() in right context
+
+before_scene_setup() just deletes shaders, and needs to be done in
+the same context where the shaders were created, so call it before
+canvas_.reset() which changes to a new context.
+---
+ src/main-loop.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/main-loop.cpp b/src/main-loop.cpp
+index 2bbd824..f79b0ba 100644
+--- a/src/main-loop.cpp
++++ b/src/main-loop.cpp
+@@ -80,9 +80,9 @@ MainLoop::step()
+ 
+         /* If we have found a valid scene, set it up */
+         if (bench_iter_ != benchmarks_.end()) {
++            before_scene_setup();
+             if (!Options::reuse_context)
+                 canvas_.reset();
+-            before_scene_setup();
+             scene_ = &(*bench_iter_)->setup_scene();
+             if (!scene_->running()) {
+                 if (!scene_->supported(false))
+-- 
+2.2.0.rc0.207.ga3a616c
+

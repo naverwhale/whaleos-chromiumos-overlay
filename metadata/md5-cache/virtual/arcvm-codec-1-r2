@@ -1,0 +1,9 @@
+DEFINED_PHASES=-
+DESCRIPTION=Chrome OS ARCVM codec virtual package
+EAPI=7
+HOMEPAGE=http://src.chromium.org
+KEYWORDS=*
+LICENSE=metapackage
+RDEPEND=chromeos-base/arcvm-codec-software
+SLOT=0
+_md5_=b8f218b07b109f35e682d0fa01b1d66e

@@ -1,0 +1,15 @@
+BDEPEND=dev-vcs/git
+DEFINED_PHASES=compile info install setup unpack
+DESCRIPTION=The Chromium OS Shell extension (the HTML/JS rendering part)
+EAPI=7
+HOMEPAGE=https://chromium.googlesource.com/apps/libapps/+/master/nassh/doc/chromeos-crosh.md
+IUSE=cros_host cros_workon_tree_06936c40873e4349ba84ef94952bf46ac46f785c_42fe68f5d1e46663a85a70091480a7e8f71857fe_81c2b8d2382658a5302ef2651e0edc35c16db609_3927ce0ef74808ba93ee3662bacc36873a533a72_cd9724087697c6d70ae39118776a5b733dddbaee
+KEYWORDS=*
+LICENSE=BSD-Google
+PROPERTIES=live
+RDEPEND=!<chromeos-base/common-assets-0.0.2
+RESTRICT=nomirror
+SLOT=0/0
+SRC_URI=https://storage.googleapis.com/chromium-nodejs/14.15.4/b2e40ddbac04d05baafbb007f203c6663c9d4ca9 https://storage.googleapis.com/chromeos-localmirror/secureshell/distfiles/fonts-d6dc5eaf459abd058cd3aef1e25963fde893f9d87f5f55f340431697ce4b3506.tar.xz https://storage.googleapis.com/chromeos-localmirror/secureshell/distfiles/fonts-d6dc5eaf459abd058cd3aef1e25963fde893f9d87f5f55f340431697ce4b3506.tar.xz https://storage.googleapis.com/chromeos-localmirror/secureshell/distfiles/node_modules-2cd2dd365999ae139b6b0fb62a5a09e2a7fb5ab1c0926cf1968a1dec9b74fea5.tar.xz https://storage.googleapis.com/chromeos-localmirror/secureshell/distfiles/node_modules-16e0b36c0c3d448c7fd00d1db3ba27ff8477007fb4b0eae31ae25960aeae3fbc.tar.xz https://storage.googleapis.com/chromeos-localmirror/secureshell/releases/0.41.tar.xz https://storage.googleapis.com/chromeos-localmirror/secureshell/releases/0.42.tar.xz
+_eclasses_=cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-credentials	4fd98ebbff6a1534ca9a89547e13dc92	cros-workon	ff100259492312ff6570e490bcb9a320	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=ac8f6bbd4b4b7da10dad39e36fd762c3

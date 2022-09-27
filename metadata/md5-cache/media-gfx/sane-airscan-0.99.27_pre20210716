@@ -1,0 +1,14 @@
+BDEPEND=>=dev-util/meson-0.56.0 >=dev-util/ninja-1.8.2 dev-util/meson-format-array
+DEFINED_PHASES=compile configure install test
+DEPEND=dev-libs/libxml2:= media-gfx/sane-backends:= media-libs/libjpeg-turbo:= media-libs/libpng:= net-dns/avahi:= net-libs/libsoup:=
+DESCRIPTION=eSCL and WSD SANE backend
+EAPI=7
+HOMEPAGE=https://github.com/alexpevzner/sane-airscan
+IUSE=fuzzer fuzzer asan coverage fuzzer msan tsan ubsan
+KEYWORDS=*
+LICENSE=GPL-2
+RDEPEND=dev-libs/libxml2:= media-gfx/sane-backends:= media-libs/libjpeg-turbo:= media-libs/libpng:= net-dns/avahi:= net-libs/libsoup:=
+SLOT=0/0.99.27_pre20210716
+SRC_URI=https://github.com/alexpevzner/sane-airscan/archive/a7eb696c6930ab3ab4191ce1cdaffd03ef09fd05.tar.gz -> sane-airscan-a7eb696c6930ab3ab4191ce1cdaffd03ef09fd05.tar.gz
+_eclasses_=cros-fuzzer	e815e6e711300a7010da60d6030db0c9	cros-sanitizers	fcc8f96c24bfce0853f07c00f65fb50a	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	meson	5ec14fdbc5446b8767e87e186e3b1a52	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	ninja-utils	132cbb376048d079b5a012f5467c4e7f	python-utils-r1	157a6a7a3e99c7dbdf81acc9dd4f57cd	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=20c546d26033cca6a207900038fbe1ab

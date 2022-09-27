@@ -1,0 +1,7 @@
+DEFINED_PHASES=-
+DESCRIPTION=Topology binary files used to support/configure LPE Audio
+EAPI=5
+KEYWORDS=*
+LICENSE=LICENCE.IntcSST2
+SLOT=0
+_md5_=f8eee4ee03d4766a32924a03940dcb8e

@@ -1,0 +1,8 @@
+DEFINED_PHASES=install
+DESCRIPTION=PS8805-A3 Firmware Binary
+EAPI=7
+KEYWORDS=*
+LICENSE=Google-Partners-Website
+SLOT=0
+SRC_URI=gs://chromeos-localmirror/distfiles/parade-ps8805a3-firmware-22.tar.xz
+_md5_=31f5ec929d435dce9d2afc16e63762a4

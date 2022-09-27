@@ -1,0 +1,9 @@
+DEFINED_PHASES=compile install
+DESCRIPTION=Binary regulatory database for CRDA
+EAPI=7
+HOMEPAGE=https://wireless.wiki.kernel.org/en/developers/regulatory/wireless-regdb
+KEYWORDS=*
+LICENSE=ISC
+SLOT=0
+SRC_URI=https://www.kernel.org/pub/software/network/wireless-regdb/wireless-regdb-2021.04.21.tar.xz
+_md5_=dbfa18cd9303975ef5a7d2b7dc2bf129

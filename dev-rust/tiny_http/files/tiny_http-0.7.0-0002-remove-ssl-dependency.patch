@@ -1,0 +1,18 @@
+--- a/Cargo.toml
++++ b/Cargo.toml 
+@@ -31,10 +31,6 @@
+ [dependencies.log]
+ version = "0.4"
+ 
+-[dependencies.openssl]
+-version = "0.10"
+-optional = true
+-
+ [dependencies.url]
+ version = "2"
+ [dev-dependencies.fdlimit]
+@@ -48,4 +44,3 @@
+ 
+ [features]
+ default = []
+-ssl = ["openssl"]

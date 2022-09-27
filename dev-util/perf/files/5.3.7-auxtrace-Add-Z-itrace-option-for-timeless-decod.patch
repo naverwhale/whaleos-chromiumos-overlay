@@ -1,0 +1,69 @@
+From be80ff79760eeee079aa9dc8a2eb9ce00de45dda Mon Sep 17 00:00:00 2001
+From: Adrian Hunter <adrian.hunter@intel.com>
+Date: Fri, 30 Apr 2021 10:02:58 +0300
+Subject: [PATCH] perf auxtrace: Add Z itrace option for timeless decoding
+
+Issues correlating timestamps can be avoided with timeless decoding. Add
+an option for that, so that timeless decoding can be used even when
+timestamps are present.
+
+Signed-off-by: Adrian Hunter <adrian.hunter@intel.com>
+Reviewed-by: Andi Kleen <ak@linux.intel.com>
+Cc: Jiri Olsa <jolsa@redhat.com>
+Link: https://lore.kernel.org/r/20210430070309.17624-2-adrian.hunter@intel.com
+Signed-off-by: Arnaldo Carvalho de Melo <acme@redhat.com>
+---
+ tools/perf/Documentation/itrace.txt | 1 +
+ tools/perf/util/auxtrace.c          | 3 +++
+ tools/perf/util/auxtrace.h          | 2 ++
+ 3 files changed, 6 insertions(+)
+
+diff --git a/tools/perf/Documentation/itrace.txt b/tools/perf/Documentation/itrace.txt
+index c2182cbabde3..24a345a77c32 100644
+--- a/tools/perf/Documentation/itrace.txt
++++ b/tools/perf/Documentation/itrace.txt
+@@ -10,6 +10,7 @@
+ 		g	synthesize a call chain (use with i or x)
+ 		l	synthesize last branch entries (use with i or x)
+ 		s       skip initial number of events
++		Z	prefer to ignore timestamps (so-called "timeless" decoding)
+ 
+ 	The default is all events i.e. the same as --itrace=ibxwpe,
+ 	except for perf script where it is --itrace=ce
+diff --git a/tools/perf/util/auxtrace.c b/tools/perf/util/auxtrace.c
+index ec0af36697c4..9fb238706809 100644
+--- a/tools/perf/util/auxtrace.c
++++ b/tools/perf/util/auxtrace.c
+@@ -1114,6 +1114,9 @@ int itrace_parse_synth_opts(const struct option *opt, const char *str,
+ 				goto out_err;
+ 			p = endptr;
+ 			break;
++		case 'Z':
++			synth_opts->timeless_decoding = true;
++			break;
+ 		case ' ':
+ 		case ',':
+ 			break;
+diff --git a/tools/perf/util/auxtrace.h b/tools/perf/util/auxtrace.h
+index e9b4c5edf78b..a612ba746318 100644
+--- a/tools/perf/util/auxtrace.h
++++ b/tools/perf/util/auxtrace.h
+@@ -68,6 +68,7 @@ enum itrace_period_type {
+  * @callchain: add callchain to 'instructions' events
+  * @thread_stack: feed branches to the thread_stack
+  * @last_branch: add branch context to 'instruction' events
++ * @timeless_decoding: prefer "timeless" decoding i.e. ignore timestamps
+  * @callchain_sz: maximum callchain size
+  * @last_branch_sz: branch context size
+  * @period: 'instructions' events period
+@@ -94,6 +95,7 @@ struct itrace_synth_opts {
+ 	bool			callchain;
+ 	bool			thread_stack;
+ 	bool			last_branch;
++	bool			timeless_decoding;
+ 	unsigned int		callchain_sz;
+ 	unsigned int		last_branch_sz;
+ 	unsigned long long	period;
+-- 
+2.32.0.605.g8dce9f2422-goog
+

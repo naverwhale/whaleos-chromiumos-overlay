@@ -1,0 +1,14 @@
+DEFINED_PHASES=compile configure info install prepare setup test unpack
+DEPEND=chromeos-base/aosp-frameworks-ml-nn chromeos-base/intel-openvino chromeos-base/intel-gnalib >=chromeos-base/libchrome-0.0.1-r117:0=[cros-debug=] cros_host? ( dev-util/gn ) >=dev-cpp/gtest-1.10.0:=
+DESCRIPTION=Intel NNAPI HAL
+EAPI=7
+HOMEPAGE=https://github.com/intel/nn-hal
+IUSE=vendor-nnhal cros_host cros_workon_tree_ cros-debug fuzzer asan coverage fuzzer msan tsan ubsan cros_host cros_workon_tree_ cros-debug compilation_database cros_host test
+KEYWORDS=-* ~amd64
+LICENSE=BSD-Google
+RDEPEND=chromeos-base/aosp-frameworks-ml-nn chromeos-base/intel-openvino chromeos-base/intel-gnalib >=chromeos-base/libchrome-0.0.1-r117:0=[cros-debug=] >=chromeos-base/libbrillo-0.0.1-r1651:=
+RESTRICT=strip
+SLOT=0/9999
+SRC_URI=https://github.com/intel/nn-hal/archive/311f5d1ce6243751a04eee920e353314875f839e.tar.gz -> intel-nn-hal-311f5d1c.tar.gz https://github.com/openvinotoolkit/openvino/archive/a4a1bff1cc5a6b22f806adac8845d2806772dacd.tar.xz -> intel-openvino-a4a1bff1.tar.xz
+_eclasses_=base	ec46b36a6f6fd1d0b505a33e0b74e413	cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-credentials	4fd98ebbff6a1534ca9a89547e13dc92	cros-debug	d2750757005d6a444f8eb12bb9eb9944	cros-fuzzer	e815e6e711300a7010da60d6030db0c9	cros-sanitizers	fcc8f96c24bfce0853f07c00f65fb50a	cros-workon	ff100259492312ff6570e490bcb9a320	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	libchrome	b0adbfd1a2eae79766f7256eaad1da23	libchrome-version	f89118941e7f3c3825d2fe216c977c57	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	platform	55fa3d5a49ef92fdfb31c827e2d8fc5d	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	unpacker	04385b0f181c42fa9c18ec0e31729d1f
+_md5_=ec09de5307a24e7b43194f6b0a01e4ce

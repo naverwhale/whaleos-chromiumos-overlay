@@ -1,0 +1,11 @@
+DEFINED_PHASES=configure
+DESCRIPTION=Remoteproc endpoint creation utility
+EAPI=6
+HOMEPAGE=https://github.com/andersson/rpmsgexport
+IUSE=asan asan coverage fuzzer msan tsan ubsan
+KEYWORDS=*
+LICENSE=BSD
+SLOT=0
+SRC_URI=https://github.com/andersson/rpmsgexport/archive/324d88d668f36c6a5e6a9c2003a050b8a5a3cd60.tar.gz -> rpmsgexport-0.1_p20180228.tar.gz
+_eclasses_=cros-sanitizers	fcc8f96c24bfce0853f07c00f65fb50a	desktop	b1d22ac8bdd4679ab79c71aca235009d	epatch	ed88001f77c6dd0d5f09e45c1a5b480e	estack	686eaab303305a908fd57b2fd7617800	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	ltprune	2729691420b6deeda2a90b1f1183fb55	multilib	2477ebe553d3e4d2c606191fe6c33602	preserve-libs	ef207dc62baddfddfd39a164d9797648	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	vcs-clean	2a0f74a496fa2b1552c4f3398258b7bf
+_md5_=684a9f262ee917ad8d55caa32d1100aa

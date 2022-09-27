@@ -1,0 +1,1111 @@
+From 14269f4e891960de99700362a950bdac2874481b Mon Sep 17 00:00:00 2001
+From: Daniel Kurtz <djkurtz@chromium.org>
+Date: Fri, 31 Jan 2014 23:39:27 +0800
+Subject: [PATCH] Add --data-path command line option
+
+glmark2 needs access to models, shaders and textures.  These are stored
+in the glmark data path.
+
+Currently glmark2 has a --data-path build-time option to specify where
+these files are installed at build time.  This option is passed in at
+compile time via the GLMARK_DATA_PATH macro.
+
+In some situations, however, it might become necessary to specify the
+location of the data files at *runtime*.  This patch adds that option.
+If not specified, the compile-time GLMARK_DATA_PATH value is used.
+
+In particular, this feature is used when using glmark2 as a Chrome OS
+autotest dependency.  glmark2 is built and installed in the default
+locations in a development host chroot (ie ${SYSROOT}/usr/bin/glmark2 and
+${SYSROOT}/usr/share/glmark2).  The autotest deps system then rsyncs the
+executable and data into a special sandbox on the DUT.  Thus, the data
+files will not actually get installed at /usr/share/glmark2, and instead
+we use this option to specify their location within the autotest sandbox.
+
+Signed-off-by: Daniel Kurtz <djkurtz@chromium.org>
+---
+ src/model.cpp                                     |  2 +-
+ src/options.cpp                                   |  6 ++++++
+ src/options.h                                     |  1 +
+ src/scene-buffer.cpp                              |  5 +++--
+ src/scene-build.cpp                               |  5 +++--
+ src/scene-bump.cpp                                | 17 +++++++++--------
+ src/scene-conditionals.cpp                        | 15 ++++++++-------
+ src/scene-desktop.cpp                             |  9 +++++----
+ src/scene-effect-2d.cpp                           |  5 +++--
+ src/scene-function.cpp                            | 19 ++++++++++---------
+ src/scene-ideas/lamp.cc                           | 11 ++++++-----
+ src/scene-ideas/logo.cc                           | 15 ++++++++-------
+ src/scene-ideas/table.cc                          | 19 ++++++++++---------
+ src/scene-jellyfish.cpp                           | 13 +++++++------
+ src/scene-loop.cpp                                | 15 ++++++++-------
+ src/scene-pulsar.cpp                              |  9 +++++----
+ src/scene-refract.cpp                             | 11 ++++++-----
+ src/scene-shading.cpp                             | 17 +++++++++--------
+ src/scene-shadow.cpp                              | 15 ++++++++-------
+ src/scene-terrain/blur-renderer.cpp               |  5 +++--
+ src/scene-terrain/copy-renderer.cpp               |  5 +++--
+ src/scene-terrain/luminance-renderer.cpp          |  5 +++--
+ src/scene-terrain/normal-from-height-renderer.cpp |  5 +++--
+ src/scene-terrain/overlay-renderer.cpp            |  5 +++--
+ src/scene-terrain/simplex-noise-renderer.cpp      |  5 +++--
+ src/scene-terrain/terrain-renderer.cpp            |  5 +++--
+ src/scene-texture.cpp                             |  9 +++++----
+ src/text-renderer.cpp                             |  5 +++--
+ src/texture.cpp                                   |  3 ++-
+ 29 files changed, 147 insertions(+), 114 deletions(-)
+
+diff --git a/src/model.cpp b/src/model.cpp
+index e38296e..b7c0f2e 100644
+--- a/src/model.cpp
++++ b/src/model.cpp
+@@ -814,7 +814,7 @@ Model::find_models()
+         return ModelPrivate::modelMap;
+     }
+     vector<string> pathVec;
+-    string dataDir(GLMARK_DATA_PATH"/models");
++    string dataDir(Options::data_path + "/models");
+     Util::list_files(dataDir, pathVec);
+ #ifdef GLMARK_EXTRAS_PATH
+     string extrasDir(GLMARK_EXTRAS_PATH"/models");
+diff --git a/src/options.cpp b/src/options.cpp
+index 05cd617..559d80b 100644
+--- a/src/options.cpp
++++ b/src/options.cpp
+@@ -31,6 +31,7 @@
+ std::vector<std::string> Options::benchmarks;
+ std::vector<std::string> Options::benchmark_files;
+ bool Options::validate = false;
++std::string Options::data_path = std::string(GLMARK_DATA_PATH);
+ Options::FrameEnd Options::frame_end = Options::FrameEndDefault;
+ std::pair<int,int> Options::size(800, 600);
+ bool Options::list_scenes = false;
+@@ -47,6 +48,7 @@ static struct option long_options[] = {
+     {"annotate", 0, 0, 0},
+     {"benchmark", 1, 0, 0},
+     {"benchmark-file", 1, 0, 0},
++    {"data-path", 1, 0, 0},
+     {"validate", 0, 0, 0},
+     {"frame-end", 1, 0, 0},
+     {"off-screen", 0, 0, 0},
+@@ -121,6 +123,8 @@ Options::print_help()
+            "  -f, --benchmark-file F Load benchmarks to run from a file containing a\n"
+            "                         list of benchmark descriptions (one per line)\n"
+            "                         (the option can be used multiple times)\n"
++           "      --data-path        Path to glmark2 models, shaders and textures\n"
++           "                         Default: " GLMARK_DATA_PATH "\n"
+            "      --validate         Run a quick output validation test instead of \n"
+            "                         running the benchmarks\n"
+            "      --frame-end METHOD How to end a frame [default,none,swap,finish,readpixels]\n"
+@@ -171,6 +175,8 @@ Options::parse_args(int argc, char **argv)
+             Options::benchmark_files.push_back(optarg);
+         else if (!strcmp(optname, "validate"))
+             Options::validate = true;
++        else if (!strcmp(optname, "data-path"))
++            Options::data_path = std::string(optarg);
+         else if (!strcmp(optname, "frame-end"))
+             Options::frame_end = frame_end_from_str(optarg);
+         else if (!strcmp(optname, "off-screen"))
+diff --git a/src/options.h b/src/options.h
+index f62e02a..7182534 100644
+--- a/src/options.h
++++ b/src/options.h
+@@ -43,6 +43,7 @@ struct Options {
+     static std::vector<std::string> benchmarks;
+     static std::vector<std::string> benchmark_files;
+     static bool validate;
++    static std::string data_path;
+     static FrameEnd frame_end;
+     static std::pair<int,int> size;
+     static bool list_scenes;
+diff --git a/src/scene-buffer.cpp b/src/scene-buffer.cpp
+index ef3a0b9..b5859a7 100644
+--- a/src/scene-buffer.cpp
++++ b/src/scene-buffer.cpp
+@@ -23,6 +23,7 @@
+ #include "scene.h"
+ #include "log.h"
+ #include "mat.h"
++#include "options.h"
+ #include "stack.h"
+ #include "shader-source.h"
+ #include "util.h"
+@@ -245,9 +246,9 @@ private:
+     {
+         /* Set up shaders */
+         static const std::string vtx_shader_filename(
+-                GLMARK_DATA_PATH"/shaders/buffer-wireframe.vert");
++                Options::data_path + "/shaders/buffer-wireframe.vert");
+         static const std::string frg_shader_filename(
+-                GLMARK_DATA_PATH"/shaders/buffer-wireframe.frag");
++                Options::data_path + "/shaders/buffer-wireframe.frag");
+ 
+         ShaderSource vtx_source(vtx_shader_filename);
+         ShaderSource frg_source(frg_shader_filename);
+diff --git a/src/scene-build.cpp b/src/scene-build.cpp
+index df7043a..480a69b 100644
+--- a/src/scene-build.cpp
++++ b/src/scene-build.cpp
+@@ -25,6 +25,7 @@
+ #include "scene.h"
+ #include "log.h"
+ #include "mat.h"
++#include "options.h"
+ #include "stack.h"
+ #include "shader-source.h"
+ #include "model.h"
+@@ -89,8 +90,8 @@ SceneBuild::setup()
+         return false;
+ 
+     /* Set up shaders */
+-    static const std::string vtx_shader_filename(GLMARK_DATA_PATH"/shaders/light-basic.vert");
+-    static const std::string frg_shader_filename(GLMARK_DATA_PATH"/shaders/light-basic.frag");
++    static const std::string vtx_shader_filename(Options::data_path + "/shaders/light-basic.vert");
++    static const std::string frg_shader_filename(Options::data_path + "/shaders/light-basic.frag");
+     static const LibMatrix::vec4 lightPosition(20.0f, 20.0f, 10.0f, 1.0f);
+     static const LibMatrix::vec4 materialDiffuse(1.0f, 1.0f, 1.0f, 1.0f);
+ 
+diff --git a/src/scene-bump.cpp b/src/scene-bump.cpp
+index 8aba843..0e035bc 100644
+--- a/src/scene-bump.cpp
++++ b/src/scene-bump.cpp
+@@ -23,6 +23,7 @@
+ #include "scene.h"
+ #include "log.h"
+ #include "mat.h"
++#include "options.h"
+ #include "stack.h"
+ #include "shader-source.h"
+ #include "model.h"
+@@ -61,8 +62,8 @@ SceneBump::unload()
+ bool
+ SceneBump::setup_model_plain(const std::string &type)
+ {
+-    static const std::string vtx_shader_filename(GLMARK_DATA_PATH"/shaders/bump-poly.vert");
+-    static const std::string frg_shader_filename(GLMARK_DATA_PATH"/shaders/bump-poly.frag");
++    static const std::string vtx_shader_filename(Options::data_path + "/shaders/bump-poly.vert");
++    static const std::string frg_shader_filename(Options::data_path + "/shaders/bump-poly.frag");
+     static const std::string low_poly_filename("asteroid-low");
+     static const std::string high_poly_filename("asteroid-high");
+     static const LibMatrix::vec4 lightPosition(20.0f, 20.0f, 10.0f, 1.0f);
+@@ -115,8 +116,8 @@ SceneBump::setup_model_plain(const std::string &type)
+ bool
+ SceneBump::setup_model_normals()
+ {
+-    static const std::string vtx_shader_filename(GLMARK_DATA_PATH"/shaders/bump-normals.vert");
+-    static const std::string frg_shader_filename(GLMARK_DATA_PATH"/shaders/bump-normals.frag");
++    static const std::string vtx_shader_filename(Options::data_path + "/shaders/bump-normals.vert");
++    static const std::string frg_shader_filename(Options::data_path + "/shaders/bump-normals.frag");
+     static const LibMatrix::vec4 lightPosition(20.0f, 20.0f, 10.0f, 1.0f);
+     Model model;
+ 
+@@ -170,8 +171,8 @@ SceneBump::setup_model_normals()
+ bool
+ SceneBump::setup_model_normals_tangent()
+ {
+-    static const std::string vtx_shader_filename(GLMARK_DATA_PATH"/shaders/bump-normals-tangent.vert");
+-    static const std::string frg_shader_filename(GLMARK_DATA_PATH"/shaders/bump-normals-tangent.frag");
++    static const std::string vtx_shader_filename(Options::data_path + "/shaders/bump-normals-tangent.vert");
++    static const std::string frg_shader_filename(Options::data_path + "/shaders/bump-normals-tangent.frag");
+     static const LibMatrix::vec4 lightPosition(20.0f, 20.0f, 10.0f, 1.0f);
+     Model model;
+ 
+@@ -228,8 +229,8 @@ SceneBump::setup_model_normals_tangent()
+ bool
+ SceneBump::setup_model_height()
+ {
+-    static const std::string vtx_shader_filename(GLMARK_DATA_PATH"/shaders/bump-height.vert");
+-    static const std::string frg_shader_filename(GLMARK_DATA_PATH"/shaders/bump-height.frag");
++    static const std::string vtx_shader_filename(Options::data_path + "/shaders/bump-height.vert");
++    static const std::string frg_shader_filename(Options::data_path + "/shaders/bump-height.frag");
+     static const LibMatrix::vec4 lightPosition(20.0f, 20.0f, 10.0f, 1.0f);
+     Model model;
+ 
+diff --git a/src/scene-conditionals.cpp b/src/scene-conditionals.cpp
+index 778cb33..c840043 100644
+--- a/src/scene-conditionals.cpp
++++ b/src/scene-conditionals.cpp
+@@ -21,6 +21,7 @@
+  */
+ #include "scene.h"
+ #include "mat.h"
++#include "options.h"
+ #include "stack.h"
+ #include "vec.h"
+ #include "log.h"
+@@ -29,7 +30,7 @@
+ 
+ #include <cmath>
+ 
+-static const std::string shader_file_base(GLMARK_DATA_PATH"/shaders/conditionals");
++static const std::string shader_file_base("/shaders/conditionals");
+ 
+ static const std::string vtx_file(shader_file_base + ".vert");
+ static const std::string frg_file(shader_file_base + ".frag");
+@@ -56,14 +57,14 @@ SceneConditionals::~SceneConditionals()
+ static std::string
+ get_vertex_shader_source(int steps, bool conditionals)
+ {
+-    ShaderSource source(vtx_file);
++    ShaderSource source(Options::data_path + vtx_file);
+     ShaderSource source_main;
+ 
+     for (int i = 0; i < steps; i++) {
+         if (conditionals)
+-            source_main.append_file(step_conditional_file);
++            source_main.append_file(Options::data_path + step_conditional_file);
+         else
+-            source_main.append_file(step_simple_file);
++            source_main.append_file(Options::data_path + step_simple_file);
+     }
+ 
+     source.replace("$MAIN$", source_main.str());
+@@ -74,14 +75,14 @@ get_vertex_shader_source(int steps, bool conditionals)
+ static std::string
+ get_fragment_shader_source(int steps, bool conditionals)
+ {
+-    ShaderSource source(frg_file);
++    ShaderSource source(Options::data_path + frg_file);
+     ShaderSource source_main;
+ 
+     for (int i = 0; i < steps; i++) {
+         if (conditionals)
+-            source_main.append_file(step_conditional_file);
++            source_main.append_file(Options::data_path + step_conditional_file);
+         else
+-            source_main.append_file(step_simple_file);
++            source_main.append_file(Options::data_path + step_simple_file);
+     }
+ 
+     source.replace("$MAIN$", source_main.str());
+diff --git a/src/scene-desktop.cpp b/src/scene-desktop.cpp
+index ebe0971..cc1bb55 100644
+--- a/src/scene-desktop.cpp
++++ b/src/scene-desktop.cpp
+@@ -25,6 +25,7 @@
+ 
+ #include "scene.h"
+ #include "mat.h"
++#include "options.h"
+ #include "stack.h"
+ #include "vec.h"
+ #include "log.h"
+@@ -43,8 +44,8 @@ static void
+ create_blur_shaders(ShaderSource& vtx_source, ShaderSource& frg_source,
+                     unsigned int radius, float sigma, BlurDirection direction)
+ {
+-    vtx_source.append_file(GLMARK_DATA_PATH"/shaders/desktop.vert");
+-    frg_source.append_file(GLMARK_DATA_PATH"/shaders/desktop-blur.frag");
++    vtx_source.append_file(Options::data_path + "/shaders/desktop.vert");
++    frg_source.append_file(Options::data_path + "/shaders/desktop-blur.frag");
+ 
+     /* Don't let the gaussian curve become too narrow */
+     if (sigma < 1.0)
+@@ -148,8 +149,8 @@ public:
+ 
+         /* Load the shader program when this class if first used */
+         if (RenderObject::use_count == 0) {
+-            ShaderSource vtx_source(GLMARK_DATA_PATH"/shaders/desktop.vert");
+-            ShaderSource frg_source(GLMARK_DATA_PATH"/shaders/desktop.frag");
++            ShaderSource vtx_source(Options::data_path + "/shaders/desktop.vert");
++            ShaderSource frg_source(Options::data_path + "/shaders/desktop.frag");
+             Scene::load_shaders_from_strings(main_program, vtx_source.str(),
+                                              frg_source.str());
+         }
+diff --git a/src/scene-effect-2d.cpp b/src/scene-effect-2d.cpp
+index 9185d7b..84595a6 100644
+--- a/src/scene-effect-2d.cpp
++++ b/src/scene-effect-2d.cpp
+@@ -26,6 +26,7 @@
+ 
+ #include "scene.h"
+ #include "mat.h"
++#include "options.h"
+ #include "stack.h"
+ #include "vec.h"
+ #include "log.h"
+@@ -96,7 +97,7 @@ static std::string
+ create_convolution_fragment_shader(Canvas &canvas, std::vector<float> &array,
+                                    unsigned int width, unsigned int height)
+ {
+-    static const std::string frg_shader_filename(GLMARK_DATA_PATH"/shaders/effect-2d-convolution.frag");
++    static const std::string frg_shader_filename(Options::data_path + "/shaders/effect-2d-convolution.frag");
+     ShaderSource source(frg_shader_filename);
+ 
+     if (width * height != array.size()) {
+@@ -303,7 +304,7 @@ SceneEffect2D::setup()
+ 
+     Texture::find_textures();
+ 
+-    static const std::string vtx_shader_filename(GLMARK_DATA_PATH"/shaders/effect-2d.vert");
++    static const std::string vtx_shader_filename(Options::data_path + "/shaders/effect-2d.vert");
+ 
+     std::vector<float> kernel;
+     unsigned int kernel_width = 0;
+diff --git a/src/scene-function.cpp b/src/scene-function.cpp
+index 0bd9468..1de29f0 100644
+--- a/src/scene-function.cpp
++++ b/src/scene-function.cpp
+@@ -23,13 +23,14 @@
+ 
+ #include "scene.h"
+ #include "mat.h"
++#include "options.h"
+ #include "stack.h"
+ #include "vec.h"
+ #include "log.h"
+ #include "shader-source.h"
+ #include "util.h"
+ 
+-static const std::string shader_file_base(GLMARK_DATA_PATH"/shaders/function");
++static const std::string shader_file_base("/shaders/function");
+ 
+ static const std::string vtx_file(shader_file_base + ".vert");
+ static const std::string frg_file(shader_file_base + ".frag");
+@@ -61,7 +62,7 @@ SceneFunction::~SceneFunction()
+ static std::string
+ get_vertex_shader_source(int steps, bool function, std::string &complexity)
+ {
+-    ShaderSource source(vtx_file);
++    ShaderSource source(Options::data_path + vtx_file);
+     ShaderSource source_main;
+     std::string step_file;
+ 
+@@ -72,13 +73,13 @@ get_vertex_shader_source(int steps, bool function, std::string &complexity)
+ 
+     for (int i = 0; i < steps; i++) {
+         if (function)
+-            source_main.append_file(call_file);
++            source_main.append_file(Options::data_path + call_file);
+         else
+-            source_main.append_file(step_file);
++            source_main.append_file(Options::data_path + step_file);
+     }
+ 
+     if (function)
+-        source.replace_with_file("$PROCESS$", step_file);
++        source.replace_with_file("$PROCESS$", Options::data_path + step_file);
+     else
+         source.replace("$PROCESS$", "");
+ 
+@@ -90,7 +91,7 @@ get_vertex_shader_source(int steps, bool function, std::string &complexity)
+ static std::string
+ get_fragment_shader_source(int steps, bool function, std::string &complexity)
+ {
+-    ShaderSource source(frg_file);
++    ShaderSource source(Options::data_path + frg_file);
+     ShaderSource source_main;
+     std::string step_file;
+ 
+@@ -101,13 +102,13 @@ get_fragment_shader_source(int steps, bool function, std::string &complexity)
+ 
+     for (int i = 0; i < steps; i++) {
+         if (function)
+-            source_main.append_file(call_file);
++            source_main.append_file(Options::data_path + call_file);
+         else
+-            source_main.append_file(step_file);
++            source_main.append_file(Options::data_path + step_file);
+     }
+ 
+     if (function)
+-        source.replace_with_file("$PROCESS$", step_file);
++        source.replace_with_file("$PROCESS$", Options::data_path + step_file);
+     else
+         source.replace("$PROCESS$", "");
+ 
+diff --git a/src/scene-ideas/lamp.cc b/src/scene-ideas/lamp.cc
+index aaf3b10..374c8e2 100644
+--- a/src/scene-ideas/lamp.cc
++++ b/src/scene-ideas/lamp.cc
+@@ -2,7 +2,7 @@
+  * Vertex position data describing the lamp
+  *
+  * (c) Copyright 1993, Silicon Graphics, Inc.
+- * Copyright © 2012 Linaro Limited
++ * Copyright Â© 2012 Linaro Limited
+  *
+  * This file is part of the glmark2 OpenGL (ES) 2.0 benchmark.
+  *
+@@ -23,6 +23,7 @@
+  *  Jesse Barker
+  */
+ #include "lamp.h"
++#include "options.h"
+ #include "shader-source.h"
+ #include "log.h"
+ #include "scene.h"
+@@ -170,8 +171,8 @@ Lamp::init()
+ 
+     // Initialize shader sources from input files and create programs from them
+     // The program for handling lighting...
+-    string lit_vtx_filename(GLMARK_DATA_PATH"/shaders/ideas-lamp-lit.vert");
+-    string lit_frg_filename(GLMARK_DATA_PATH"/shaders/ideas-lamp-lit.frag");
++    string lit_vtx_filename(Options::data_path + "/shaders/ideas-lamp-lit.vert");
++    string lit_frg_filename(Options::data_path + "/shaders/ideas-lamp-lit.frag");
+     ShaderSource lit_vtx_source(lit_vtx_filename);
+     ShaderSource lit_frg_source(lit_frg_filename);
+     if (!Scene::load_shaders_from_strings(litProgram_, lit_vtx_source.str(),
+@@ -182,8 +183,8 @@ Lamp::init()
+     }
+ 
+     // The simple program with no lighting...
+-    string unlit_vtx_filename(GLMARK_DATA_PATH"/shaders/ideas-lamp-unlit.vert");
+-    string unlit_frg_filename(GLMARK_DATA_PATH"/shaders/ideas-lamp-unlit.frag");
++    string unlit_vtx_filename(Options::data_path + "/shaders/ideas-lamp-unlit.vert");
++    string unlit_frg_filename(Options::data_path + "/shaders/ideas-lamp-unlit.frag");
+     ShaderSource unlit_vtx_source(unlit_vtx_filename);
+     ShaderSource unlit_frg_source(unlit_frg_filename);
+     if (!Scene::load_shaders_from_strings(unlitProgram_, unlit_vtx_source.str(),
+diff --git a/src/scene-ideas/logo.cc b/src/scene-ideas/logo.cc
+index 59158ce..3a7942c 100644
+--- a/src/scene-ideas/logo.cc
++++ b/src/scene-ideas/logo.cc
+@@ -2,7 +2,7 @@
+  * Vertex position data describing the old Silicon Graphics logo
+  *
+  * (c) Copyright 1993, Silicon Graphics, Inc.
+- * Copyright © 2012 Linaro Limited
++ * Copyright Â© 2012 Linaro Limited
+  *
+  * This file is part of the glmark2 OpenGL (ES) 2.0 benchmark.
+  *
+@@ -23,6 +23,7 @@
+  *  Jesse Barker
+  */
+ #include "logo.h"
++#include "options.h"
+ #include "scene.h"
+ #include "shader-source.h"
+ #include "log.h"
+@@ -423,8 +424,8 @@ SGILogo::init()
+ 
+     // Initialize shader sources from input files and create programs from them
+     // The program for handling the main object with lighting...
+-    string logo_vtx_filename(GLMARK_DATA_PATH"/shaders/ideas-logo.vert");
+-    string logo_frg_filename(GLMARK_DATA_PATH"/shaders/ideas-logo.frag");
++    string logo_vtx_filename(Options::data_path + "/shaders/ideas-logo.vert");
++    string logo_frg_filename(Options::data_path + "/shaders/ideas-logo.frag");
+     ShaderSource logo_vtx_source(logo_vtx_filename);
+     ShaderSource logo_frg_source(logo_frg_filename);
+     if (!Scene::load_shaders_from_strings(normalProgram_, logo_vtx_source.str(),
+@@ -437,8 +438,8 @@ SGILogo::init()
+     normalNormalIndex_ = normalProgram_[normalAttribName_].location();
+ 
+     // The program for handling the flat object...
+-    string logo_flat_vtx_filename(GLMARK_DATA_PATH"/shaders/ideas-logo-flat.vert");
+-    string logo_flat_frg_filename(GLMARK_DATA_PATH"/shaders/ideas-logo-flat.frag");
++    string logo_flat_vtx_filename(Options::data_path + "/shaders/ideas-logo-flat.vert");
++    string logo_flat_frg_filename(Options::data_path + "/shaders/ideas-logo-flat.frag");
+     ShaderSource logo_flat_vtx_source(logo_flat_vtx_filename);
+     ShaderSource logo_flat_frg_source(logo_flat_frg_filename);
+     if (!Scene::load_shaders_from_strings(flatProgram_, logo_flat_vtx_source.str(),
+@@ -450,8 +451,8 @@ SGILogo::init()
+     flatVertexIndex_ = flatProgram_[vertexAttribName_].location();
+ 
+     // The program for handling the shadow object with texturing...
+-    string logo_shadow_vtx_filename(GLMARK_DATA_PATH"/shaders/ideas-logo-shadow.vert");
+-    string logo_shadow_frg_filename(GLMARK_DATA_PATH"/shaders/ideas-logo-shadow.frag");
++    string logo_shadow_vtx_filename(Options::data_path + "/shaders/ideas-logo-shadow.vert");
++    string logo_shadow_frg_filename(Options::data_path + "/shaders/ideas-logo-shadow.frag");
+     ShaderSource logo_shadow_vtx_source(logo_shadow_vtx_filename);
+     ShaderSource logo_shadow_frg_source(logo_shadow_frg_filename);
+     if (!Scene::load_shaders_from_strings(shadowProgram_, logo_shadow_vtx_source.str(),
+diff --git a/src/scene-ideas/table.cc b/src/scene-ideas/table.cc
+index baa156e..f5b34be 100644
+--- a/src/scene-ideas/table.cc
++++ b/src/scene-ideas/table.cc
+@@ -1,6 +1,6 @@
+ /*
+  * (c) Copyright 1993, Silicon Graphics, Inc.
+- * Copyright © 2012 Linaro Limited
++ * Copyright Â© 2012 Linaro Limited
+  *
+  * This file is part of the glmark2 OpenGL (ES) 2.0 benchmark.
+  *
+@@ -21,6 +21,7 @@
+  *  Jesse Barker
+  */
+ #include "table.h"
++#include "options.h"
+ #include "scene.h"
+ #include "shader-source.h"
+ #include "log.h"
+@@ -101,8 +102,8 @@ Table::init(void)
+ 
+     // Initialize shader sources from input files and create programs from them
+     // Program to render the table with lighting and a time-based fade...
+-    string table_vtx_filename(GLMARK_DATA_PATH"/shaders/ideas-table.vert");
+-    string table_frg_filename(GLMARK_DATA_PATH"/shaders/ideas-table.frag");
++    string table_vtx_filename(Options::data_path + "/shaders/ideas-table.vert");
++    string table_frg_filename(Options::data_path + "/shaders/ideas-table.frag");
+     ShaderSource table_vtx_source(table_vtx_filename);
+     ShaderSource table_frg_source(table_frg_filename);
+     if (!Scene::load_shaders_from_strings(tableProgram_, table_vtx_source.str(),
+@@ -114,8 +115,8 @@ Table::init(void)
+     textVertexIndex_ = tableProgram_[vertexAttribName_].location();
+ 
+     // Program to render the paper with lighting and a time-based fade...
+-    string paper_vtx_filename(GLMARK_DATA_PATH"/shaders/ideas-paper.vert");
+-    string paper_frg_filename(GLMARK_DATA_PATH"/shaders/ideas-paper.frag");
++    string paper_vtx_filename(Options::data_path + "/shaders/ideas-paper.vert");
++    string paper_frg_filename(Options::data_path + "/shaders/ideas-paper.frag");
+     ShaderSource paper_vtx_source(paper_vtx_filename);
+     ShaderSource paper_frg_source(paper_frg_filename);
+     if (!Scene::load_shaders_from_strings(paperProgram_, paper_vtx_source.str(),
+@@ -127,8 +128,8 @@ Table::init(void)
+     paperVertexIndex_ = paperProgram_[vertexAttribName_].location();
+ 
+     // Program to handle the text (time-based color fade)...
+-    string text_vtx_filename(GLMARK_DATA_PATH"/shaders/ideas-text.vert");
+-    string text_frg_filename(GLMARK_DATA_PATH"/shaders/ideas-text.frag");
++    string text_vtx_filename(Options::data_path + "/shaders/ideas-text.vert");
++    string text_frg_filename(Options::data_path + "/shaders/ideas-text.frag");
+     ShaderSource text_vtx_source(text_vtx_filename);
+     ShaderSource text_frg_source(text_frg_filename);
+     if (!Scene::load_shaders_from_strings(textProgram_, text_vtx_source.str(),
+@@ -140,8 +141,8 @@ Table::init(void)
+     textVertexIndex_ = textProgram_[vertexAttribName_].location();
+ 
+     // Program for the drawUnder functionality (just paint it black)...
+-    string under_table_vtx_filename(GLMARK_DATA_PATH"/shaders/ideas-under-table.vert");
+-    string under_table_frg_filename(GLMARK_DATA_PATH"/shaders/ideas-under-table.frag");
++    string under_table_vtx_filename(Options::data_path + "/shaders/ideas-under-table.vert");
++    string under_table_frg_filename(Options::data_path + "/shaders/ideas-under-table.frag");
+     ShaderSource under_table_vtx_source(under_table_vtx_filename);
+     ShaderSource under_table_frg_source(under_table_frg_filename);
+     if (!Scene::load_shaders_from_strings(underProgram_, under_table_vtx_source.str(),
+diff --git a/src/scene-jellyfish.cpp b/src/scene-jellyfish.cpp
+index bc18ee3..2da2aca 100644
+--- a/src/scene-jellyfish.cpp
++++ b/src/scene-jellyfish.cpp
+@@ -1,5 +1,5 @@
+ //
+-// Copyright © 2012 Linaro Limited
++// Copyright Â© 2012 Linaro Limited
+ //
+ // This file is part of the glmark2 OpenGL (ES) 2.0 benchmark.
+ //
+@@ -27,6 +27,7 @@
+ #include "scene.h"
+ #include "scene-jellyfish.h"
+ #include "log.h"
++#include "options.h"
+ #include "util.h"
+ #include "texture.h"
+ #include "shader-source.h"
+@@ -115,8 +116,8 @@ bool
+ GradientRenderer::init()
+ {
+     // Program set up
+-    static const string vtx_shader_filename(GLMARK_DATA_PATH"/shaders/gradient.vert");
+-    static const string frg_shader_filename(GLMARK_DATA_PATH"/shaders/gradient.frag");
++    static const string vtx_shader_filename(Options::data_path + "/shaders/gradient.vert");
++    static const string frg_shader_filename(Options::data_path + "/shaders/gradient.frag");
+     ShaderSource vtx_source(vtx_shader_filename);
+     ShaderSource frg_source(frg_shader_filename);
+     if (!Scene::load_shaders_from_strings(program_, vtx_source.str(),
+@@ -375,7 +376,7 @@ JellyfishPrivate::~JellyfishPrivate()
+ bool
+ JellyfishPrivate::initialize()
+ {
+-    static const string modelFilename(GLMARK_DATA_PATH"/models/jellyfish.jobj");
++    static const string modelFilename(Options::data_path + "/models/jellyfish.jobj");
+     if (!load_obj(modelFilename))
+     {
+         return false;
+@@ -410,8 +411,8 @@ JellyfishPrivate::initialize()
+     // Set up program first so we can store attribute and uniform locations
+     // away for the 
+     using std::string;
+-    static const string vtx_shader_filename(GLMARK_DATA_PATH"/shaders/jellyfish.vert");
+-    static const string frg_shader_filename(GLMARK_DATA_PATH"/shaders/jellyfish.frag");
++    static const string vtx_shader_filename(Options::data_path + "/shaders/jellyfish.vert");
++    static const string frg_shader_filename(Options::data_path + "/shaders/jellyfish.frag");
+ 
+     ShaderSource vtx_source(vtx_shader_filename);
+     ShaderSource frg_source(frg_shader_filename);
+diff --git a/src/scene-loop.cpp b/src/scene-loop.cpp
+index 564a2fe..95aa99e 100644
+--- a/src/scene-loop.cpp
++++ b/src/scene-loop.cpp
+@@ -23,13 +23,14 @@
+ 
+ #include "scene.h"
+ #include "mat.h"
++#include "options.h"
+ #include "stack.h"
+ #include "vec.h"
+ #include "log.h"
+ #include "shader-source.h"
+ #include "util.h"
+ 
+-static const std::string shader_file_base(GLMARK_DATA_PATH"/shaders/loop");
++static const std::string shader_file_base("/shaders/loop");
+ 
+ static const std::string vtx_file(shader_file_base + ".vert");
+ static const std::string frg_file(shader_file_base + ".frag");
+@@ -62,11 +63,11 @@ SceneLoop::~SceneLoop()
+ static std::string
+ get_fragment_shader_source(int steps, bool loop, bool uniform)
+ {
+-    ShaderSource source(frg_file);
++    ShaderSource source(Options::data_path + frg_file);
+     ShaderSource source_main;
+ 
+     if (loop) {
+-        source_main.append_file(step_loop_file);
++        source_main.append_file(Options::data_path + step_loop_file);
+         if (uniform) {
+             source_main.replace("$NLOOPS$", "FragmentLoops");
+         }
+@@ -76,7 +77,7 @@ get_fragment_shader_source(int steps, bool loop, bool uniform)
+     }
+     else {
+         for (int i = 0; i < steps; i++)
+-            source_main.append_file(step_simple_file);
++            source_main.append_file(Options::data_path + step_simple_file);
+     }
+ 
+     source.replace("$MAIN$", source_main.str());
+@@ -87,11 +88,11 @@ get_fragment_shader_source(int steps, bool loop, bool uniform)
+ static std::string
+ get_vertex_shader_source(int steps, bool loop, bool uniform)
+ {
+-    ShaderSource source(vtx_file);
++    ShaderSource source(Options::data_path + vtx_file);
+     ShaderSource source_main;
+ 
+     if (loop) {
+-        source_main.append_file(step_loop_file);
++        source_main.append_file(Options::data_path + step_loop_file);
+         if (uniform) {
+             source_main.replace("$NLOOPS$", "VertexLoops");
+         }
+@@ -101,7 +102,7 @@ get_vertex_shader_source(int steps, bool loop, bool uniform)
+     }
+     else {
+         for (int i = 0; i < steps; i++)
+-            source_main.append_file(step_simple_file);
++            source_main.append_file(Options::data_path + step_simple_file);
+     }
+ 
+     source.replace("$MAIN$", source_main.str());
+diff --git a/src/scene-pulsar.cpp b/src/scene-pulsar.cpp
+index 6ab661c..6c5b203 100644
+--- a/src/scene-pulsar.cpp
++++ b/src/scene-pulsar.cpp
+@@ -26,6 +26,7 @@
+ #include <stdlib.h>
+ #include "scene.h"
+ #include "mat.h"
++#include "options.h"
+ #include "stack.h"
+ #include "vec.h"
+ #include "log.h"
+@@ -112,19 +113,19 @@ ScenePulsar::setup()
+     std::string frg_shader_filename;
+     static const vec4 lightPosition(-20.0f, 20.0f,-20.0f, 1.0f);
+     if (options_["light"].value == "true") {
+-        vtx_shader_filename = GLMARK_DATA_PATH"/shaders/pulsar-light.vert";
++        vtx_shader_filename = Options::data_path + "/shaders/pulsar-light.vert";
+     } else {
+-        vtx_shader_filename = GLMARK_DATA_PATH"/shaders/pulsar.vert";
++        vtx_shader_filename = Options::data_path + "/shaders/pulsar.vert";
+     }
+ 
+     if (options_["texture"].value == "true") {
+-        frg_shader_filename = GLMARK_DATA_PATH"/shaders/light-basic-tex.frag";
++        frg_shader_filename = Options::data_path + "/shaders/light-basic-tex.frag";
+         Texture::find_textures();
+         if (!Texture::load("crate-base", &texture_, GL_NEAREST, GL_NEAREST, 0))
+             return false;
+ 
+     } else {
+-        frg_shader_filename = GLMARK_DATA_PATH"/shaders/light-basic.frag";
++        frg_shader_filename = Options::data_path + "/shaders/light-basic.frag";
+     }
+ 
+     ShaderSource vtx_source(vtx_shader_filename);
+diff --git a/src/scene-refract.cpp b/src/scene-refract.cpp
+index 7fd6581..d868db5 100644
+--- a/src/scene-refract.cpp
++++ b/src/scene-refract.cpp
+@@ -1,5 +1,5 @@
+ //
+-// Copyright © 2012 Linaro Limited
++// Copyright Â© 2012 Linaro Limited
+ //
+ // This file is part of the glmark2 OpenGL (ES) 2.0 benchmark.
+ //
+@@ -21,6 +21,7 @@
+ //
+ #include "scene-refract.h"
+ #include "model.h"
++#include "options.h"
+ #include "texture.h"
+ #include "util.h"
+ #include "log.h"
+@@ -176,8 +177,8 @@ SceneRefract::validate()
+ bool
+ DistanceRenderTarget::setup(unsigned int width, unsigned int height)
+ {
+-    static const string vtx_shader_filename(GLMARK_DATA_PATH"/shaders/depth.vert");
+-    static const string frg_shader_filename(GLMARK_DATA_PATH"/shaders/depth.frag");
++    static const string vtx_shader_filename(Options::data_path + "/shaders/depth.vert");
++    static const string frg_shader_filename(Options::data_path + "/shaders/depth.frag");
+ 
+     ShaderSource vtx_source(vtx_shader_filename);
+     ShaderSource frg_source(frg_shader_filename);
+@@ -279,8 +280,8 @@ bool
+ RefractPrivate::setup(map<string, Scene::Option>& options)
+ {
+     // Program object setup
+-    static const string vtx_shader_filename(GLMARK_DATA_PATH"/shaders/light-refract.vert");
+-    static const string frg_shader_filename(GLMARK_DATA_PATH"/shaders/light-refract.frag");
++    static const string vtx_shader_filename(Options::data_path + "/shaders/light-refract.vert");
++    static const string frg_shader_filename(Options::data_path + "/shaders/light-refract.frag");
+     static const vec4 lightColor(0.4, 0.4, 0.4, 1.0);
+ 
+     ShaderSource vtx_source(vtx_shader_filename);
+diff --git a/src/scene-shading.cpp b/src/scene-shading.cpp
+index e5b7ade..0268eb4 100644
+--- a/src/scene-shading.cpp
++++ b/src/scene-shading.cpp
+@@ -24,6 +24,7 @@
+  */
+ #include "scene.h"
+ #include "mat.h"
++#include "options.h"
+ #include "stack.h"
+ #include "vec.h"
+ #include "log.h"
+@@ -154,24 +155,24 @@ SceneShading::setup()
+     ShaderSource vtx_source;
+     ShaderSource frg_source;
+     if (shading == "gouraud") {
+-        vtx_shader_filename = GLMARK_DATA_PATH"/shaders/light-basic.vert";
+-        frg_shader_filename = GLMARK_DATA_PATH"/shaders/light-basic.frag";
++        vtx_shader_filename = Options::data_path + "/shaders/light-basic.vert";
++        frg_shader_filename = Options::data_path + "/shaders/light-basic.frag";
+         frg_source.append_file(frg_shader_filename);
+         vtx_source.append_file(vtx_shader_filename);
+         vtx_source.add_const("LightSourcePosition", lightPosition);
+         vtx_source.add_const("MaterialDiffuse", materialDiffuse);
+     }
+     else if (shading == "blinn-phong-inf") {
+-        vtx_shader_filename = GLMARK_DATA_PATH"/shaders/light-advanced.vert";
+-        frg_shader_filename = GLMARK_DATA_PATH"/shaders/light-advanced.frag";
++        vtx_shader_filename = Options::data_path + "/shaders/light-advanced.vert";
++        frg_shader_filename = Options::data_path + "/shaders/light-advanced.frag";
+         frg_source.append_file(frg_shader_filename);
+         frg_source.add_const("LightSourcePosition", lightPosition);
+         frg_source.add_const("LightSourceHalfVector", halfVector);
+         vtx_source.append_file(vtx_shader_filename);
+     }
+     else if (shading == "phong") {
+-        vtx_shader_filename = GLMARK_DATA_PATH"/shaders/light-phong.vert";
+-        frg_shader_filename = GLMARK_DATA_PATH"/shaders/light-phong.frag";
++        vtx_shader_filename = Options::data_path + "/shaders/light-phong.vert";
++        frg_shader_filename = Options::data_path + "/shaders/light-phong.frag";
+         unsigned int num_lights = Util::fromString<unsigned int>(options_["num-lights"].value);
+         string fragsource = get_fragment_shader_source(frg_shader_filename, num_lights);
+         frg_source.append(fragsource);
+@@ -179,8 +180,8 @@ SceneShading::setup()
+         vtx_source.append_file(vtx_shader_filename);
+     }
+     else if (shading == "cel") {
+-        vtx_shader_filename = GLMARK_DATA_PATH"/shaders/light-phong.vert";
+-        frg_shader_filename = GLMARK_DATA_PATH"/shaders/light-cel.frag";
++        vtx_shader_filename = Options::data_path + "/shaders/light-phong.vert";
++        frg_shader_filename = Options::data_path + "/shaders/light-cel.frag";
+         vtx_source.append_file(vtx_shader_filename);
+         frg_source.append_file(frg_shader_filename);
+     }
+diff --git a/src/scene-shadow.cpp b/src/scene-shadow.cpp
+index c1704b3..1fc9885 100644
+--- a/src/scene-shadow.cpp
++++ b/src/scene-shadow.cpp
+@@ -1,5 +1,5 @@
+ //
+-// Copyright © 2012 Linaro Limited
++// Copyright Â© 2012 Linaro Limited
+ //
+ // This file is part of the glmark2 OpenGL (ES) 2.0 benchmark.
+ //
+@@ -21,6 +21,7 @@
+ //
+ #include "scene.h"
+ #include "model.h"
++#include "options.h"
+ #include "util.h"
+ #include "log.h"
+ #include "shader-source.h"
+@@ -73,8 +74,8 @@ public:
+ bool
+ DepthRenderTarget::setup(unsigned int width, unsigned int height)
+ {
+-    static const string vtx_shader_filename(GLMARK_DATA_PATH"/shaders/depth.vert");
+-    static const string frg_shader_filename(GLMARK_DATA_PATH"/shaders/depth.frag");
++    static const string vtx_shader_filename(Options::data_path + "/shaders/depth.vert");
++    static const string frg_shader_filename(Options::data_path + "/shaders/depth.frag");
+ 
+     ShaderSource vtx_source(vtx_shader_filename);
+     ShaderSource frg_source(frg_shader_filename);
+@@ -201,8 +202,8 @@ GroundRenderer::setup(const mat4& projection, unsigned int texture)
+ 
+     // Program set up
+     static const vec4 materialDiffuse(0.3f, 0.3f, 0.3f, 1.0f);
+-    static const string vtx_shader_filename(GLMARK_DATA_PATH"/shaders/shadow.vert");
+-    static const string frg_shader_filename(GLMARK_DATA_PATH"/shaders/shadow.frag");
++    static const string vtx_shader_filename(Options::data_path + "/shaders/shadow.vert");
++    static const string frg_shader_filename(Options::data_path + "/shaders/shadow.frag");
+     ShaderSource vtx_source(vtx_shader_filename);
+     ShaderSource frg_source(frg_shader_filename);
+ 
+@@ -314,8 +315,8 @@ bool
+ ShadowPrivate::setup(map<string, Scene::Option>& options)
+ {
+     // Program object setup
+-    static const string vtx_shader_filename(GLMARK_DATA_PATH"/shaders/light-basic.vert");
+-    static const string frg_shader_filename(GLMARK_DATA_PATH"/shaders/light-basic.frag");
++    static const string vtx_shader_filename(Options::data_path + "/shaders/light-basic.vert");
++    static const string frg_shader_filename(Options::data_path + "/shaders/light-basic.frag");
+     static const vec4 materialDiffuse(1.0f, 1.0f, 1.0f, 1.0f);
+ 
+     ShaderSource vtx_source(vtx_shader_filename);
+diff --git a/src/scene-terrain/blur-renderer.cpp b/src/scene-terrain/blur-renderer.cpp
+index 65fb441..13eb13b 100644
+--- a/src/scene-terrain/blur-renderer.cpp
++++ b/src/scene-terrain/blur-renderer.cpp
+@@ -19,6 +19,7 @@
+  * Authors:
+  *  Alexandros Frantzis
+  */
++#include "options.h"
+ #include "scene.h"
+ #include "renderer.h"
+ #include "shader-source.h"
+@@ -74,8 +75,8 @@ create_blur_shaders(ShaderSource& vtx_source, ShaderSource& frg_source,
+                     unsigned int radius, float sigma, BlurRenderer::BlurDirection direction,
+                     float tilt_shift)
+ {
+-    vtx_source.append_file(GLMARK_DATA_PATH"/shaders/terrain-texture.vert");
+-    frg_source.append_file(GLMARK_DATA_PATH"/shaders/terrain-blur.frag");
++    vtx_source.append_file(Options::data_path + "/shaders/terrain-texture.vert");
++    frg_source.append_file(Options::data_path + "/shaders/terrain-blur.frag");
+ 
+     /* Don't let the gaussian curve become too narrow */
+     if (sigma < 1.0)
+diff --git a/src/scene-terrain/copy-renderer.cpp b/src/scene-terrain/copy-renderer.cpp
+index 1c91e66..efd904d 100644
+--- a/src/scene-terrain/copy-renderer.cpp
++++ b/src/scene-terrain/copy-renderer.cpp
+@@ -19,6 +19,7 @@
+  * Authors:
+  *  Alexandros Frantzis
+  */
++#include "options.h"
+ #include "scene.h"
+ #include "renderer.h"
+ #include "shader-source.h"
+@@ -38,8 +39,8 @@ CopyRenderer::copy_program(bool create_new)
+ 
+     if (!copy_program) {
+         copy_program = new Program();
+-        ShaderSource vtx_shader(GLMARK_DATA_PATH"/shaders/terrain-texture.vert");
+-        ShaderSource frg_shader(GLMARK_DATA_PATH"/shaders/terrain-overlay.frag");
++        ShaderSource vtx_shader(Options::data_path + "/shaders/terrain-texture.vert");
++        ShaderSource frg_shader(Options::data_path + "/shaders/terrain-overlay.frag");
+ 
+         Scene::load_shaders_from_strings(*copy_program, vtx_shader.str(), frg_shader.str());
+ 
+diff --git a/src/scene-terrain/luminance-renderer.cpp b/src/scene-terrain/luminance-renderer.cpp
+index 2a88417..c202570 100644
+--- a/src/scene-terrain/luminance-renderer.cpp
++++ b/src/scene-terrain/luminance-renderer.cpp
+@@ -19,6 +19,7 @@
+  * Authors:
+  *  Alexandros Frantzis
+  */
++#include "options.h"
+ #include "scene.h"
+ #include "renderer.h"
+ #include "shader-source.h"
+@@ -38,8 +39,8 @@ LuminanceRenderer::luminance_program(bool create_new)
+ 
+     if (!luminance_program) {
+         luminance_program = new Program();
+-        ShaderSource vtx_shader(GLMARK_DATA_PATH"/shaders/terrain-texture.vert");
+-        ShaderSource frg_shader(GLMARK_DATA_PATH"/shaders/terrain-luminance.frag");
++        ShaderSource vtx_shader(Options::data_path + "/shaders/terrain-texture.vert");
++        ShaderSource frg_shader(Options::data_path + "/shaders/terrain-luminance.frag");
+ 
+         Scene::load_shaders_from_strings(*luminance_program,
+                                          vtx_shader.str(), frg_shader.str());
+diff --git a/src/scene-terrain/normal-from-height-renderer.cpp b/src/scene-terrain/normal-from-height-renderer.cpp
+index 7a264c6..25c8e0d 100644
+--- a/src/scene-terrain/normal-from-height-renderer.cpp
++++ b/src/scene-terrain/normal-from-height-renderer.cpp
+@@ -19,6 +19,7 @@
+  * Authors:
+  *  Alexandros Frantzis
+  */
++#include "options.h"
+ #include "scene.h"
+ #include "renderer.h"
+ #include "shader-source.h"
+@@ -39,8 +40,8 @@ NormalFromHeightRenderer::normal_from_height_program(const LibMatrix::vec2 &size
+ 
+     if (!normal_from_height_program) {
+         normal_from_height_program = new Program();
+-        ShaderSource vtx_shader(GLMARK_DATA_PATH"/shaders/terrain-texture.vert");
+-        ShaderSource frg_shader(GLMARK_DATA_PATH"/shaders/terrain-normalmap.frag");
++        ShaderSource vtx_shader(Options::data_path + "/shaders/terrain-texture.vert");
++        ShaderSource frg_shader(Options::data_path + "/shaders/terrain-normalmap.frag");
+ 
+         Scene::load_shaders_from_strings(*normal_from_height_program,
+                                          vtx_shader.str(), frg_shader.str());
+diff --git a/src/scene-terrain/overlay-renderer.cpp b/src/scene-terrain/overlay-renderer.cpp
+index 8fea325..4b655ab 100644
+--- a/src/scene-terrain/overlay-renderer.cpp
++++ b/src/scene-terrain/overlay-renderer.cpp
+@@ -19,6 +19,7 @@
+  * Authors:
+  *  Alexandros Frantzis
+  */
++#include "options.h"
+ #include "scene.h"
+ #include "renderer.h"
+ #include "shader-source.h"
+@@ -107,8 +108,8 @@ OverlayRenderer::create_mesh()
+ void
+ OverlayRenderer::create_program()
+ {
+-    ShaderSource vtx_shader(GLMARK_DATA_PATH"/shaders/terrain-texture.vert");
+-    ShaderSource frg_shader(GLMARK_DATA_PATH"/shaders/terrain-overlay.frag");
++    ShaderSource vtx_shader(Options::data_path + "/shaders/terrain-texture.vert");
++    ShaderSource frg_shader(Options::data_path + "/shaders/terrain-overlay.frag");
+ 
+     if (!Scene::load_shaders_from_strings(program_, vtx_shader.str(), frg_shader.str()))
+         return;
+diff --git a/src/scene-terrain/simplex-noise-renderer.cpp b/src/scene-terrain/simplex-noise-renderer.cpp
+index 42cc816..fcc9148 100644
+--- a/src/scene-terrain/simplex-noise-renderer.cpp
++++ b/src/scene-terrain/simplex-noise-renderer.cpp
+@@ -19,6 +19,7 @@
+  * Authors:
+  *  Alexandros Frantzis
+  */
++#include "options.h"
+ #include "scene.h"
+ #include "renderer.h"
+ #include "shader-source.h"
+@@ -40,8 +41,8 @@ SimplexNoiseRenderer::noise_program(bool create_new)
+ 
+     if (!noise_program) {
+         noise_program = new Program();
+-        ShaderSource vtx_shader(GLMARK_DATA_PATH"/shaders/terrain-texture.vert");
+-        ShaderSource frg_shader(GLMARK_DATA_PATH"/shaders/terrain-noise.frag");
++        ShaderSource vtx_shader(Options::data_path + "/shaders/terrain-texture.vert");
++        ShaderSource frg_shader(Options::data_path + "/shaders/terrain-noise.frag");
+ 
+         Scene::load_shaders_from_strings(*noise_program, vtx_shader.str(), frg_shader.str());
+ 
+diff --git a/src/scene-terrain/terrain-renderer.cpp b/src/scene-terrain/terrain-renderer.cpp
+index 536401a..e46b064 100644
+--- a/src/scene-terrain/terrain-renderer.cpp
++++ b/src/scene-terrain/terrain-renderer.cpp
+@@ -19,6 +19,7 @@
+  * Authors:
+  *  Alexandros Frantzis
+  */
++#include "options.h"
+ #include "scene.h"
+ #include "renderer.h"
+ #include "texture.h"
+@@ -85,8 +86,8 @@ TerrainRenderer::init_textures()
+ void
+ TerrainRenderer::init_program()
+ {
+-    ShaderSource vtx_shader(GLMARK_DATA_PATH"/shaders/terrain.vert");
+-    ShaderSource frg_shader(GLMARK_DATA_PATH"/shaders/terrain.frag");
++    ShaderSource vtx_shader(Options::data_path + "/shaders/terrain.vert");
++    ShaderSource frg_shader(Options::data_path + "/shaders/terrain.frag");
+ 
+     if (!Scene::load_shaders_from_strings(program_, vtx_shader.str(), frg_shader.str()))
+         return;
+diff --git a/src/scene-texture.cpp b/src/scene-texture.cpp
+index 397593d..840f9f5 100644
+--- a/src/scene-texture.cpp
++++ b/src/scene-texture.cpp
+@@ -24,6 +24,7 @@
+  */
+ #include "scene.h"
+ #include "mat.h"
++#include "options.h"
+ #include "stack.h"
+ #include "vec.h"
+ #include "log.h"
+@@ -109,10 +110,10 @@ SceneTexture::setup()
+     if (!Scene::setup())
+         return false;
+ 
+-    static const std::string vtx_shader_filename(GLMARK_DATA_PATH"/shaders/light-basic.vert");
+-    static const std::string vtx_shader_texgen_filename(GLMARK_DATA_PATH"/shaders/light-basic-texgen.vert");
+-    static const std::string frg_shader_filename(GLMARK_DATA_PATH"/shaders/light-basic-tex.frag");
+-    static const std::string frg_shader_bilinear_filename(GLMARK_DATA_PATH"/shaders/light-basic-tex-bilinear.frag");
++    static const std::string vtx_shader_filename(Options::data_path + "/shaders/light-basic.vert");
++    static const std::string vtx_shader_texgen_filename(Options::data_path + "/shaders/light-basic-texgen.vert");
++    static const std::string frg_shader_filename(Options::data_path + "/shaders/light-basic-tex.frag");
++    static const std::string frg_shader_bilinear_filename(Options::data_path + "/shaders/light-basic-tex-bilinear.frag");
+     static const LibMatrix::vec4 lightPosition(20.0f, 20.0f, 10.0f, 1.0f);
+     static const LibMatrix::vec4 materialDiffuse(1.0f, 1.0f, 1.0f, 1.0f);
+ 
+diff --git a/src/text-renderer.cpp b/src/text-renderer.cpp
+index 93d87fb..8fdbca9 100644
+--- a/src/text-renderer.cpp
++++ b/src/text-renderer.cpp
+@@ -21,6 +21,7 @@
+  */
+ #include "text-renderer.h"
+ #include "gl-headers.h"
++#include "options.h"
+ #include "scene.h"
+ #include "shader-source.h"
+ #include "vec.h"
+@@ -49,8 +50,8 @@ TextRenderer::TextRenderer(Canvas& canvas) :
+     size(0.03);
+ 
+     glGenBuffers(2, vbo_);
+-    ShaderSource vtx_source(GLMARK_DATA_PATH"/shaders/text-renderer.vert");
+-    ShaderSource frg_source(GLMARK_DATA_PATH"/shaders/text-renderer.frag");
++    ShaderSource vtx_source(Options::data_path + "/shaders/text-renderer.vert");
++    ShaderSource frg_source(Options::data_path + "/shaders/text-renderer.frag");
+ 
+     if (!Scene::load_shaders_from_strings(program_, vtx_source.str(),
+                                           frg_source.str()))
+diff --git a/src/texture.cpp b/src/texture.cpp
+index a3c503a..d240731 100644
+--- a/src/texture.cpp
++++ b/src/texture.cpp
+@@ -23,6 +23,7 @@
+  */
+ #include "texture.h"
+ #include "log.h"
++#include "options.h"
+ #include "util.h"
+ #include "image-reader.h"
+ 
+@@ -149,7 +150,7 @@ Texture::find_textures()
+         return TexturePrivate::textureMap;
+     }
+     vector<string> pathVec;
+-    string dataDir(GLMARK_DATA_PATH"/textures");
++    string dataDir(Options::data_path + "/textures");
+     Util::list_files(dataDir, pathVec);
+     // Now that we have a list of all of the image files available to us,
+     // let's go through and pull out the names and what format they're in
+-- 
+1.8.5.3
+

@@ -1,0 +1,135 @@
+From a5d483877e13c22a67d1511685e8d198c28146f0 Mon Sep 17 00:00:00 2001
+From: Frank Henigman <fjhenigman@google.com>
+Date: Thu, 7 May 2015 01:01:16 -0400
+Subject: [PATCH 5/6] GLState: change native config type to intptr_t
+
+Change type of native config to intptr_t so it can safely hold a pointer.
+---
+ src/canvas-generic.cpp | 2 +-
+ src/gl-state-egl.cpp   | 2 +-
+ src/gl-state-egl.h     | 2 +-
+ src/gl-state-glx.cpp   | 2 +-
+ src/gl-state-glx.h     | 2 +-
+ src/gl-state.h         | 4 +++-
+ src/native-state.h     | 6 ++++--
+ 7 files changed, 12 insertions(+), 8 deletions(-)
+
+diff --git a/src/canvas-generic.cpp b/src/canvas-generic.cpp
+index b0e774e..275375e 100644
+--- a/src/canvas-generic.cpp
++++ b/src/canvas-generic.cpp
+@@ -221,7 +221,7 @@ CanvasGeneric::resize_no_viewport(int width, int height)
+ {
+     bool request_fullscreen = (width == -1 && height == -1);
+ 
+-    int vid;
++    intptr_t vid;
+     if (!gl_state_.gotNativeConfig(vid))
+     {
+         Log::error("Error: Couldn't get GL visual config!\n");
+diff --git a/src/gl-state-egl.cpp b/src/gl-state-egl.cpp
+index 1d4a1e4..44916f1 100644
+--- a/src/gl-state-egl.cpp
++++ b/src/gl-state-egl.cpp
+@@ -379,7 +379,7 @@ GLStateEGL::swap()
+ }
+ 
+ bool
+-GLStateEGL::gotNativeConfig(int& vid)
++GLStateEGL::gotNativeConfig(intptr_t& vid)
+ {
+     if (!gotValidConfig())
+         return false;
+diff --git a/src/gl-state-egl.h b/src/gl-state-egl.h
+index 0e1f35b..600e58f 100644
+--- a/src/gl-state-egl.h
++++ b/src/gl-state-egl.h
+@@ -146,7 +146,7 @@ public:
+     bool reset();
+     void swap();
+     // Performs a config search, returning a native visual ID on success
+-    bool gotNativeConfig(int& vid);
++    bool gotNativeConfig(intptr_t& vid);
+     void getVisualConfig(GLVisualConfig& vc);
+ };
+ 
+diff --git a/src/gl-state-glx.cpp b/src/gl-state-glx.cpp
+index da819b2..0cb5413 100644
+--- a/src/gl-state-glx.cpp
++++ b/src/gl-state-glx.cpp
+@@ -123,7 +123,7 @@ GLStateGLX::swap()
+ }
+ 
+ bool
+-GLStateGLX::gotNativeConfig(int& vid)
++GLStateGLX::gotNativeConfig(intptr_t& vid)
+ {
+     if (!ensure_glx_fbconfig())
+         return false;
+diff --git a/src/gl-state-glx.h b/src/gl-state-glx.h
+index 86285f7..137fea4 100644
+--- a/src/gl-state-glx.h
++++ b/src/gl-state-glx.h
+@@ -46,7 +46,7 @@ public:
+     void init_gl_extensions();
+     bool reset();
+     void swap();
+-    bool gotNativeConfig(int& vid);
++    bool gotNativeConfig(intptr_t& vid);
+     void getVisualConfig(GLVisualConfig& vc);
+ 
+ private:
+diff --git a/src/gl-state.h b/src/gl-state.h
+index fe6f323..548c8a7 100644
+--- a/src/gl-state.h
++++ b/src/gl-state.h
+@@ -22,6 +22,8 @@
+ #ifndef GLMARK2_GL_STATE_H_
+ #define GLMARK2_GL_STATE_H_
+ 
++#include <stdint.h>
++
+ class GLVisualConfig;
+ 
+ class GLState
+@@ -35,7 +37,7 @@ public:
+     virtual bool valid() = 0;
+     virtual bool reset() = 0;
+     virtual void swap() = 0;
+-    virtual bool gotNativeConfig(int& vid) = 0;
++    virtual bool gotNativeConfig(intptr_t& vid) = 0;
+     virtual void getVisualConfig(GLVisualConfig& vc) = 0;
+ };
+ 
+diff --git a/src/native-state.h b/src/native-state.h
+index c6f259b..b6ce18c 100644
+--- a/src/native-state.h
++++ b/src/native-state.h
+@@ -22,12 +22,14 @@
+ #ifndef GLMARK2_NATIVE_STATE_H_
+ #define GLMARK2_NATIVE_STATE_H_
+ 
++#include <stdint.h>
++
+ class NativeState
+ {
+ public:
+     struct WindowProperties
+     {
+-        WindowProperties(int w, int h, bool f, int v)
++        WindowProperties(int w, int h, bool f, intptr_t v)
+             : width(w), height(h), fullscreen(f), visual_id(v) {}
+         WindowProperties()
+             : width(0), height(0), fullscreen(false), visual_id(0) {}
+@@ -35,7 +37,7 @@ public:
+         int width;
+         int height;
+         bool fullscreen;
+-        int visual_id;
++        intptr_t visual_id;
+     };
+ 
+     virtual ~NativeState() {}
+-- 
+2.2.0.rc0.207.ga3a616c
+

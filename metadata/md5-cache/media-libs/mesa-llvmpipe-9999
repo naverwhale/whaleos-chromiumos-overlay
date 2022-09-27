@@ -1,0 +1,14 @@
+DEFINED_PHASES=compile configure info install prepare setup test unpack
+DEPEND=libglvnd? ( media-libs/libglvnd ) !libglvnd? ( !media-libs/libglvnd ) X? ( !<x11-base/xorg-server-1.7 >=x11-libs/libX11-1.3.99.901 x11-libs/libXdamage x11-libs/libXext x11-libs/libXrandr x11-libs/libXxf86vm ) wayland? ( dev-libs/wayland >=dev-libs/wayland-protocols-1.8 ) llvm? ( virtual/libelf ) !media-libs/mesa dev-libs/expat dev-libs/libgcrypt virtual/udev >=x11-libs/libdrm-2.4.60 dev-libs/libxml2 sys-devel/bison sys-devel/flex virtual/pkgconfig x11-base/xorg-proto llvm? ( sys-devel/llvm ) >=dev-util/meson-0.56.0 >=dev-util/ninja-1.8.2 dev-util/meson-format-array
+DESCRIPTION=OpenGL-like graphic library for Linux
+EAPI=6
+HOMEPAGE=http://mesa3d.sourceforge.net/
+IUSE=video_cards_intel video_cards_amdgpu video_cards_radeon video_cards_freedreno video_cards_llvmpipe video_cards_mach64 video_cards_mga video_cards_nouveau video_cards_r128 video_cards_radeonsi video_cards_savage video_cards_sis video_cards_softpipe video_cards_tdfx video_cards_via video_cards_virgl video_cards_vmware +classic debug dri drm egl +gallium -gbm gles1 gles2 kernel_FreeBSD kvm_guest llvm +nptl pic selinux shared-glapi vulkan wayland xlib-glx X libglvnd cros_host cros_workon_tree_
+KEYWORDS=~*
+LICENSE=MIT LGPL-3 SGI-B-2.0
+PROPERTIES=live live
+RDEPEND=libglvnd? ( media-libs/libglvnd ) !libglvnd? ( !media-libs/libglvnd ) X? ( !<x11-base/xorg-server-1.7 >=x11-libs/libX11-1.3.99.901 x11-libs/libXdamage x11-libs/libXext x11-libs/libXrandr x11-libs/libXxf86vm ) wayland? ( dev-libs/wayland >=dev-libs/wayland-protocols-1.8 ) llvm? ( virtual/libelf ) !media-libs/mesa dev-libs/expat dev-libs/libgcrypt virtual/udev >=x11-libs/libdrm-2.4.60
+REQUIRED_USE=video_cards_amdgpu? ( llvm ) video_cards_llvmpipe? ( llvm )
+SLOT=0
+_eclasses_=base	ec46b36a6f6fd1d0b505a33e0b74e413	cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-credentials	4fd98ebbff6a1534ca9a89547e13dc92	cros-workon	ff100259492312ff6570e490bcb9a320	desktop	b1d22ac8bdd4679ab79c71aca235009d	eapi7-ver	756b3f27d8e46131d5cf3c51bd876446	epatch	ed88001f77c6dd0d5f09e45c1a5b480e	estack	686eaab303305a908fd57b2fd7617800	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	ltprune	2729691420b6deeda2a90b1f1183fb55	meson	5ec14fdbc5446b8767e87e186e3b1a52	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	ninja-utils	132cbb376048d079b5a012f5467c4e7f	preserve-libs	ef207dc62baddfddfd39a164d9797648	python-utils-r1	157a6a7a3e99c7dbdf81acc9dd4f57cd	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	vcs-clean	2a0f74a496fa2b1552c4f3398258b7bf
+_md5_=d85db60ba47ddc4d458fe9acf83822f9

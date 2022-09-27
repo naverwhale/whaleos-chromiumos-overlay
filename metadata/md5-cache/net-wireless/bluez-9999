@@ -1,0 +1,15 @@
+BDEPEND=>=dev-libs/glib-2.14:2= app-arch/bzip2:= sys-apps/dbus:= virtual/libudev:= cups? ( net-print/cups:= ) readline? ( sys-libs/readline:= ) >=chromeos-base/metrics-0.0.1-r3152:= dev-util/pkgconfig:= sys-devel/flex:= >=app-portage/elt-patches-20170815 virtual/pkgconfig virtual/pkgconfig dev-vcs/git
+DEFINED_PHASES=configure info install postinst prepare setup test unpack
+DEPEND=>=dev-libs/glib-2.14:2= app-arch/bzip2:= sys-apps/dbus:= virtual/libudev:= cups? ( net-print/cups:= ) readline? ( sys-libs/readline:= ) >=chromeos-base/metrics-0.0.1-r3152:= !<sys-devel/gettext-0.18.1.1-r3 || ( >=sys-devel/automake-1.16.1:1.16 >=sys-devel/automake-1.15.1:1.15 ) >=sys-devel/autoconf-2.69 >=sys-devel/libtool-2.4 sys-apps/baselayout >=chromeos-base/libchrome-0.0.1-r117:0=[cros-debug=]
+DESCRIPTION=Bluetooth Tools and System Daemons for Linux
+EAPI=7
+HOMEPAGE=http://www.bluez.org/
+IUSE=asan bluez-next bluez-upstream cups debug fuzzer hid2hci systemd readline bt_deprecated_tools cros-debug fuzzer asan coverage fuzzer msan tsan ubsan cros_host cros_workon_tree_
+KEYWORDS=~*
+LICENSE=GPL-2 LGPL-2.1
+PROPERTIES=live
+RDEPEND=>=dev-libs/glib-2.14:2= app-arch/bzip2:= sys-apps/dbus:= virtual/libudev:= cups? ( net-print/cups:= ) readline? ( sys-libs/readline:= ) >=chromeos-base/metrics-0.0.1-r3152:= !net-wireless/bluez-hcidump !net-wireless/bluez-libs !net-wireless/bluez-test !net-wireless/bluez-utils sys-apps/baselayout >=chromeos-base/libchrome-0.0.1-r117:0=[cros-debug=] virtual/tmpfiles
+REQUIRED_USE=?? ( bluez-next bluez-upstream )
+SLOT=0/9999
+_eclasses_=autotools	d0e5375d47f4c809f406eb892e531513	cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-credentials	4fd98ebbff6a1534ca9a89547e13dc92	cros-debug	d2750757005d6a444f8eb12bb9eb9944	cros-fuzzer	e815e6e711300a7010da60d6030db0c9	cros-sanitizers	fcc8f96c24bfce0853f07c00f65fb50a	cros-workon	ff100259492312ff6570e490bcb9a320	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	libchrome	b0adbfd1a2eae79766f7256eaad1da23	libchrome-version	f89118941e7f3c3825d2fe216c977c57	libtool	f143db5a74ccd9ca28c1234deffede96	multilib	2477ebe553d3e4d2c606191fe6c33602	systemd	71fd8d2065d102753fb9e4d20eaf3e9f	tmpfiles	6170dc7770585fb3f16efdee789a3218	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	udev	452708c3f55cf6e918b045adb949a9e6	user	7c566af8c48023219fd63246e88d6621
+_md5_=675a35b030df10efa5086f6ccd8c13f1

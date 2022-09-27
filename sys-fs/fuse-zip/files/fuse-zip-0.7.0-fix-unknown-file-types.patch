@@ -1,0 +1,43 @@
+From 16cbe7582987dc3c6b27bfb7c2648bbf5f8dc268 Mon Sep 17 00:00:00 2001
+From: Jeremie Boulic <jboulic@chromium.org>
+Date: Wed, 24 Jun 2020 14:29:03 +1000
+Subject: [PATCH] Treat file nodes with zero file type bits as regular files
+
+Fixes issue https://bitbucket.org/agalanin/fuse-zip/issues/67
+
+Partial port of https://bitbucket.org/agalanin/fuse-zip/commits/d2d7ec655a5bc0e6f7bec9ac31e75a1334609245
+---
+ lib/fuseZipData.cpp | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/lib/fuseZipData.cpp b/lib/fuseZipData.cpp
+index 64fdd5d..5391259 100644
+--- a/lib/fuseZipData.cpp
++++ b/lib/fuseZipData.cpp
+@@ -1,5 +1,5 @@
+ ////////////////////////////////////////////////////////////////////////////
+-//  Copyright (C) 2008-2019 by Alexander Galanin                          //
++//  Copyright (C) 2008-2020 by Alexander Galanin                          //
+ //  al@galanin.nnov.ru                                                    //
+ //  http://galanin.nnov.ru/~al                                            //
+ //                                                                        //
+@@ -161,8 +161,14 @@ mode_t FuseZipData::getEntryAttributes(zip_uint64_t id, const char *name, bool &
+             // force is_dir value
+             if (is_dir) {
+                 mode = (mode & static_cast<unsigned>(~S_IFMT)) | S_IFDIR;
+-            } else if ((mode & S_IFMT) == S_IFDIR) {
+-                mode = (mode & static_cast<unsigned>(~S_IFMT)) | S_IFREG;
++            } else {
++                if ((mode & S_IFMT) == S_IFDIR) {
++                    mode = (mode & static_cast<unsigned>(~S_IFMT)) | S_IFREG;
++                }
++                if ((mode & S_IFMT) == 0) {
++                    // treat unknown file types as regular
++                    mode = (mode & static_cast<unsigned>(~S_IFMT)) | S_IFREG;
++                }
+             }
+             isHardlink = (attr & FZ_ATTR_HARDLINK) != 0;
+             if (isHardlink) {
+-- 
+2.27.0.111.gc72c7da667-goog
+

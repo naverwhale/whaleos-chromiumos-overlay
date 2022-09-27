@@ -1,0 +1,1 @@
+qmi-ping-0.1_p20180606.ebuild

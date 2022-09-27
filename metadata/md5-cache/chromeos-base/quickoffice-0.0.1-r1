@@ -1,0 +1,8 @@
+DEFINED_PHASES=install
+DESCRIPTION=Initialization files for Quickoffice on Chrome OS
+EAPI=7
+HOMEPAGE=https://www.chromium.org
+KEYWORDS=*
+LICENSE=BSD-Google
+SLOT=0
+_md5_=083f4b0a1365777345dd60d2f9e02886

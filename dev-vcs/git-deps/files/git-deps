@@ -1,0 +1,8 @@
+#!/usr/bin/python3
+
+import sys
+
+from git_deps.cli import run
+
+if __name__ == '__main__':
+    sys.exit(run())

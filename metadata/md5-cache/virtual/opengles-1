@@ -1,0 +1,8 @@
+DEFINED_PHASES=-
+DESCRIPTION=Virtual for OpenGLES implementations
+EAPI=7
+KEYWORDS=*
+LICENSE=metapackage
+RDEPEND=media-libs/mesa[egl,gles2]
+SLOT=0
+_md5_=150f0c046fed33c8f29d19e6e865c128

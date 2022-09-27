@@ -1,0 +1,9 @@
+DEFINED_PHASES=install
+DESCRIPTION=Pixart Touchpad utility tool for Firmware Update
+EAPI=5
+HOMEPAGE=https://github.com/pixarteswd/pix_tpfwup
+KEYWORDS=*
+LICENSE=Apache-2.0
+SLOT=0
+SRC_URI=https://github.com/pixarteswd/pix_tpfwup/archive/v0.0.1-r3.tar.gz -> pixart_tpfwup-0.0.1-r3.tar.gz
+_md5_=240cd70e81336e789661845200429cf3

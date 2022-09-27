@@ -1,0 +1,12 @@
+BDEPEND=dev-vcs/git
+DEFINED_PHASES=compile info install setup unpack
+DEPEND=sys-boot/gnu-efi
+DESCRIPTION=Chrome OS embedded bootstub
+EAPI=7
+IUSE=cros_host cros_workon_tree_
+KEYWORDS=~*
+LICENSE=GPL-3
+PROPERTIES=live
+SLOT=0
+_eclasses_=cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-credentials	4fd98ebbff6a1534ca9a89547e13dc92	cros-workon	ff100259492312ff6570e490bcb9a320	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=09210bfe93e58855a6b5033a72533c54

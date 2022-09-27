@@ -1,0 +1,15 @@
+BDEPEND=dev-vcs/git
+DEFINED_PHASES=compile configure info install postinst preinst prepare prerm setup test unpack
+DEPEND==dev-rust/rand-0.6*:= =dev-rust/chrono-0.4*:= =dev-rust/clap-2.33*:= =dev-rust/libc-0.2*:= =dev-rust/log-0.4*:= =dev-rust/built-0.3*:= =dev-rust/sys-info-0.5.7:= =dev-rust/serde_json-1*:= >=virtual/rust-1.39.0:=
+DESCRIPTION=Utility for AVL qualification of SPI flash chips with flashrom
+EAPI=7
+HOMEPAGE=https://www.flashrom.org/Flashrom
+IUSE=cros_host cros_workon_tree_0b4dc5d2acaf537f04737355784e7261d7031408 cros-debug asan coverage fuzzer msan tsan ubsan amd64 asan cros_host fuzzer lsan +lto msan sccache test tsan ubsan x86
+KEYWORDS=*
+LICENSE=GPL-2
+PROPERTIES=live
+RDEPEND=!<=sys-apps/flashrom-tester-1.60-r41
+REQUIRED_USE=?? ( asan lsan msan tsan )
+SLOT=0/1.6.0-r60
+_eclasses_=cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-credentials	4fd98ebbff6a1534ca9a89547e13dc92	cros-debug	d2750757005d6a444f8eb12bb9eb9944	cros-rust	bfd52d742752ee9912dcb3a33b2e4642	cros-sanitizers	fcc8f96c24bfce0853f07c00f65fb50a	cros-workon	ff100259492312ff6570e490bcb9a320	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=d384e0e853b720e98eda9dc6a77db932

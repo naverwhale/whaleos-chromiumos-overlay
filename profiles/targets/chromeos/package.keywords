@@ -1,0 +1,24 @@
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Distributed under the terms of the GNU General Public License v2
+
+# This controls the KEYWORDs for all target ChromeOS boards.
+#
+# Note: This file is largely deprecated.  It is rare that you should use this.
+# - If you want to update the KEYWORDS in an ebuild for all targets, then do it
+#   in the ebuild itself (even for portage-stable/).
+# - If you want to use different versions in the cros_sdk chroot and the target
+#   boards, then use package.mask to control visibility.
+
+=dev-libs/atk-1.32.0-r1		amd64 arm x86
+=dev-python/python-xlib-0.14    amd64 arm x86
+# This should be kept in sync with package.mask.
+# Here we keyword the version we want for the board.
+~sys-devel/llvm-12.0.1		*
+~sys-devel/clang-3.8.1		*
+=x11-apps/xinput_calibrator-0.7.5	arm
+
+# If a newer version of chrome causes flaky failure, you can add
+# something like below, which assumes 15.0.859.0_rc-r1 was the
+# last non-flaky version.
+# This pins Chrome to the version below by marking more recent versions as unstable.
+#>chromeos-base/chromeos-chrome-22.0.1229.1_rc-r1	-amd64 -arm -x86 ~amd64 ~arm ~x86

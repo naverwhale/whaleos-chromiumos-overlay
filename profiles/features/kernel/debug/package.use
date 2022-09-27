@@ -1,0 +1,8 @@
+sys-kernel/chromeos-kernel-3_18 debug kcov
+sys-kernel/chromeos-kernel-4_4 debug kcov
+sys-kernel/chromeos-kernel-4_14 debug kcov
+sys-kernel/chromeos-kernel-4_19 debug kcov
+sys-kernel/chromeos-kernel-5_4 debug kcov
+sys-kernel/chromeos-kernel-5_10 debug kcov
+sys-kernel/chromeos-kernel-experimental debug kcov
+sys-kernel/chromeos-kernel-next debug kcov

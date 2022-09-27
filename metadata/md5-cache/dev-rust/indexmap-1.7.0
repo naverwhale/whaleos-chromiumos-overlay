@@ -1,0 +1,15 @@
+DEFINED_PHASES=compile configure install postinst preinst prepare prerm setup test unpack
+DEPEND==dev-rust/hashbrown-0.11*:= >=dev-rust/rayon-1.2.0:= <dev-rust/rayon-2.0.0 =dev-rust/serde-1*:= =dev-rust/autocfg-1*:= >=virtual/rust-1.39.0:=
+DESCRIPTION=A hash table with consistent order and fast iteration. The indexmap is a hash table where the iteration order of the key-value pairs is independent of the hash values of the keys. It has the usual hash table functionality, it preserves insertion order except after removals, and it allows lookup of its elements by either hash table key or numerical index. A corresponding hash set type is also provided. This crate was initially published under the name ordermap, but it was renamed to indexmap.
+EAPI=7
+HOMEPAGE=https://crates.io/crates/indexmap
+IUSE=cros-debug asan coverage fuzzer msan tsan ubsan amd64 asan cros_host fuzzer lsan +lto msan sccache test tsan ubsan x86
+KEYWORDS=*
+LICENSE=|| ( Apache-2.0 MIT )
+RDEPEND==dev-rust/hashbrown-0.11*:= >=dev-rust/rayon-1.2.0:= <dev-rust/rayon-2.0.0 =dev-rust/serde-1*:= =dev-rust/autocfg-1*:=
+REQUIRED_USE=?? ( asan lsan msan tsan )
+RESTRICT=test
+SLOT=1.7.0/r0
+SRC_URI=https://crates.io/api/v1/crates/indexmap/1.7.0/download -> indexmap-1.7.0.crate
+_eclasses_=cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-debug	d2750757005d6a444f8eb12bb9eb9944	cros-rust	bfd52d742752ee9912dcb3a33b2e4642	cros-sanitizers	fcc8f96c24bfce0853f07c00f65fb50a	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=83e4530754d9e73b7f5f16fd4271bf36

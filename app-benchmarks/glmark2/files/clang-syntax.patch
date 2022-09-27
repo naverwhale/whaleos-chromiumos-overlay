@@ -1,0 +1,45 @@
+--- a/src/scene-buffer.cpp.bak	2015-04-16 16:41:26.100731079 -0700
++++ b/src/scene-buffer.cpp	2015-04-16 16:41:44.084893456 -0700
+@@ -184,7 +184,6 @@
+     double wave_k_;
+     double wave_period_;
+     double wave_full_period_;
+-    double wave_fill_;
+     double wave_velocity_;
+ 
+     std::vector<double> displacement_;
+--- a/src/image-reader.h.bak	2015-04-16 16:53:59.039568770 -0700
++++ b/src/image-reader.h	2015-04-16 16:54:21.383771769 -0700
+@@ -32,7 +32,7 @@
+     virtual ~ImageReader() {}
+ };
+ 
+-class PNGReaderPrivate;
++struct PNGReaderPrivate;
+ 
+ class PNGReader : public ImageReader
+ {
+@@ -54,7 +54,7 @@
+     PNGReaderPrivate *priv_;
+ };
+ 
+-class JPEGReaderPrivate;
++struct JPEGReaderPrivate;
+ 
+ class JPEGReader : public ImageReader
+ {
+--- a/src/scene-refract.cpp.bak	2015-04-16 16:54:43.791975326 -0700
++++ b/src/scene-refract.cpp	2015-04-16 16:55:17.704283348 -0700
+@@ -244,10 +244,8 @@
+ {
+     program_.stop();
+     program_.release();
+-    if (tex_) {
+-        glDeleteTextures(2, &tex_[0]);
+-        tex_[DEPTH] = tex_[COLOR] = 0;
+-    }
++    glDeleteTextures(2, &tex_[0]);
++    tex_[DEPTH] = tex_[COLOR] = 0;
+     if (fbo_) {
+         glDeleteFramebuffers(1, &fbo_);
+         fbo_ = 0;

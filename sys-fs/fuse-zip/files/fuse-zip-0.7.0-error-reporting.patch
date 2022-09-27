@@ -1,0 +1,830 @@
+From e4fd0b7046a0e505f2cbdfcc37ca899951e01680 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Fran=C3=A7ois=20Degros?= <fdegros@chromium.org>
+Date: Mon, 29 Jun 2020 00:29:00 +1000
+Subject: [PATCH] Better error reporting via exceptions
+
+Added exception class ZipError to carry libzip error code.
+
+Made DataNode exception-transparent.
+
+Removed some try-catch thanks to the use of unique_ptr.
+
+If the ZIP archive cannot be opened and mounted, fuse-zip now returns
+different error codes depending on the underlying error condition.
+
+Ensured that C++ exceptions cannot escape from the following C-style
+FUSE callbacks: fusezip_open, fusezip_create, fusezip_mknod,
+fusezip_read, fusezip_write, fusezip_release, fusezip_ftruncate,
+fusezip_truncate and fusezip_rename. This pattern could (should) be
+applied to the rest of these FUSE callbacks.
+---
+ lib/dataNode.cpp    |  30 ++----
+ lib/fileNode.cpp    |  33 ------
+ lib/fuse-zip.cpp    | 246 ++++++++++++++++++++++----------------------
+ lib/fuse-zip.h      |   4 +-
+ lib/fuseZipData.cpp |  39 ++++---
+ lib/util.h          |  50 +++++++++
+ main.cpp            |  20 ++--
+ 7 files changed, 215 insertions(+), 207 deletions(-)
+
+diff --git a/lib/dataNode.cpp b/lib/dataNode.cpp
+index 17c94c2..0efd7bc 100644
+--- a/lib/dataNode.cpp
++++ b/lib/dataNode.cpp
+@@ -27,9 +27,6 @@
+ #include <cstring>
+ #include <ctime>
+ #include <memory>
+-#include <stdexcept>
+-
+-#include <syslog.h>
+ 
+ #include "dataNode.h"
+ #include "extraField.h"
+@@ -118,21 +115,13 @@ int DataNode::open(struct zip *zip) {
+     }
+     if (_state == NodeState::CLOSED) {
+         _open_count = 1;
+-        try {
+-            assert(zip != NULL);
+-            if (_size > std::numeric_limits<size_t>::max()) {
+-                return -ENOMEM;
+-            }
+-            assert(_id != FAKE_ID);
+-            _buffer.reset(new BigBuffer(zip, _id, static_cast<size_t>(_size)));
+-            _state = NodeState::OPENED;
+-        }
+-        catch (std::bad_alloc&) {
++        assert(zip != NULL);
++        if (_size > std::numeric_limits<size_t>::max()) {
+             return -ENOMEM;
+         }
+-        catch (std::exception&) {
+-            return -EIO;
+-        }
++        assert(_id != FAKE_ID);
++        _buffer.reset(new BigBuffer(zip, _id, static_cast<size_t>(_size)));
++        _state = NodeState::OPENED;
+     }
+     return 0;
+ }
+@@ -184,15 +173,10 @@ int DataNode::truncate(size_t offset) {
+         if (_state != NodeState::NEW) {
+             _state = NodeState::CHANGED;
+         }
+-        try {
+-            _buffer->truncate(offset);
+-            return 0;
+-        }
+-        catch (const std::bad_alloc &) {
+-            return EIO;
+-        }
++        _buffer->truncate(offset);
+         _mtime = currentTime();
+         _metadataChanged = true;
++        return 0;
+     } else {
+         return EBADF;
+     }
+diff --git a/lib/fileNode.cpp b/lib/fileNode.cpp
+index bd1538c..efe1105 100644
+--- a/lib/fileNode.cpp
++++ b/lib/fileNode.cpp
+@@ -30,8 +30,6 @@
+ #include <memory>
+ #include <stdexcept>
+ 
+-#include <syslog.h>
+-
+ #include "fileNode.h"
+ #include "extraField.h"
+ 
+@@ -54,22 +52,14 @@ FileNode *FileNode::createFile (struct zip *zip, const char *fname,
+         uid_t owner, gid_t group, mode_t mode, dev_t dev) {
+     auto data = DataNode::createNew(mode, owner, group, dev);
+     FileNode *n = new FileNode(zip, fname, NEW_NODE_INDEX, std::move(data));
+-    if (n == NULL) {
+-        return NULL;
+-    }
+     n->parse_name();
+-
+     return n;
+ }
+ 
+ FileNode *FileNode::createSymlink(struct zip *zip, const char *fname) {
+     auto data = DataNode::createNew(S_IFLNK | 0777, 0, 0, 0);
+     FileNode *n = new FileNode(zip, fname, NEW_NODE_INDEX, std::move(data));
+-    if (n == NULL) {
+-        return NULL;
+-    }
+     n->parse_name();
+-
+     return n;
+ }
+ 
+@@ -80,12 +70,8 @@ FileNode *FileNode::createIntermediateDir(struct zip *zip,
+         const char *fname) {
+     auto data = DataNode::createTmpDir(S_IFDIR | 0755, 0, 0, 0);
+     FileNode *n = new FileNode(zip, fname, TMP_DIR_INDEX, std::move(data));
+-    if (n == NULL) {
+-        return NULL;
+-    }
+     n->m_commentChanged = false;
+     n->parse_name();
+-
+     return n;
+ }
+ 
+@@ -95,21 +81,14 @@ FileNode *FileNode::createDir(struct zip *zip, const char *fname,
+     // FUSE does not pass S_IFDIR bit here
+     auto data = DataNode::createNew(S_IFDIR | mode, owner, group, 0);
+     FileNode *n = new FileNode(zip, fname, id, std::move(data));
+-    if (n == NULL) {
+-        return NULL;
+-    }
+     n->m_commentChanged = false;
+     n->parse_name();
+-
+     return n;
+ }
+ 
+ FileNode *FileNode::createRootNode(struct zip *zip) {
+     auto data = DataNode::createNew(S_IFDIR | 0755, 0, 0, 0);
+     FileNode *n = new FileNode(zip, "", ROOT_NODE_INDEX, std::move(data));
+-    if (n == NULL) {
+-        return NULL;
+-    }
+     n->name = n->full_name.c_str();
+ 
+     int len = 0;
+@@ -133,13 +112,8 @@ FileNode *FileNode::createNodeForZipEntry(struct zip *zip,
+     assert(id >= 0);
+     auto data = DataNode::createExisting(zip, static_cast<zip_uint64_t>(id), mode);
+     FileNode *n = new FileNode(zip, fname, id, data);
+-    if (n == NULL) {
+-        return NULL;
+-    }
+-
+     n->parse_name();
+     n->readComment();
+-
+     return n;
+ }
+ 
+@@ -147,13 +121,8 @@ FileNode *FileNode::createHardlink(struct zip *zip,
+             const char *fname, zip_int64_t id, FileNode *target) {
+     assert(id >= 0);
+     FileNode *n = new FileNode(zip, fname, id, target->_data);
+-    if (n == NULL) {
+-        return NULL;
+-    }
+-
+     n->parse_name();
+     n->readComment();
+-
+     return n;
+ }
+ 
+@@ -427,8 +396,6 @@ bool FileNode::setComment(const char *value, uint16_t length) {
+     char *newComment = NULL;
+     if (value != NULL) {
+         newComment = new char[length];
+-        if (newComment == NULL)
+-            return false;
+         memcpy(newComment, value, length);
+     }
+ 
+diff --git a/lib/fuse-zip.cpp b/lib/fuse-zip.cpp
+index 0db402e..661e03b 100644
+--- a/lib/fuse-zip.cpp
++++ b/lib/fuse-zip.cpp
+@@ -41,76 +41,70 @@
+ #include <cstring>
+ #include <cstdlib>
+ #include <limits>
++#include <memory>
+ #include <queue>
+ 
+ #include "fuse-zip.h"
+ #include "types.h"
+ #include "fileNode.h"
+ #include "fuseZipData.h"
++#include "util.h"
+ 
+ static const char FILE_COMMENT_XATTR_NAME[] = "user.comment";
+ static const size_t FILE_COMMENT_XATTR_NAME_LENZ = 13; // length including NULL-byte
+ 
+ using namespace std;
+ 
+-//TODO: Move printf-s out this function
++// Converts a C++ exception into a negative error code.
++// Logs the error to stderr and syslog.
++// Must be called from within a catch block.
++static int exceptionToError(const char *const action, const char *const file) {
++    const auto log = [action, file](const char *const reason) {
++        if (false) {
++            syslog(LOG_ERR, "Cannot %s '%s': %s", action, file, reason);
++        } else {
++            syslog(LOG_ERR, "Cannot %s: %s", action, reason);
++        }
++    };
++
++    try {
++        throw;
++    } catch (const std::bad_alloc &) {
++        log("No memory");
++        return -ENOMEM;
++    } catch (const std::exception &e) {
++        log(e.what());
++        return -EIO;
++    } catch (...) {
++        log("Unknown error");
++        return -EIO;
++    }
++}
++
+ FuseZipData *initFuseZip(const char *program, const char *fileName,
+-        bool readonly, bool force_precise_time) {
+-    FuseZipData *data = NULL;
++                         bool readonly, bool force_precise_time) {
++    (void)program;
+     int err;
+-    struct zip *zip_file;
+-    
+-    int flags = (readonly) ? ZIP_RDONLY : ZIP_CREATE;
+-    if ((zip_file = zip_open(fileName, flags, &err)) == NULL) {
+-        zip_error_t error;
+-        zip_error_init_with_code(&error, err);
+-        fprintf(stderr, "%s: cannot open ZIP archive %s: %s\n", program, fileName, zip_error_strerror(&error));
+-        zip_error_fini(&error);
+-        return data;
+-    }
++    const int flags = readonly ? ZIP_RDONLY : ZIP_CREATE;
++    struct zip *const zip_file = zip_open(fileName, flags, &err);
+ 
+-    try {
+-        // current working directory
+-        char *cwd = (char*)malloc(PATH_MAX + 1);
+-        if (cwd == NULL) {
+-            throw std::bad_alloc();
+-        }
+-        if (getcwd(cwd, PATH_MAX) == NULL) {
+-            perror(NULL);
+-            free(cwd);
+-            return data;
+-        }
++    if (!zip_file)
++        throw ZipError("Cannot open ZIP archive", err);
+ 
+-        data = new FuseZipData(fileName, zip_file, cwd, force_precise_time);
+-        free(cwd);
+-        if (data == NULL) {
+-            throw std::bad_alloc();
+-        }
+-        try {
+-            data->build_tree(readonly);
+-        }
+-        catch (...) {
+-            delete data;
+-            throw;
+-        }
+-    }
+-    catch (std::bad_alloc&) {
+-        syslog(LOG_ERR, "no enough memory");
+-        fprintf(stderr, "%s: no enough memory\n", program);
+-        return NULL;
+-    }
+-    catch (const std::exception &e) {
+-        syslog(LOG_ERR, "error opening ZIP file: %s", e.what());
+-        fprintf(stderr, "%s: unable to open ZIP file: %s\n", program, e.what());
+-        return NULL;
+-    }
+-    return data;
++    // current working directory
++    char cwd[PATH_MAX + 1];
++    if (!getcwd(cwd, PATH_MAX))
++        throw std::runtime_error("Cannot get current directory");
++
++    std::unique_ptr<FuseZipData> data(
++        new FuseZipData(fileName, zip_file, cwd, force_precise_time));
++    data->build_tree(readonly);
++    return data.release();
+ }
+ 
+ void *fusezip_init(struct fuse_conn_info *conn) {
+     (void) conn;
+     FuseZipData *data = (FuseZipData*)fuse_get_context()->private_data;
+-    syslog(LOG_INFO, "Mounting file system on %s (cwd=%s)", data->m_archiveName, data->m_cwd.c_str());
+     return data;
+ }
+ 
+@@ -126,7 +120,6 @@ void fusezip_destroy(void *data) {
+     FuseZipData *d = (FuseZipData*)data;
+     d->save ();
+     delete d;
+-    syslog(LOG_INFO, "File system unmounted");
+ }
+ 
+ FileNode *get_file_node(const char *fname) {
+@@ -208,7 +201,7 @@ int fusezip_statfs(const char *path, struct statvfs *buf) {
+     return 0;
+ }
+ 
+-int fusezip_open(const char *path, struct fuse_file_info *fi) {
++int fusezip_open(const char *path, struct fuse_file_info *fi) try {
+     if (*path == '\0') {
+         return -ENOENT;
+     }
+@@ -221,18 +214,13 @@ int fusezip_open(const char *path, struct fuse_file_info *fi) {
+     }
+     fi->fh = (uint64_t)node;
+ 
+-    try {
+-        return node->open();
+-    }
+-    catch (std::bad_alloc&) {
+-        return -ENOMEM;
+-    }
+-    catch (std::exception&) {
+-        return -EIO;
+-    }
++    return node->open();
++} catch (...) {
++    return exceptionToError("open file", path);
+ }
+ 
+-int fusezip_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
++int fusezip_create(const char *path, mode_t mode,
++                   struct fuse_file_info *fi) try {
+     if (*path == '\0') {
+         return -EACCES;
+     }
+@@ -240,18 +228,20 @@ int fusezip_create(const char *path, mode_t mode, struct fuse_file_info *fi) {
+     if (node != NULL) {
+         return -EEXIST;
+     }
+-    node = FileNode::createFile (get_zip(), path + 1,
+-            fuse_get_context()->uid, fuse_get_context()->gid, mode);
++    node = FileNode::createFile(get_zip(), path + 1, fuse_get_context()->uid,
++                                fuse_get_context()->gid, mode);
+     if (node == NULL) {
+         return -ENOMEM;
+     }
+-    get_data()->insertNode (node);
++    get_data()->insertNode(node);
+     fi->fh = (uint64_t)node;
+ 
+     return node->open();
++} catch (...) {
++    return exceptionToError("create file", path);
+ }
+ 
+-int fusezip_mknod(const char *path, mode_t mode, dev_t dev) {
++int fusezip_mknod(const char *path, mode_t mode, dev_t dev) try {
+     if (*path == '\0') {
+         return -EACCES;
+     }
+@@ -259,47 +249,55 @@ int fusezip_mknod(const char *path, mode_t mode, dev_t dev) {
+     if (node != NULL) {
+         return -EEXIST;
+     }
+-    node = FileNode::createFile (get_zip(), path + 1,
+-            fuse_get_context()->uid, fuse_get_context()->gid, mode, dev);
++    node = FileNode::createFile(get_zip(), path + 1, fuse_get_context()->uid,
++                                fuse_get_context()->gid, mode, dev);
+     if (node == NULL) {
+         return -ENOMEM;
+     }
+-    get_data()->insertNode (node);
++    get_data()->insertNode(node);
+ 
+     return 0;
++} catch (...) {
++    return exceptionToError("mknod", path);
+ }
+ 
+-int fusezip_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
+-    (void) path;
+-
++int fusezip_read(const char *path, char *buf, size_t size, off_t offset,
++                 struct fuse_file_info *fi) try {
+     if (offset < 0)
+         return -EINVAL;
+-    return ((FileNode*)fi->fh)->read(buf, size, static_cast<size_t>(offset));
++    return reinterpret_cast<FileNode *>(fi->fh)->read(
++        buf, size, static_cast<size_t>(offset));
++} catch (...) {
++    return exceptionToError("read file", path);
+ }
+ 
+-int fusezip_write(const char *path, const char *buf, size_t size, off_t offset, struct fuse_file_info *fi) {
+-    (void) path;
+-
++int fusezip_write(const char *path, const char *buf, size_t size, off_t offset,
++                  struct fuse_file_info *fi) try {
+     if (offset < 0)
+         return -EINVAL;
+-    return ((FileNode*)fi->fh)->write(buf, size, static_cast<size_t>(offset));
++    return reinterpret_cast<FileNode *>(fi->fh)->write(
++        buf, size, static_cast<size_t>(offset));
++} catch (...) {
++    return exceptionToError("write file", path);
+ }
+ 
+-int fusezip_release (const char *path, struct fuse_file_info *fi) {
+-    (void) path;
+-
+-    return ((FileNode*)fi->fh)->close();
++int fusezip_release(const char *path, struct fuse_file_info *fi) try {
++    return reinterpret_cast<FileNode *>(fi->fh)->close();
++} catch (...) {
++    return exceptionToError("close file", path);
+ }
+ 
+-int fusezip_ftruncate(const char *path, off_t offset, struct fuse_file_info *fi) {
+-    (void) path;
+-
++int fusezip_ftruncate(const char *path, off_t offset,
++                      struct fuse_file_info *fi) try {
+     if (offset < 0)
+         return -EINVAL;
+-    return -((FileNode*)fi->fh)->truncate(static_cast<size_t>(offset));
++    return -reinterpret_cast<FileNode *>(fi->fh)->truncate(
++        static_cast<size_t>(offset));
++} catch (...) {
++    return exceptionToError("truncate file", path);
+ }
+ 
+-int fusezip_truncate(const char *path, off_t offset) {
++int fusezip_truncate(const char *path, off_t offset) try {
+     if (*path == '\0') {
+         return -EACCES;
+     }
+@@ -321,6 +319,8 @@ int fusezip_truncate(const char *path, off_t offset) {
+         return -res;
+     }
+     return node->close();
++} catch (...) {
++    return exceptionToError("truncate file", path);
+ }
+ 
+ int fusezip_unlink(const char *path) {
+@@ -371,7 +371,7 @@ int fusezip_mkdir(const char *path, mode_t mode) {
+     return 0;
+ }
+ 
+-int fusezip_rename(const char *path, const char *new_path) {
++int fusezip_rename(const char *path, const char *new_path) try {
+     if (*path == '\0') {
+         return -ENOENT;
+     }
+@@ -385,7 +385,7 @@ int fusezip_rename(const char *path, const char *new_path) {
+     FileNode *new_node = get_file_node(new_path + 1);
+     if (new_node != NULL) {
+         int res = get_data()->removeNode(new_node);
+-        if (res !=0) {
++        if (res != 0) {
+             return -res;
+         }
+     }
+@@ -403,48 +403,46 @@ int fusezip_rename(const char *path, const char *new_path) {
+         new_name.push_back('/');
+     }
+ 
+-    try {
+-        struct zip *z = get_zip();
+-        // Renaming directory and its content recursively
+-        if (node->is_dir()) {
+-            queue<FileNode*> q;
+-            q.push(node);
+-            while (!q.empty()) {
+-                FileNode *n = q.front();
+-                q.pop();
+-                for (nodelist_t::const_iterator i = n->childs.begin(); i != n->childs.end(); ++i) {
+-                    FileNode *nn = *i;
+-                    q.push(nn);
+-                    char *name = (char*)malloc(len + nn->full_name.size() - oldLen + (nn->is_dir() ? 2 : 1));
+-                    if (name == NULL) {
+-                        //TODO: check that we are have enough memory before entering this loop
+-                        return -ENOMEM;
+-                    }
+-                    strcpy(name, new_name.c_str());
+-                    strcpy(name + len, nn->full_name.c_str() + oldLen);
+-                    if (nn->is_dir()) {
+-                        strcat(name, "/");
+-                    }
+-                    if (nn->present_in_zip()) {
+-                        zip_file_rename(z, nn->id(), name, ZIP_FL_ENC_GUESS);
+-                    }
+-                    // changing child list may cause loop iterator corruption
+-                    get_data()->renameNode (nn, name, false);
+-                    
+-                    free(name);
++    struct zip *z = get_zip();
++    // Renaming directory and its content recursively
++    if (node->is_dir()) {
++        queue<FileNode *> q;
++        q.push(node);
++        while (!q.empty()) {
++            FileNode *n = q.front();
++            q.pop();
++            for (FileNode *const nn : n->childs) {
++                q.push(nn);
++                char *name = (char *)malloc(len + nn->full_name.size() -
++                                            oldLen + (nn->is_dir() ? 2 : 1));
++                if (name == NULL) {
++                    // TODO: check that we are have enough memory before
++                    // entering this loop
++                    return -ENOMEM;
+                 }
++                strcpy(name, new_name.c_str());
++                strcpy(name + len, nn->full_name.c_str() + oldLen);
++                if (nn->is_dir()) {
++                    strcat(name, "/");
++                }
++                if (nn->present_in_zip()) {
++                    zip_file_rename(z, nn->id(), name, ZIP_FL_ENC_GUESS);
++                }
++                // changing child list may cause loop iterator corruption
++                get_data()->renameNode(nn, name, false);
++
++                free(name);
+             }
+         }
+-        if (node->present_in_zip()) {
+-            zip_file_rename(z, node->id(), new_name.c_str(), ZIP_FL_ENC_GUESS);
+-        }
+-        get_data()->renameNode (node, new_name.c_str(), true);
+-
+-        return 0;
+     }
+-    catch (...) {
+-        return -EIO;
++    if (node->present_in_zip()) {
++        zip_file_rename(z, node->id(), new_name.c_str(), ZIP_FL_ENC_GUESS);
+     }
++    get_data()->renameNode(node, new_name.c_str(), true);
++
++    return 0;
++} catch (...) {
++    return exceptionToError("rename", path);
+ }
+ 
+ int fusezip_utimens(const char *path, const struct timespec tv[2]) {
+diff --git a/lib/fuse-zip.h b/lib/fuse-zip.h
+index c52cc62..0e9730f 100644
+--- a/lib/fuse-zip.h
++++ b/lib/fuse-zip.h
+@@ -42,8 +42,6 @@ class FuseZipData *initFuseZip(const char *program, const char *fileName,
+ /**
+  * Initialize filesystem
+  *
+- * Report current working dir and archive file name to syslog.
+- *
+  * @return filesystem-private data
+  */
+ void *fusezip_init(struct fuse_conn_info *conn);
+@@ -51,7 +49,7 @@ void *fusezip_init(struct fuse_conn_info *conn);
+ /**
+  * Destroy filesystem
+  *
+- * Save all modified data back to ZIP archive and report to syslog about completion.
++ * Save all modified data back to ZIP archive.
+  * Note that filesystem unmounted before this method finishes
+  * (see https://bitbucket.org/agalanin/fuse-zip/issues/7).
+  */
+diff --git a/lib/fuseZipData.cpp b/lib/fuseZipData.cpp
+index 6852678..11893d8 100644
+--- a/lib/fuseZipData.cpp
++++ b/lib/fuseZipData.cpp
+@@ -37,15 +37,16 @@ FuseZipData::FuseZipData(const char *archiveName, struct zip *z, const char *cwd
+ 
+ FuseZipData::~FuseZipData() {
+     if (chdir(m_cwd.c_str()) != 0) {
+-        syslog(LOG_ERR, "Unable to chdir() to archive directory %s: %s. Trying to save file into $TMP or /tmp...",
+-                m_cwd.c_str(), strerror(errno));
++        syslog(LOG_ERR, "Cannot chdir to archive directory '%s': %s",
++               m_cwd.c_str(), strerror(errno));
+         const char *tmpDir = getenv("TMP");
+         if (tmpDir == NULL || chdir(tmpDir) != 0) {
+             if (tmpDir != NULL) {
+-                syslog(LOG_WARNING, "Unable to chdir() to %s: %s.", tmpDir, strerror(errno));
++                syslog(LOG_ERR, "Cannot chdir to '%s': %s", tmpDir,
++                       strerror(errno));
+             }
+             if (chdir("/tmp") != 0) {
+-                syslog(LOG_ERR, "Unable to chdir() to /tmp: %s!", strerror(errno));
++                syslog(LOG_ERR, "Cannot chdir to '/tmp': %s", strerror(errno));
+             }
+         }
+     }
+@@ -103,7 +104,8 @@ void FuseZipData::build_tree(bool readonly) {
+         if (notHLink)
+             attachNode(i, name, mode, readonly, needPrefix, origNames);
+         else if (!readonly)
+-            throw std::runtime_error("hard links are supported only in read-only mode");
++            throw ZipError("Hard links are supported only in read-only mode",
++                           ZIP_ER_OPNOTSUPP);
+     }
+     // Connect nodes to tree. Missing intermediate nodes created on demand.
+     for (filemap_t::const_iterator i = files.begin(); i != files.end(); ++i)
+@@ -126,7 +128,7 @@ void FuseZipData::connectNodeToTree (FileNode *node) {
+         files[parent->full_name.c_str()] = parent;
+         connectNodeToTree (parent);
+     } else if (!parent->is_dir()) {
+-        throw std::runtime_error ("bad archive structure");
++        throw ZipError("Bad archive structure", ZIP_ER_INCONS);
+     }
+     // connecting to parent
+     node->parent = parent;
+@@ -241,8 +243,8 @@ void FuseZipData::attachNode(zip_int64_t id, const char *name, mode_t mode, bool
+     convertFileName(name, readonly, needPrefix, converted);
+     const char *cname = converted.c_str();
+     if (files.find(cname) != files.end()) {
+-        syslog(LOG_ERR, "duplicated file name: %s", cname);
+-        throw std::runtime_error("duplicate file names");
++        throw ZipError(std::string("Duplicated file name: ") + cname,
++                       ZIP_ER_EXISTS);
+     }
+     FileNode *node = FileNode::createNodeForZipEntry(m_zip, cname, id, mode);
+     if (node == NULL) {
+@@ -313,8 +315,8 @@ bool FuseZipData::attachHardlink(zip_int64_t sid, const char *name, mode_t mode,
+     convertFileName(name, readonly, needPrefix, converted);
+     const char *cname = converted.c_str();
+     if (files.find(cname) != files.end()) {
+-        syslog(LOG_ERR, "duplicated file name: %s", cname);
+-        throw std::runtime_error("duplicate file names");
++        throw ZipError(std::string("Duplicated file name: ") + cname,
++                       ZIP_ER_EXISTS);
+     }
+     FileNode *node = FileNode::createHardlink(m_zip, cname, sid, it->second);
+     if (node == NULL) {
+@@ -345,10 +347,10 @@ int FuseZipData::removeNode(FileNode *node) {
+ 
+ void FuseZipData::validateFileName(const char *fname) {
+     if (fname[0] == 0) {
+-        throw std::runtime_error("empty file name");
++        throw ZipError("Empty file name", ZIP_ER_INCONS);
+     }
+     if (strstr(fname, "//") != NULL) {
+-        throw std::runtime_error(std::string("bad file name (two slashes): ") + fname);
++        throw ZipError(std::string("Bad file name: ") + fname, ZIP_ER_INCONS);
+     }
+ }
+ 
+@@ -367,7 +369,9 @@ void FuseZipData::convertFileName(const char *fname, bool readonly,
+     // add prefix
+     if (fname[0] == '/') {
+         if (!readonly) {
+-            throw std::runtime_error("absolute paths are not supported in read-write mode");
++            throw ZipError(
++                "Absolute paths are not supported in read-write mode",
++                ZIP_ER_OPNOTSUPP);
+         } else {
+             assert(needPrefix);
+             converted.append(ROOT_PREFIX);
+@@ -377,7 +381,9 @@ void FuseZipData::convertFileName(const char *fname, bool readonly,
+         bool parentRelative = false;
+         while (strncmp(fname, "../", 3) == 0) {
+             if (!readonly) {
+-                throw std::runtime_error("paths relative to parent directory are not supported in read-write mode");
++                throw ZipError("Paths relative to parent directory are not "
++                               "supported in read-write mode",
++                               ZIP_ER_OPNOTSUPP);
+             }
+             assert(needPrefix);
+             converted.append(UP_PREFIX);
+@@ -400,14 +406,15 @@ void FuseZipData::convertFileName(const char *fname, bool readonly,
+     while (start[0] != 0 && (cur = strchr(start + 1, '/')) != NULL) {
+         if ((cur - start == 1 && start[0] == '.') ||
+             (cur - start == 2 && start[0] == '.' && start[1] == '.')) {
+-            throw std::runtime_error(std::string("bad file name: ") + orig);
++            throw ZipError(std::string("Bad file name: ") + orig,
++                           ZIP_ER_INCONS);
+         }
+         converted.append(start, static_cast<size_t>(cur - start + 1));
+         start = cur + 1;
+     }
+     // end of string is reached
+     if (strcmp(start, ".") == 0 || strcmp(start, "..") == 0) {
+-        throw std::runtime_error(std::string("bad file name: ") + orig);
++        throw ZipError(std::string("Bad file name: ") + orig, ZIP_ER_INCONS);
+     }
+     converted.append(start);
+ }
+diff --git a/lib/util.h b/lib/util.h
+index 94ac191..1fe63be 100644
+--- a/lib/util.h
++++ b/lib/util.h
+@@ -20,8 +20,58 @@
+ #ifndef UTIL_H
+ #define UTIL_H
+ 
++#include <stdexcept>
++#include <string>
++#include <utility>
++
+ #include <time.h>
++#include <zip.h>
+ 
+ struct timespec currentTime();
+ 
++/** An exception carrying a libzip error code. */
++class ZipError : public std::runtime_error {
++  public:
++    ZipError(std::string message, zip_t *const archive)
++        : std::runtime_error(MakeMessage(std::move(message), archive)),
++          code_(zip_error_code_zip(zip_get_error(archive))) {}
++
++    ZipError(std::string message, zip_file_t *const file)
++        : std::runtime_error(MakeMessage(std::move(message), file)),
++          code_(zip_error_code_zip(zip_file_get_error(file))) {}
++
++    ZipError(std::string message, const int code)
++        : std::runtime_error(MakeMessage(std::move(message), code)),
++          code_(code) {}
++
++    /** Gets the libzip error code. */
++    int code() const { return code_; }
++
++    static std::string MakeMessage(std::string message, zip_t *const archive) {
++        message += ": ";
++        message += zip_strerror(archive);
++        return message;
++    }
++
++    static std::string MakeMessage(std::string message,
++                                   zip_file_t *const file) {
++        message += ": ";
++        message += zip_file_strerror(file);
++        return message;
++    }
++
++    static std::string MakeMessage(std::string message, const int code) {
++        message += ": ";
++        zip_error_t ze;
++        zip_error_init_with_code(&ze, code);
++        message += zip_error_strerror(&ze);
++        zip_error_fini(&ze);
++        return message;
++    }
++
++  private:
++    /** libzip error code. */
++    const int code_;
++};
++
+ #endif
+diff --git a/main.cpp b/main.cpp
+index cb19ac5..f1e605d 100644
+--- a/main.cpp
++++ b/main.cpp
+@@ -41,6 +41,7 @@
+ 
+ #include "fuse-zip.h"
+ #include "fuseZipData.h"
++#include "util.h"
+ 
+ #if (LIBZIP_VERSION_MAJOR < 1)
+     #error "libzip >= 1.0 is required!"
+@@ -191,7 +192,7 @@ static const struct fuse_opt fusezip_opts[] = {
+     {NULL, 0, 0}
+ };
+ 
+-int main(int argc, char *argv[]) {
++int main(int argc, char *argv[]) try {
+     if (sizeof(void*) > sizeof(uint64_t)) {
+         fprintf(stderr,"%s: This program cannot be run on your system because of FUSE design limitation\n", PROGRAM);
+         return EXIT_FAILURE;
+@@ -236,12 +237,8 @@ int main(int argc, char *argv[]) {
+             param.readonly = true;
+         }
+ 
+-        openlog(PROGRAM, LOG_PID, LOG_USER);
+-        if ((data = initFuseZip(PROGRAM, param.fileName, param.readonly, param.force_precise_time))
+-                == NULL) {
+-            fuse_opt_free_args(&args);
+-            return EXIT_FAILURE;
+-        }
++        openlog(PROGRAM, LOG_PID | LOG_PERROR, LOG_USER);
++        data = initFuseZip(PROGRAM, param.fileName, param.readonly, param.force_precise_time);
+     }
+ 
+     static struct fuse_operations fusezip_oper;
+@@ -301,5 +298,12 @@ int main(int argc, char *argv[]) {
+     res = fuse_loop(fuse);
+     fuse_teardown(fuse, mountpoint);
+     return (res == 0) ? EXIT_SUCCESS : EXIT_FAILURE;
++} catch (const ZipError &e) {
++    fprintf(stderr, "%s: %s\n", PROGRAM, e.what());
++    // Shift libzip error codes in order to avoid collision with FUSE errors.
++    const int ZIP_ER_BASE = 10;
++    return ZIP_ER_BASE + e.code();
++} catch (const std::exception &e) {
++    fprintf(stderr, "%s: %s\n", PROGRAM, e.what());
++    return EXIT_FAILURE;
+ }
+-
+-- 
+2.33.0.464.g1972c5931b-goog
+

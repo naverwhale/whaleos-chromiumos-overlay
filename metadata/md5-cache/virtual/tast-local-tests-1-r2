@@ -1,0 +1,8 @@
+DEFINED_PHASES=-
+DESCRIPTION=Virtual package for private Tast local test bundles. This package can be overridden by overlays to bring in private tests.
+EAPI=7
+HOMEPAGE=https://chromium.googlesource.com/chromiumos/platform/tast/
+KEYWORDS=*
+LICENSE=metapackage
+SLOT=0
+_md5_=3e7d1dc2b787c436feb4ab40ea32a74c

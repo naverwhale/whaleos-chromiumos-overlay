@@ -1,0 +1,58 @@
+From ec93b6c088dda4bfd93587d2dd6eb0295ea58f23 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?St=C3=A9phane=20Graber?= <stgraber@ubuntu.com>
+Date: Wed, 4 Dec 2019 13:53:05 -0500
+Subject: [PATCH 1/2] lxd/util: Add HasFilesystem
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Signed-off-by: Stéphane Graber <stgraber@ubuntu.com>
+---
+ lxd/util/kernel.go | 26 ++++++++++++++++++++++++++
+ 1 file changed, 26 insertions(+)
+
+diff --git a/lxd/util/kernel.go b/lxd/util/kernel.go
+index 6f75915ba..0272dd101 100644
+--- a/lxd/util/kernel.go
++++ b/lxd/util/kernel.go
+@@ -1,7 +1,10 @@
+ package util
+ 
+ import (
++	"bufio"
+ 	"fmt"
++	"os"
++	"strings"
+ 
+ 	"github.com/lxc/lxd/shared"
+ )
+@@ -16,3 +19,26 @@ func LoadModule(module string) error {
+ 	_, err := shared.RunCommand("modprobe", module)
+ 	return err
+ }
++
++// HasFilesystem checks whether a given filesystem is already supported
++// by the kernel. Note that if the filesystem is a module, you may need to
++// load it first.
++func HasFilesystem(filesystem string) bool {
++	file, err := os.Open("/proc/filesystems")
++	if err != nil {
++		return false
++	}
++	defer file.Close()
++
++	scanner := bufio.NewScanner(file)
++	for scanner.Scan() {
++		fields := strings.Fields(strings.TrimSpace(scanner.Text()))
++		entry := fields[len(fields)-1]
++
++		if entry == filesystem {
++			return true
++		}
++	}
++
++	return false
++}
+-- 
+2.24.0.393.g34dc348eaf-goog
+

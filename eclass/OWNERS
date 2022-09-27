@@ -1,0 +1,5 @@
+set noparent
+include chromiumos/overlays/portage-stable:/eclass/OWNERS
+
+per-file cros-kernel2.eclass = file:/OWNERS.kernel
+per-file libchrome-version.eclass = file:aosp/platform/external/libchrome:/OWNERS

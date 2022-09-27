@@ -1,0 +1,26 @@
+CONFIG_VENDOR_GOOGLE=y
+CONFIG_BOARD_GOOGLE_REDRIX=y
+
+# SPI Descriptor
+# Waiting for FIT kit, b/173078987
+CONFIG_IFD_BIN_PATH="3rdparty/blobs/mainboard/google/brya/descriptor-redrix.bin"
+
+# FSP Blobs
+# TODO: b/178846328
+#CONFIG_FSP_HEADER_PATH="3rdparty/blobs/intel/adl/fsp/Include/"
+#CONFIG_FSP_USE_REPO is not set
+
+# Management Engine
+CONFIG_ME_BIN_PATH="3rdparty/blobs/mainboard/google/brya/csme-redrix.bin"
+
+# Management Engine FW update
+# Waiting for CSE Lite FIT kit, b/173078987
+### CONFIG_SOC_INTEL_CSE_RW_UPDATE=y
+### CONFIG_SOC_INTEL_CSE_RW_FILE="3rdparty/blobs/mainboard/google/brya/me_rw-redrix.bin"
+### CONFIG_SOC_INTEL_CSE_RW_VERSION="a.b.c.d"
+
+# Video Blob
+CONFIG_INTEL_GMA_VBT_FILE="3rdparty/blobs/mainboard/google/brya/vbt.bin"
+CONFIG_CHROMEOS_WIFI_SAR=y
+# FILEPATH is set to blank to prevent any default SAR file from getting added.
+CONFIG_WIFI_SAR_CBFS_FILEPATH=""

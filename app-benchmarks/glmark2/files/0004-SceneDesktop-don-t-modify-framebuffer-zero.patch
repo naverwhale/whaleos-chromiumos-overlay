@@ -1,0 +1,27 @@
+From a089b99455707f7989379683d631531ea7a163fb Mon Sep 17 00:00:00 2001
+From: Frank Henigman <fjhenigman@google.com>
+Date: Thu, 7 May 2015 01:11:06 -0400
+Subject: [PATCH 4/6] SceneDesktop: don't modify framebuffer zero
+
+According to the man page it is an error to call glFramebufferTexture2D
+on framebuffer zero.
+---
+ src/scene-desktop.cpp | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/scene-desktop.cpp b/src/scene-desktop.cpp
+index cc1bb55..eb352c5 100644
+--- a/src/scene-desktop.cpp
++++ b/src/scene-desktop.cpp
+@@ -197,6 +197,8 @@ public:
+         /* Recreate the backing texture with correct size */
+         if (size_.x() != size.x() || size_.y() != size.y()) {
+             size_ = size;
++            if (fbo_ == 0)
++                return;
+             /* If we're resizing the texture, we need to tell the framebuffer*/
+             glBindTexture(GL_TEXTURE_2D, texture_);
+             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size_.x(), size_.y(), 0,
+-- 
+2.2.0.rc0.207.ga3a616c
+

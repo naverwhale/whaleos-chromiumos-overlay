@@ -1,0 +1,28 @@
+Cherry-pick of an upstream patch:
+https://github.com/glmark2/glmark2/commit/b779dc4479e701c61c777e544706c09e4b525267
+
+This fixes writing/reading out of bounds of a stack-allocated array.
+
+From b779dc4479e701c61c777e544706c09e4b525267 Mon Sep 17 00:00:00 2001
+From: Alexandros Frantzis <alexandros.frantzis@collabora.com>
+Date: Fri, 8 Sep 2017 09:52:11 +0300
+Subject: [PATCH] SceneTerrain: Fix off-by-one error in array size
+
+Fixes #38
+---
+ src/scene-terrain/blur-renderer.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/scene-terrain/blur-renderer.cpp b/src/scene-terrain/blur-renderer.cpp
+index b4bc913..96c3696 100644
+--- a/src/scene-terrain/blur-renderer.cpp
++++ b/src/scene-terrain/blur-renderer.cpp
+@@ -84,7 +84,7 @@ create_blur_shaders(ShaderSource& vtx_source, ShaderSource& frg_source,
+         sigma = 1.0;
+ 
+     unsigned int side = 2 * radius + 1;
+-    float values[radius];
++    float values[radius + 1];
+     float sum = 0.0;
+ 
+     for (unsigned int i = 0; i < radius + 1; i++) {

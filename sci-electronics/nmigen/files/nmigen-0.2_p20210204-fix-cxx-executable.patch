@@ -1,0 +1,15 @@
+# Prefixed toolchain isn't properly used otherwise (`cxx` executable is called
+# instead) and `tests/test_toolchain_cxx.py` obstructs the test phase.
+
+--- a/nmigen/_toolchain/cxx.py
++++ b/nmigen/_toolchain/cxx.py
+@@ -33,7 +33,9 @@ def build_cxx(*, cxx_sources, output_name, include_dirs, macros):
+             compiler=f"{cc} {cflags}",
+             compiler_so=f"{cc} {cflags}",
+             compiler_cxx=f"{cxx} {cflags}",
++            compiler_so_cxx=f"{cxx} {cflags}",
+             linker_so=ld_cxxflags,
++            linker_so_cxx=ld_cxxflags,
+         )
+ 
+         for include_dir in include_dirs:

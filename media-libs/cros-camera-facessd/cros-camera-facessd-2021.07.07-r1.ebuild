@@ -1,0 +1,1 @@
+cros-camera-facessd-2021.07.07.ebuild

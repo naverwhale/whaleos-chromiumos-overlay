@@ -1,0 +1,12 @@
+DEFINED_PHASES=install
+DEPEND=virtual/chromeos-bsp-test chromeos-base/tast-local-tests-cros has_chromeos_config_bsp? ( chromeos-base/chromeos-config-bsp:= ) has_chromeos_config_bsp_private? ( chromeos-base/chromeos-config-bsp-private:= ) has_chromeos_config_bsp_baseboard? ( chromeos-base/chromeos-config-bsp-baseboard:= ) has_chromeos_config_bsp_baseboard_private? ( chromeos-base/chromeos-config-bsp-baseboard-private:= ) unibuild? ( chromeos-base/chromeos-config:= )
+DESCRIPTION=Package for Chrome OS cros config tast test configuration.
+EAPI=5
+HOMEPAGE=https://www.chromium.org
+IUSE=has_chromeos_config_bsp has_chromeos_config_bsp_private has_chromeos_config_bsp_baseboard has_chromeos_config_bsp_baseboard_private unibuild
+KEYWORDS=*
+LICENSE=BSD-Google
+RDEPEND=virtual/chromeos-bsp-test chromeos-base/tast-local-tests-cros has_chromeos_config_bsp? ( chromeos-base/chromeos-config-bsp:= ) has_chromeos_config_bsp_private? ( chromeos-base/chromeos-config-bsp-private:= ) has_chromeos_config_bsp_baseboard? ( chromeos-base/chromeos-config-bsp-baseboard:= ) has_chromeos_config_bsp_baseboard_private? ( chromeos-base/chromeos-config-bsp-baseboard-private:= ) unibuild? ( chromeos-base/chromeos-config:= )
+SLOT=0
+_eclasses_=cros-config-test	f471acbbac2b4c021aba0d64bf01e79e	cros-unibuild	1e3c054ec0012700a0ee1c421b79a600
+_md5_=4b06206dd507b88386911de8b948ddd3

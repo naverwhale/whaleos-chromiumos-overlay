@@ -1,0 +1,1 @@
+sane-airscan-0.99.27_pre20210716.ebuild

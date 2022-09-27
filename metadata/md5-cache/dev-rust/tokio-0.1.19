@@ -1,0 +1,13 @@
+DEFINED_PHASES=compile configure install postinst preinst prepare prerm setup test unpack
+DEPEND==dev-rust/bytes-0.4*:= =dev-rust/futures-0.1*:= =dev-rust/mio-0.6*:= =dev-rust/num_cpus-1*:= =dev-rust/tokio-async-await-0.1*:= =dev-rust/tokio-codec-0.1*:= =dev-rust/tokio-current-thread-0.1*:= =dev-rust/tokio-executor-0.1*:= =dev-rust/tokio-fs-0.1*:= =dev-rust/tokio-io-0.1*:= =dev-rust/tokio-reactor-0.1*:= =dev-rust/tokio-sync-0.1*:= =dev-rust/tokio-tcp-0.1*:= =dev-rust/tokio-threadpool-0.1*:= =dev-rust/tokio-timer-0.2*:= =dev-rust/tokio-trace-core-0.1*:= =dev-rust/tokio-udp-0.1*:= =dev-rust/tokio-uds-0.2*:= =dev-rust/env_logger-0.5*:= =dev-rust/flate2-1*:= =dev-rust/futures-cpupool-0.1*:= =dev-rust/http-0.1*:= =dev-rust/httparse-1*:= =dev-rust/libc-0.2*:= =dev-rust/serde-1*:= =dev-rust/serde_derive-1*:= =dev-rust/serde_json-1*:= =dev-rust/time-0.1*:= >=virtual/rust-1.39.0:=
+DESCRIPTION=A runtime for writing reliable, asynchronous, and slim applications with the Rust programming language
+EAPI=6
+HOMEPAGE=https://tokio.rs/
+IUSE=cros-debug asan coverage fuzzer msan tsan ubsan amd64 asan cros_host fuzzer lsan +lto msan sccache test tsan ubsan x86
+KEYWORDS=*
+LICENSE=MIT
+REQUIRED_USE=?? ( asan lsan msan tsan )
+SLOT=0.1.19/r0
+SRC_URI=https://crates.io/api/v1/crates/tokio/0.1.19/download -> tokio-0.1.19.crate
+_eclasses_=cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-debug	d2750757005d6a444f8eb12bb9eb9944	cros-rust	bfd52d742752ee9912dcb3a33b2e4642	cros-sanitizers	fcc8f96c24bfce0853f07c00f65fb50a	desktop	b1d22ac8bdd4679ab79c71aca235009d	epatch	ed88001f77c6dd0d5f09e45c1a5b480e	estack	686eaab303305a908fd57b2fd7617800	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	ltprune	2729691420b6deeda2a90b1f1183fb55	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	preserve-libs	ef207dc62baddfddfd39a164d9797648	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	vcs-clean	2a0f74a496fa2b1552c4f3398258b7bf
+_md5_=a778bc093f4a6a11d73c4919a143a93f

@@ -1,0 +1,11 @@
+--- bin/geninfo	2012/10/10 08:36:16	1.117
++++ bin/geninfo	2012/11/13 09:58:53	1.118
+@@ -1833,7 +1833,7 @@
+ 						push(@result, 0);
+ 					} else {
+ 						# Check for zero count
+-						if ($count eq "#####") {
++						if ($count =~ /^[#=]/) {
+ 							$count = 0;
+ 						}
+ 						push(@result, 1);

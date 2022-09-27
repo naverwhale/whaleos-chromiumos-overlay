@@ -1,0 +1,58 @@
+From aab86881d95c5e9f7a43b6218512249a0e02134e Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Fran=C3=A7ois=20Degros?= <fdegros@chromium.org>
+Date: Mon, 22 Jun 2020 23:31:10 +1000
+Subject: [PATCH] Guess encoding of names in ZIP archive and convert them to
+ UTF-8, if necessary
+
+---
+ lib/bigBuffer.cpp   | 2 +-
+ lib/fuseZipData.cpp | 6 +++---
+ 2 files changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/lib/bigBuffer.cpp b/lib/bigBuffer.cpp
+index e2da877..109d2f0 100644
+--- a/lib/bigBuffer.cpp
++++ b/lib/bigBuffer.cpp
+@@ -188,7 +188,7 @@ BigBuffer::BigBuffer(struct zip *z, zip_uint64_t nodeId, size_t length):
+             // file is longer that given length). Possibly CRC error.
+             zip_fclose(zf);
+             syslog(LOG_WARNING, "length of file %s differ from data length",
+-                    zip_get_name(z, nodeId, ZIP_FL_ENC_RAW));
++                    zip_get_name(z, nodeId, ZIP_FL_ENC_GUESS));
+             throw std::runtime_error("data length differ");
+         }
+     }
+diff --git a/lib/fuseZipData.cpp b/lib/fuseZipData.cpp
+index 5391259..6852678 100644
+--- a/lib/fuseZipData.cpp
++++ b/lib/fuseZipData.cpp
+@@ -70,7 +70,7 @@ void FuseZipData::build_tree(bool readonly) {
+     bool needPrefix = false;
+     if (readonly) {
+         for (zip_int64_t i = 0; i < n; ++i) {
+-            const char *name = zip_get_name(m_zip, static_cast<zip_uint64_t>(i), ZIP_FL_ENC_RAW);
++            const char *name = zip_get_name(m_zip, static_cast<zip_uint64_t>(i), ZIP_FL_ENC_GUESS);
+             if ((name[0] == '/') || (strncmp(name, "../", 3) == 0)) {
+                 needPrefix = true;
+             }
+@@ -81,7 +81,7 @@ void FuseZipData::build_tree(bool readonly) {
+     for (zip_int64_t i = 0; i < n; ++i) {
+         zip_uint64_t id = static_cast<zip_uint64_t>(i);
+         bool isHardlink;
+-        const char *name = zip_get_name(m_zip, id, ZIP_FL_ENC_RAW);
++        const char *name = zip_get_name(m_zip, id, ZIP_FL_ENC_GUESS);
+         mode_t mode = getEntryAttributes(id, name, isHardlink);
+         
+         if (isHardlink)
+@@ -93,7 +93,7 @@ void FuseZipData::build_tree(bool readonly) {
+     for (zip_int64_t i = 0; i < n; ++i) {
+         zip_uint64_t id = static_cast<zip_uint64_t>(i);
+         bool isHardlink;
+-        const char *name = zip_get_name(m_zip, id, ZIP_FL_ENC_RAW);
++        const char *name = zip_get_name(m_zip, id, ZIP_FL_ENC_GUESS);
+         mode_t mode = getEntryAttributes(id, name, isHardlink);
+ 
+         if (!isHardlink)
+-- 
+2.27.0.111.gc72c7da667-goog
+

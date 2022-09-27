@@ -1,0 +1,251 @@
+From 8418bf71b08124ded641909a7056cafe4ecbf557 Mon Sep 17 00:00:00 2001
+From: Dmitry Torokhov <dtor@chromium.org>
+Date: Tue, 4 Jun 2019 23:37:31 -0700
+Subject: [PATCH 07/11] CHROMIUM: linux_usbfs: split initialize_device()
+
+In preparation to using the new USBFS_CONNINFO_EX ioctl allowing fetch
+more data from usbfs, let's split apart initialize_device() to make the
+logic clearer.
+
+Signed-off-by: Dmitry Torokhov <dtor@chromium.org>
+---
+ libusb/os/linux_usbfs.c | 185 ++++++++++++++++++++++++----------------
+ 1 file changed, 113 insertions(+), 72 deletions(-)
+
+diff --git a/libusb/os/linux_usbfs.c b/libusb/os/linux_usbfs.c
+index b55b86d..0ba38c3 100644
+--- a/libusb/os/linux_usbfs.c
++++ b/libusb/os/linux_usbfs.c
+@@ -999,98 +999,74 @@ static int usbfs_get_active_config(struct libusb_device *dev, int fd)
+ 	return LIBUSB_SUCCESS;
+ }
+ 
+-static int initialize_device(struct libusb_device *dev, uint8_t busnum,
+-	uint8_t devaddr, const char *sysfs_dir, int wrapped_fd)
++static int device_cache_descriptors(struct libusb_context *ctx,
++	struct linux_device_priv *priv, int fd)
+ {
+-	struct linux_device_priv *priv = _device_priv(dev);
+-	struct libusb_context *ctx = DEVICE_CTX(dev);
+ 	int descriptors_size = 512; /* Begin with a 1024 byte alloc */
+-	int fd, speed;
+ 	ssize_t r;
+ 
+-	dev->bus_number = busnum;
+-	dev->device_address = devaddr;
+-
+-	if (sysfs_dir) {
+-		priv->sysfs_dir = strdup(sysfs_dir);
+-		if (!priv->sysfs_dir)
+-			return LIBUSB_ERROR_NO_MEM;
+-
+-		/* Note speed can contain 1.5, in this case __read_sysfs_attr
+-		   will stop parsing at the '.' and return 1 */
+-		speed = __read_sysfs_attr(DEVICE_CTX(dev), sysfs_dir, "speed");
+-		if (speed >= 0) {
+-			switch (speed) {
+-			case     1: dev->speed = LIBUSB_SPEED_LOW; break;
+-			case    12: dev->speed = LIBUSB_SPEED_FULL; break;
+-			case   480: dev->speed = LIBUSB_SPEED_HIGH; break;
+-			case  5000: dev->speed = LIBUSB_SPEED_SUPER; break;
+-			case 10000: dev->speed = LIBUSB_SPEED_SUPER_PLUS; break;
+-			default:
+-				usbi_warn(DEVICE_CTX(dev), "Unknown device speed: %d Mbps", speed);
+-			}
+-		}
+-	}
+-
+-	/* cache descriptors in memory */
+-	if (sysfs_dir && sysfs_has_descriptors) {
+-		fd = _open_sysfs_attr(dev, "descriptors");
+-	} else if (wrapped_fd < 0) {
+-		fd = _get_usbfs_fd(dev, O_RDONLY, 0);
+-	} else {
+-		fd = wrapped_fd;
+-		r = lseek(fd, 0, SEEK_SET);
+-		if (r < 0) {
+-			usbi_err(ctx, "seek failed ret=%d errno=%d", r, errno);
+-			return LIBUSB_ERROR_IO;
+-		}
+-	}
+-	if (fd < 0)
+-		return fd;
+-
+ 	do {
+ 		descriptors_size *= 2;
+ 		priv->descriptors = usbi_reallocf(priv->descriptors,
+ 						  descriptors_size);
+-		if (!priv->descriptors) {
+-			if (fd != wrapped_fd)
+-				close(fd);
++		if (!priv->descriptors)
+ 			return LIBUSB_ERROR_NO_MEM;
+-		}
+-		/* usbfs has holes in the file */
+-		if (!(sysfs_dir && sysfs_has_descriptors)) {
+-			memset(priv->descriptors + priv->descriptors_len,
+-			       0, descriptors_size - priv->descriptors_len);
+-		}
++
++		/* usbfs has holes in the file so let's clear the buffer
++		 * before passing it to the kernel. */
++		memset(priv->descriptors + priv->descriptors_len,
++		       0, descriptors_size - priv->descriptors_len);
++
+ 		r = read(fd, priv->descriptors + priv->descriptors_len,
+ 			 descriptors_size - priv->descriptors_len);
+ 		if (r < 0) {
+ 			usbi_err(ctx, "read descriptor failed ret=%d errno=%d",
+ 				 fd, errno);
+-			if (fd != wrapped_fd)
+-				close(fd);
+ 			return LIBUSB_ERROR_IO;
+ 		}
+ 		priv->descriptors_len += r;
+ 	} while (priv->descriptors_len == descriptors_size);
+ 
+-	if (fd != wrapped_fd)
+-		close(fd);
+-
+ 	if (priv->descriptors_len < DEVICE_DESC_LENGTH) {
+ 		usbi_err(ctx, "short descriptor read (%d)",
+ 			 priv->descriptors_len);
+ 		return LIBUSB_ERROR_IO;
+ 	}
+ 
+-	if (sysfs_dir && sysfs_can_relate_devices)
+-		return LIBUSB_SUCCESS;
++	return LIBUSB_SUCCESS;
++}
+ 
+-	/* cache active config */
+-	if (wrapped_fd < 0)
+-		fd = _get_usbfs_fd(dev, O_RDWR, 1);
+-	else
+-		fd = wrapped_fd;
++static int device_speed_from_sysfs(struct libusb_context *ctx,
++	const char *sysfs_dir)
++{
++	int speed;
++
++	/* Note speed can contain 1.5, in this case __read_sysfs_attr
++	   will stop parsing at the '.' and return 1 */
++	speed = __read_sysfs_attr(ctx, sysfs_dir, "speed");
++	if (speed < 0)
++		return LIBUSB_SPEED_UNKNOWN;
++
++	switch (speed) {
++	case     1: return LIBUSB_SPEED_LOW;
++	case    12: return LIBUSB_SPEED_FULL;
++	case   480: return LIBUSB_SPEED_HIGH;
++	case  5000: return LIBUSB_SPEED_SUPER;
++	case 10000: return LIBUSB_SPEED_SUPER_PLUS;
++	default:
++		usbi_warn(ctx, "Unknown device speed: %d Mbps", speed);
++		return LIBUSB_SPEED_UNKNOWN;
++	}
++}
++
++static int device_cache_active_config(struct libusb_device *dev, int wrapped_fd)
++{
++	struct linux_device_priv *priv = _device_priv(dev);
++	struct libusb_context *ctx = DEVICE_CTX(dev);
++	int fd;
++	int ret;
++
++	fd = wrapped_fd >= 0 ? dup(wrapped_fd) : _get_usbfs_fd(dev, O_RDWR, 1);
+ 	if (fd < 0) {
+ 		/* cannot send a control message to determine the active
+ 		 * config. just assume the first one is active. */
+@@ -1103,17 +1079,82 @@ static int initialize_device(struct libusb_device *dev, uint8_t busnum,
+ 				priv->descriptors + DEVICE_DESC_LENGTH,
+ 				"bbwbbbbb", &config, 0);
+ 			priv->active_config = config.bConfigurationValue;
+-		} else
++		} else {
+ 			priv->active_config = -1; /* No config dt */
+-
++		}
+ 		return LIBUSB_SUCCESS;
+ 	}
+ 
+-	r = usbfs_get_active_config(dev, fd);
+-	if (wrapped_fd < 0)
+-		close(fd);
++	ret = usbfs_get_active_config(dev, fd);
++	close(fd);
++	return ret;
++}
+ 
+-	return r;
++static int initialize_from_usbfs(struct libusb_device *dev, int fd)
++{
++	struct linux_device_priv *priv = _device_priv(dev);
++	struct libusb_context *ctx = DEVICE_CTX(dev);
++	int ret;
++
++	ret = lseek(fd, 0, SEEK_SET);
++	if (ret < 0) {
++		usbi_err(ctx, "seek failed ret=%d errno=%d", ret, errno);
++		return LIBUSB_ERROR_IO;
++	}
++
++	return device_cache_descriptors(ctx, priv, fd);
++}
++
++static int initialize_device(struct libusb_device *dev, uint8_t busnum,
++	uint8_t devaddr, const char *sysfs_dir, int wrapped_fd)
++{
++	struct linux_device_priv *priv = _device_priv(dev);
++	struct libusb_context *ctx = DEVICE_CTX(dev);
++	int sysfs_fd, usbfs_fd;
++	int ret;
++
++	/* Seed the device address. We might need to adjust them if
++	 * we have file descriptor. */
++	dev->bus_number = busnum;
++	dev->device_address = devaddr;
++
++	/* If we have sysfs access we can get most of the data from it
++	 * even if we do not have valid file descriptor. */
++	if (sysfs_dir) {
++		priv->sysfs_dir = strdup(sysfs_dir);
++		if (!priv->sysfs_dir)
++			return LIBUSB_ERROR_NO_MEM;
++
++		dev->speed = device_speed_from_sysfs(ctx, sysfs_dir);
++
++		if (sysfs_has_descriptors) {
++			sysfs_fd = _open_sysfs_attr(dev, "descriptors");
++			if (sysfs_fd < 0)
++				return sysfs_fd;
++			ret = device_cache_descriptors(ctx, priv, sysfs_fd);
++			close(sysfs_fd);
++			if (ret != LIBUSB_SUCCESS)
++				return ret;
++		}
++	}
++
++	if (!priv->descriptors) {
++		usbfs_fd = wrapped_fd >= 0 ?
++				dup(wrapped_fd) :
++				_get_usbfs_fd(dev, O_RDONLY, 0 /* silent */);
++		if (usbfs_fd < 0)
++			return usbfs_fd;
++
++		ret = initialize_from_usbfs(dev, usbfs_fd);
++		close(usbfs_fd);
++		if (ret != LIBUSB_SUCCESS)
++			return ret;
++	}
++
++	if (sysfs_dir && sysfs_can_relate_devices)
++		return LIBUSB_SUCCESS;
++
++	return device_cache_active_config(dev, wrapped_fd);
+ }
+ 
+ static int linux_get_parent_info(struct libusb_device *dev, const char *sysfs_dir)
+-- 
+2.22.0.rc2.383.gf4fbbf30c2-goog
+

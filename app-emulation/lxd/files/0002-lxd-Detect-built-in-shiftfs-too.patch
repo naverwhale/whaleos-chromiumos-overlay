@@ -1,0 +1,31 @@
+From 1c41bdf376ac398734580b972205f7a87a2b7d72 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?St=C3=A9phane=20Graber?= <stgraber@ubuntu.com>
+Date: Wed, 4 Dec 2019 13:53:16 -0500
+Subject: [PATCH 2/2] lxd: Detect built-in shiftfs too
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Closes #6545
+
+Signed-off-by: Stéphane Graber <stgraber@ubuntu.com>
+---
+ lxd/daemon.go | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/lxd/daemon.go b/lxd/daemon.go
+index 0e58df8b5..c5416d7df 100644
+--- a/lxd/daemon.go
++++ b/lxd/daemon.go
+@@ -620,7 +620,7 @@ func (d *Daemon) init() error {
+ 		logger.Infof(" - unprivileged file capabilities: no")
+ 	}
+ 
+-	if util.LoadModule("shiftfs") == nil {
++	if util.HasFilesystem("shiftfs") || util.LoadModule("shiftfs") == nil {
+ 		d.os.Shiftfs = true
+ 		logger.Infof(" - shiftfs support: yes")
+ 	} else {
+-- 
+2.24.0.393.g34dc348eaf-goog
+

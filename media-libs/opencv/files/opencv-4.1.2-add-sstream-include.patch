@@ -1,0 +1,17 @@
+Fix opencv builds by adding a missing header,
+https://crbug.com/1059030.
+
+Github PR: https://github.com/opencv/opencv/pull/16740
+
+diff --git a/modules/core/include/opencv2/core/cvstd.inl.hpp b/modules/core/include/opencv2/core/cvstd.inl.hpp
+index 4a85bfd..37ad1e6 100644
+--- a/modules/core/include/opencv2/core/cvstd.inl.hpp
++++ b/modules/core/include/opencv2/core/cvstd.inl.hpp
+@@ -46,6 +46,7 @@
+ 
+ #include <complex>
+ #include <ostream>
++#include <sstream>
+ 
+ //! @cond IGNORED
+ 

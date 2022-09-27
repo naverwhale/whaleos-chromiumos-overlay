@@ -1,0 +1,33 @@
+From 6480cd111eed9cc420c00072bb155975f2dc60b6 Mon Sep 17 00:00:00 2001
+From: Kalvin Lee <kdlee@chromium.org>
+Date: Thu, 8 Oct 2020 13:59:37 -0700
+Subject: [PATCH 3/6] activate PACIFY_VALGRIND
+
+---
+ base/gxclipm.c | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/base/gxclipm.c b/base/gxclipm.c
+index 59f1e765f..b19a9c62d 100644
+--- a/base/gxclipm.c
++++ b/base/gxclipm.c
+@@ -261,16 +261,12 @@ mask_clip_copy_mono(gx_device * dev,
+     return 0;
+ }
+ 
+-#ifdef PACIFY_VALGRIND
+ static inline byte trim(int cx, int mx1, byte v)
+ {
+     int mask = 8-(mx1-cx); /* mask < 8 */
+     mask = (mask > 0 ? (0xff<<mask) : 0xff)>>(cx & 7);
+     return v & mask;
+ }
+-#else
+-#define trim(cx,mx1,v) (v)
+-#endif
+ 
+ /*
+  * Define the run enumerator for the other copying operations.  We can't use
+-- 
+2.31.0.208.g409f899ff0-goog
+

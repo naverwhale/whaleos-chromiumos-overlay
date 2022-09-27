@@ -1,0 +1,27 @@
+From 8daab9d5a41bd4602578a2c854397c42be629659 Mon Sep 17 00:00:00 2001
+From: Stephen Boyd <swboyd@chromium.org>
+Date: Thu, 22 Oct 2020 11:43:34 -0700
+Subject: [PATCH] Fix Makefile to add to LDFLAGS
+
+Don't just override LDFLAGS, instead append to them. This way
+environment variables can have more data.
+---
+ Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Makefile b/Makefile
+index 7acf9b8..39dc213 100644
+--- a/Makefile
++++ b/Makefile
+@@ -26,7 +26,7 @@ $(proj)-cflags := -Iinc
+ 
+ $(proj)-lflags := -lpthread -lqrtr -lrmnetctl
+ 
+-LDFLAGS = -lpthread -lqrtr -lrmnetctl
++LDFLAGS += -lpthread -lqrtr -lrmnetctl
+ 
+ targets :=  $(proj)
+ 
+-- 
+2.29.0.rc1.297.gfa9743e501-goog
+

@@ -1,0 +1,20 @@
+CONFIG_VENDOR_GOOGLE=y
+CONFIG_BOARD_GOOGLE_PRIMUS=y
+
+# SPI Descriptor
+CONFIG_IFD_BIN_PATH="3rdparty/blobs/mainboard/google/brya/descriptor-primus.bin"
+
+# FSP Blobs
+#CONFIG_FSP_HEADER_PATH="3rdparty/blobs/intel/adl/fsp/Include/"
+#CONFIG_FSP_USE_REPO is not set
+
+# Management Engine
+CONFIG_ME_BIN_PATH="3rdparty/blobs/mainboard/google/brya/csme-primus.bin"
+
+# Management Engine FW update
+### CONFIG_SOC_INTEL_CSE_RW_UPDATE=y
+### CONFIG_SOC_INTEL_CSE_RW_FILE="3rdparty/blobs/mainboard/google/brya/me_rw-primus.bin"
+### CONFIG_SOC_INTEL_CSE_RW_VERSION="a.b.c.d"
+
+# Video Blob
+CONFIG_INTEL_GMA_VBT_FILE="3rdparty/blobs/mainboard/google/brya/vbt_primus.bin"

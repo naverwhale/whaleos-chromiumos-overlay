@@ -1,0 +1,14 @@
+BDEPEND=test? ( chromeos-base/chromeos-common-script ) dev-vcs/git
+DEFINED_PHASES=compile configure info install postinst setup test unpack
+DEPEND=chromeos-base/chromeos-init:= !chromeos-base/chromeos-factoryinstall !chromeos-base/chromeos-factory chromeos-base/factory:= test? ( chromeos-base/secure-wipe:= ) x86? ( sys-boot/syslinux:= )
+DESCRIPTION=Chrome OS Factory Installer
+EAPI=7
+HOMEPAGE=https://chromium.googlesource.com/chromiumos/platform/factory_installer/
+IUSE=tty_console_ttyAMA0 tty_console_ttyAMA1 tty_console_ttyAMA2 tty_console_ttyAMA3 tty_console_ttyAMA4 tty_console_ttyAMA5 tty_console_ttyHSL0 tty_console_ttyHSL1 tty_console_ttyHSL2 tty_console_ttyHSL3 tty_console_ttyHSL4 tty_console_ttyHSL5 tty_console_ttyMSM0 tty_console_ttyMSM1 tty_console_ttyMSM2 tty_console_ttyMSM3 tty_console_ttyMSM4 tty_console_ttyMSM5 tty_console_ttymxc0 tty_console_ttymxc1 tty_console_ttymxc2 tty_console_ttymxc3 tty_console_ttymxc4 tty_console_ttymxc5 tty_console_ttyO0 tty_console_ttyO1 tty_console_ttyO2 tty_console_ttyO3 tty_console_ttyO4 tty_console_ttyO5 tty_console_ttyS0 tty_console_ttyS1 tty_console_ttyS2 tty_console_ttyS3 tty_console_ttyS4 tty_console_ttyS5 tty_console_ttySAC0 tty_console_ttySAC1 tty_console_ttySAC2 tty_console_ttySAC3 tty_console_ttySAC4 tty_console_ttySAC5 tty_console_ttyUSB0 tty_console_ttyUSB1 tty_console_ttyUSB2 tty_console_ttyUSB3 tty_console_ttyUSB4 tty_console_ttyUSB5 tty_console_tty0 tty_console_tty1 tty_console_tty2 tty_console_tty3 tty_console_tty4 tty_console_tty5 -asan test asan coverage fuzzer msan tsan ubsan cros_host cros_workon_tree_
+KEYWORDS=~*
+LICENSE=BSD-Google
+PROPERTIES=live
+RDEPEND=chromeos-base/chromeos-init:= !chromeos-base/chromeos-factoryinstall !chromeos-base/chromeos-factory app-arch/gzip app-arch/sharutils app-arch/tar app-misc/figlet chromeos-base/chromeos-config-tools chromeos-base/vboot_reference sys-apps/mosys sys-apps/util-linux app-arch/lbzip2 app-arch/pigz app-misc/jq chromeos-base/chromeos-installer chromeos-base/chromeos-storage-info chromeos-base/ec-utils chromeos-base/secure-wipe chromeos-base/vpd dev-util/stressapptest net-misc/htpdate net-wireless/iw sys-apps/flashrom sys-apps/net-tools sys-apps/upstart sys-apps/util-linux sys-block/parted sys-fs/e2fsprogs
+SLOT=0/9999
+_eclasses_=cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-credentials	4fd98ebbff6a1534ca9a89547e13dc92	cros-factory	a2ce0261e426513fe3f7540d9a228910	cros-sanitizers	fcc8f96c24bfce0853f07c00f65fb50a	cros-workon	ff100259492312ff6570e490bcb9a320	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=ec9ee236b91904b8e7ce8dd6b9f62a1e

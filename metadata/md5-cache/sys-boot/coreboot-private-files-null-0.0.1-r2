@@ -1,0 +1,7 @@
+DEFINED_PHASES=-
+DESCRIPTION=Coreboot private files placeholder
+EAPI=4
+KEYWORDS=*
+LICENSE=BSD-Google
+SLOT=0
+_md5_=5e8c332eb57c53dd7b82643aca9ae42f

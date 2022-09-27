@@ -1,0 +1,14 @@
+BDEPEND=>=dev-util/meson-0.56.0 >=dev-util/ninja-1.8.2 dev-util/meson-format-array chromeos-base/chromeos-config-host:= dev-vcs/git dev-vcs/git
+DEFINED_PHASES=compile configure info install setup test unpack
+DEPEND=vpd_file_cache? ( chromeos-base/vpd ) dev-util/cmocka chromeos-base/minijail:= has_chromeos_config_bsp? ( chromeos-base/chromeos-config-bsp:= ) has_chromeos_config_bsp_private? ( chromeos-base/chromeos-config-bsp-private:= ) has_chromeos_config_bsp_baseboard? ( chromeos-base/chromeos-config-bsp-baseboard:= ) has_chromeos_config_bsp_baseboard_private? ( chromeos-base/chromeos-config-bsp-baseboard-private:= ) unibuild? ( chromeos-base/chromeos-config:= ) cros_host? ( dev-util/gn ) >=dev-cpp/gtest-1.10.0:=
+DESCRIPTION=Utility for obtaining various bits of low-level system info
+EAPI=7
+HOMEPAGE=http://mosys.googlecode.com/
+IUSE=unibuild vpd_file_cache has_chromeos_config_bsp has_chromeos_config_bsp_private has_chromeos_config_bsp_baseboard has_chromeos_config_bsp_baseboard_private unibuild cros_host cros_workon_tree_d897a7a44e07236268904e1df7f983871c1e1258_b63af68c544d220e9ac4fec05fcdd8001237667d cros-debug fuzzer asan coverage fuzzer msan tsan ubsan cros_host cros_workon_tree_d897a7a44e07236268904e1df7f983871c1e1258_b63af68c544d220e9ac4fec05fcdd8001237667d compilation_database cros_host test
+KEYWORDS=*
+LICENSE=BSD-Google BSD Apache-2.0 MIT ISC Unlicense
+PROPERTIES=live live
+RDEPEND=vpd_file_cache? ( chromeos-base/vpd ) dev-util/cmocka chromeos-base/minijail:= has_chromeos_config_bsp? ( chromeos-base/chromeos-config-bsp:= ) has_chromeos_config_bsp_private? ( chromeos-base/chromeos-config-bsp-private:= ) has_chromeos_config_bsp_baseboard? ( chromeos-base/chromeos-config-bsp-baseboard:= ) has_chromeos_config_bsp_baseboard_private? ( chromeos-base/chromeos-config-bsp-baseboard-private:= ) unibuild? ( chromeos-base/chromeos-config:= )
+SLOT=0/0
+_eclasses_=cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-credentials	4fd98ebbff6a1534ca9a89547e13dc92	cros-debug	d2750757005d6a444f8eb12bb9eb9944	cros-fuzzer	e815e6e711300a7010da60d6030db0c9	cros-sanitizers	fcc8f96c24bfce0853f07c00f65fb50a	cros-unibuild	1e3c054ec0012700a0ee1c421b79a600	cros-workon	ff100259492312ff6570e490bcb9a320	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	meson	5ec14fdbc5446b8767e87e186e3b1a52	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	ninja-utils	132cbb376048d079b5a012f5467c4e7f	platform	55fa3d5a49ef92fdfb31c827e2d8fc5d	python-utils-r1	157a6a7a3e99c7dbdf81acc9dd4f57cd	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=07662d37d4e5cb03cff6835a5b40bc7d

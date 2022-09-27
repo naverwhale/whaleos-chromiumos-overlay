@@ -1,0 +1,9 @@
+DEFINED_PHASES=-
+DESCRIPTION=List of packages that make up the initramfs.
+EAPI=7
+HOMEPAGE=http://dev.chromium.org/
+KEYWORDS=*
+LICENSE=metapackage
+RDEPEND=virtual/target-chromium-os-initramfs
+SLOT=0
+_md5_=64e9543ec7df0c39bcb50f407ec2eb9e

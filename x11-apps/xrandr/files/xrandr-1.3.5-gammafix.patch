@@ -1,0 +1,53 @@
+From 0afefd3e3efc93b51886838b055f91d8f2c5428b Mon Sep 17 00:00:00 2001
+From: Dominik Behr <dbehr@chromium.org>
+Date: Tue, 1 Apr 2014 18:31:12 -0700
+Subject: [PATCH] xrandr: fix setting of linear gamma table
+
+Current linear gamma table generation assues 256 entry, 8-bit precision
+gamma table. This patch uses floating point arithmetic to create correct,
+full precision gamma table for any case. Similar patch again master branch
+has been submitted for consideration upstream to xorg-devel mailing list.
+This patch allows us to test gamma table functionality on Samsung Exynos
+based hardware which has 17 entry 8-bit precision gamma table.
+
+BUG=chromium:353360
+TEST=DISPLAY=:0.0 xrandr --output LVDS-1 --mode 1366x768 -gamma 0:0:0 on\
+peach-pit with gamma functions enabled in kernel and xf86-video-armsoc
+
+Signed-off-by: Dominik Behr <dbehr@chromium.org>
+---
+ xrandr.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/xrandr.c b/xrandr.c
+index 10d034d..a5c3e14 100644
+--- a/xrandr.c
++++ b/xrandr.c
+@@ -1319,21 +1319,21 @@ set_gamma(void)
+ 
+ 	for (i = 0; i < size; i++) {
+ 	    if (output->gamma.red == 1.0 && output->brightness == 1.0)
+-		gamma->red[i] = (i << 8) + i;
++		gamma->red[i] = (double)i / (double)(size - 1) * 65535.0;
+ 	    else
+ 		gamma->red[i] = dmin(pow((double)i/(double)(size - 1),
+ 					 output->gamma.red) * output->brightness,
+ 				     1.0) * 65535.0;
+ 
+ 	    if (output->gamma.green == 1.0 && output->brightness == 1.0)
+-		gamma->green[i] = (i << 8) + i;
++		gamma->green[i] = (double)i / (double)(size - 1) * 65535.0;
+ 	    else
+ 		gamma->green[i] = dmin(pow((double)i/(double)(size - 1),
+ 					   output->gamma.green) * output->brightness,
+ 				       1.0) * 65535.0;
+ 
+ 	    if (output->gamma.blue == 1.0 && output->brightness == 1.0)
+-		gamma->blue[i] = (i << 8) + i;
++		gamma->blue[i] = (double)i / (double)(size - 1) * 65535.0;
+ 	    else
+ 		gamma->blue[i] = dmin(pow((double)i/(double)(size - 1),
+ 					  output->gamma.blue) * output->brightness,
+-- 
+1.9.1.423.g4596e3a
+

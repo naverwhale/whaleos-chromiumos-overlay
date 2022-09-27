@@ -1,0 +1,25 @@
+From b95a755c75315c64572465983c5d900dac9fde1f Mon Sep 17 00:00:00 2001
+From: Nicolas Boichat <drinkcat@google.com>
+Date: Fri, 16 Nov 2018 16:35:02 +0000
+Subject: [PATCH 39/39] mesa-img: Android build fixups
+
+Change-Id: Ieef1e928c77e5172ee913fde398a1cfa5167d0d5
+---
+ src/mesa/drivers/dri/pvr/Makefile.am | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/mesa/drivers/dri/pvr/Makefile.am b/src/mesa/drivers/dri/pvr/Makefile.am
+index 681c13e..0771758 100644
+--- a/src/mesa/drivers/dri/pvr/Makefile.am
++++ b/src/mesa/drivers/dri/pvr/Makefile.am
+@@ -35,6 +35,7 @@ AM_CFLAGS = \
+ 	-I$(top_builddir)/src/mesa/main \
+ 	$(DEFINES) \
+ 	$(VISIBILITY_CFLAGS) \
++	$(LIBDRM_CFLAGS) \
+ 	$(PVR_CFLAGS)
+ 
+ AM_CXXFLAGS = $(AM_CFLAGS)
+-- 
+2.7.4
+

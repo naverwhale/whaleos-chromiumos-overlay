@@ -1,0 +1,25 @@
+From d84606bd4bb603119c15e01e24af9920e27ef704 Mon Sep 17 00:00:00 2001
+From: johnmach <john.machado@intel.com>
+Date: Wed, 6 Oct 2021 12:24:09 +0530
+Subject: [PATCH] Fix Overlapping Comparision (#66)
+
+---
+ Source/GmmLib/Texture/GmmGen9Texture.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/Source/GmmLib/Texture/GmmGen9Texture.cpp b/Source/GmmLib/Texture/GmmGen9Texture.cpp
+index 10a2890..0267895 100644
+--- a/Source/GmmLib/Texture/GmmGen9Texture.cpp
++++ b/Source/GmmLib/Texture/GmmGen9Texture.cpp
+@@ -592,7 +592,7 @@ void GmmLib::GmmGen9TextureCalc::Fill2DTexOffsetAddress(GMM_TEXTURE_INFO *pTexIn
+ 	    
+ 	// Color Surf with MSAA Enabled Mutiply 4
+         if(GMM_IS_64KB_TILE(pTexInfo->Flags) && (!pGmmGlobalContext->GetSkuTable().FtrTileY) &&
+-           ((pTexInfo->MSAA.NumSamples == 8) && (pTexInfo->MSAA.NumSamples == 16)) &&
++           ((pTexInfo->MSAA.NumSamples == 8) || (pTexInfo->MSAA.NumSamples == 16)) &&
+            ((pTexInfo->Flags.Gpu.Depth == 0) && (pTexInfo->Flags.Gpu.SeparateStencil == 0)))
+         {
+             ArrayQPitch *= 4; /* Aligned height of 4 samples */
+-- 
+2.25.1
+

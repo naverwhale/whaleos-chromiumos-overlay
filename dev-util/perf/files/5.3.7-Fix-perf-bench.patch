@@ -1,0 +1,180 @@
+From db1a8b97a0a36155171dbb805fbcb276e07559f6 Mon Sep 17 00:00:00 2001
+From: Arnaldo Carvalho de Melo <acme@redhat.com>
+Date: Mon, 9 Nov 2020 13:59:15 -0300
+Subject: tools arch: Update arch/x86/lib/mem{cpy,set}_64.S copies used in
+ 'perf bench mem memcpy'
+
+To bring in the change made in this cset:
+
+  4d6ffa27b8e5116c ("x86/lib: Change .weak to SYM_FUNC_START_WEAK for arch/x86/lib/mem*_64.S")
+  6dcc5627f6aec4cb ("x86/asm: Change all ENTRY+ENDPROC to SYM_FUNC_*")
+
+I needed to define SYM_FUNC_START_LOCAL() as SYM_L_GLOBAL as
+mem{cpy,set}_{orig,erms} are used by 'perf bench'.
+
+This silences these perf tools build warnings:
+
+  Warning: Kernel ABI header at 'tools/arch/x86/lib/memcpy_64.S' differs from latest version at 'arch/x86/lib/memcpy_64.S'
+  diff -u tools/arch/x86/lib/memcpy_64.S arch/x86/lib/memcpy_64.S
+  Warning: Kernel ABI header at 'tools/arch/x86/lib/memset_64.S' differs from latest version at 'arch/x86/lib/memset_64.S'
+  diff -u tools/arch/x86/lib/memset_64.S arch/x86/lib/memset_64.S
+
+Cc: Adrian Hunter <adrian.hunter@intel.com>
+Cc: Borislav Petkov <bp@suse.de>
+Cc: Fangrui Song <maskray@google.com>
+Cc: Ian Rogers <irogers@google.com>
+Cc: Jiri Olsa <jolsa@kernel.org>
+Cc: Jiri Slaby <jirislaby@kernel.org>
+Cc: Namhyung Kim <namhyung@kernel.org>
+Signed-off-by: Arnaldo Carvalho de Melo <acme@redhat.com>
+---
+ tools/arch/x86/lib/memcpy_64.S           |  8 +++-----
+ tools/arch/x86/lib/memset_64.S           | 11 ++++++-----
+ tools/perf/bench/mem-memcpy-x86-64-asm.S |  3 +++
+ tools/perf/bench/mem-memset-x86-64-asm.S |  3 +++
+ tools/perf/util/include/linux/linkage.h  |  7 +++++++
+ 5 files changed, 22 insertions(+), 10 deletions(-)
+
+diff --git a/tools/arch/x86/lib/memcpy_64.S b/tools/arch/x86/lib/memcpy_64.S
+index 0b5b8ae56bd91..1e299ac73c869 100644
+--- a/tools/arch/x86/lib/memcpy_64.S
++++ b/tools/arch/x86/lib/memcpy_64.S
+@@ -16,8 +16,6 @@
+  * to a jmp to memcpy_erms which does the REP; MOVSB mem copy.
+  */
+ 
+-.weak memcpy
+-
+ /*
+  * memcpy - Copy a memory block.
+  *
+@@ -30,7 +28,7 @@
+  * rax original destination
+  */
+ SYM_FUNC_START_ALIAS(__memcpy)
+-SYM_FUNC_START_LOCAL(memcpy)
++SYM_FUNC_START_WEAK(memcpy)
+ 	ALTERNATIVE_2 "jmp memcpy_orig", "", X86_FEATURE_REP_GOOD, \
+ 		      "jmp memcpy_erms", X86_FEATURE_ERMS
+ 
+@@ -51,14 +49,14 @@ EXPORT_SYMBOL(__memcpy)
+  * memcpy_erms() - enhanced fast string memcpy. This is faster and
+  * simpler than memcpy. Use memcpy_erms when possible.
+  */
+-SYM_FUNC_START(memcpy_erms)
++SYM_FUNC_START_LOCAL(memcpy_erms)
+ 	movq %rdi, %rax
+ 	movq %rdx, %rcx
+ 	rep movsb
+ 	ret
+ SYM_FUNC_END(memcpy_erms)
+ 
+-SYM_FUNC_START(memcpy_orig)
++SYM_FUNC_START_LOCAL(memcpy_orig)
+ 	movq %rdi, %rax
+ 
+ 	cmpq $0x20, %rdx
+diff --git a/tools/arch/x86/lib/memset_64.S b/tools/arch/x86/lib/memset_64.S
+index fd5d25a474b7c..0bfd26e4ca9e9 100644
+--- a/tools/arch/x86/lib/memset_64.S
++++ b/tools/arch/x86/lib/memset_64.S
+@@ -4,8 +4,7 @@
+ #include <linux/linkage.h>
+ #include <asm/cpufeatures.h>
+ #include <asm/alternative-asm.h>
+-
+-.weak memset
++#include <asm/export.h>
+ 
+ /*
+  * ISO C memset - set a memory block to a byte value. This function uses fast
+@@ -18,7 +17,7 @@
+  *
+  * rax   original destination
+  */
+-SYM_FUNC_START_ALIAS(memset)
++SYM_FUNC_START_WEAK(memset)
+ SYM_FUNC_START(__memset)
+ 	/*
+ 	 * Some CPUs support enhanced REP MOVSB/STOSB feature. It is recommended
+@@ -44,6 +43,8 @@ SYM_FUNC_START(__memset)
+ 	ret
+ SYM_FUNC_END(__memset)
+ SYM_FUNC_END_ALIAS(memset)
++EXPORT_SYMBOL(memset)
++EXPORT_SYMBOL(__memset)
+ 
+ /*
+  * ISO C memset - set a memory block to a byte value. This function uses
+@@ -56,7 +57,7 @@ SYM_FUNC_END_ALIAS(memset)
+  *
+  * rax   original destination
+  */
+-SYM_FUNC_START(memset_erms)
++SYM_FUNC_START_LOCAL(memset_erms)
+ 	movq %rdi,%r9
+ 	movb %sil,%al
+ 	movq %rdx,%rcx
+@@ -65,7 +66,7 @@ SYM_FUNC_START(memset_erms)
+ 	ret
+ SYM_FUNC_END(memset_erms)
+ 
+-SYM_FUNC_START(memset_orig)
++SYM_FUNC_START_LOCAL(memset_orig)
+ 	movq %rdi,%r10
+ 
+ 	/* expand byte value  */
+diff --git a/tools/perf/bench/mem-memcpy-x86-64-asm.S b/tools/perf/bench/mem-memcpy-x86-64-asm.S
+index 9ad015a1e2024..6eb45a2aa8db3 100644
+--- a/tools/perf/bench/mem-memcpy-x86-64-asm.S
++++ b/tools/perf/bench/mem-memcpy-x86-64-asm.S
+@@ -2,6 +2,9 @@
+ 
+ /* Various wrappers to make the kernel .S file build in user-space: */
+ 
++// memcpy_orig and memcpy_erms are being defined as SYM_L_LOCAL but we need it
++#define SYM_FUNC_START_LOCAL(name)                      \
++        SYM_START(name, SYM_L_GLOBAL, SYM_A_ALIGN)
+ #define memcpy MEMCPY /* don't hide glibc's memcpy() */
+ #define altinstr_replacement text
+ #define globl p2align 4; .globl
+diff --git a/tools/perf/bench/mem-memset-x86-64-asm.S b/tools/perf/bench/mem-memset-x86-64-asm.S
+index d550bd5261629..6f093c483842e 100644
+--- a/tools/perf/bench/mem-memset-x86-64-asm.S
++++ b/tools/perf/bench/mem-memset-x86-64-asm.S
+@@ -1,4 +1,7 @@
+ /* SPDX-License-Identifier: GPL-2.0 */
++// memset_orig and memset_erms are being defined as SYM_L_LOCAL but we need it
++#define SYM_FUNC_START_LOCAL(name)                      \
++        SYM_START(name, SYM_L_GLOBAL, SYM_A_ALIGN)
+ #define memset MEMSET /* don't hide glibc's memset() */
+ #define altinstr_replacement text
+ #define globl p2align 4; .globl
+diff --git a/tools/perf/util/include/linux/linkage.h b/tools/perf/util/include/linux/linkage.h
+index b8a5159361b41..5acf053fca7d4 100644
+--- a/tools/perf/util/include/linux/linkage.h
++++ b/tools/perf/util/include/linux/linkage.h
+@@ -25,6 +25,7 @@
+ 
+ /* SYM_L_* -- linkage of symbols */
+ #define SYM_L_GLOBAL(name)			.globl name
++#define SYM_L_WEAK(name)			.weak name
+ #define SYM_L_LOCAL(name)			/* nothing */
+ 
+ #define ALIGN __ALIGN
+@@ -84,6 +85,12 @@
+ 	SYM_END(name, SYM_T_FUNC)
+ #endif
+ 
++/* SYM_FUNC_START_WEAK -- use for weak functions */
++#ifndef SYM_FUNC_START_WEAK
++#define SYM_FUNC_START_WEAK(name)			\
++	SYM_START(name, SYM_L_WEAK, SYM_A_ALIGN)
++#endif
++
+ /*
+  * SYM_FUNC_END -- the end of SYM_FUNC_START_LOCAL, SYM_FUNC_START,
+  * SYM_FUNC_START_WEAK, ...
+-- 
+cgit 1.2.3-1.el7
+

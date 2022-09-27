@@ -1,0 +1,8 @@
+DEFINED_PHASES=-
+DESCRIPTION=Virtual for presence of a Vulkan ICD (Installable Client Driver)
+EAPI=7
+KEYWORDS=*
+LICENSE=metapackage
+RDEPEND=media-libs/vulkan-loader media-libs/mesa[vulkan]
+SLOT=0
+_md5_=267c1b67ff22d04b8f7a31bc07233856

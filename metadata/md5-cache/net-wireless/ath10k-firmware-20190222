@@ -1,0 +1,9 @@
+DEFINED_PHASES=install prepare
+DESCRIPTION=Atheros 10k firmware
+EAPI=5
+HOMEPAGE=http://wireless.kernel.org/en/users/Drivers/ath10k/firmware
+KEYWORDS=*
+LICENSE=LICENSE.qca_firmware
+SLOT=0
+SRC_URI=http://github.com/kvalo/ath10k-firmware/archive/92268fcc51a0df6a7cd814c11e22d88a8527fd57.tar.gz -> ath10k-firmware-92268fc.tar.gz
+_md5_=a6c69d228b89d33e7c43094aff575095

@@ -1,0 +1,22 @@
+diff --git a/adb/adb_utils.cpp b/adb/adb_utils.cpp
+index b236fb3..856cff5 100644
+--- a/adb/adb_utils.cpp
++++ b/adb/adb_utils.cpp
+@@ -242,6 +242,17 @@ std::string adb_get_homedir_path() {
+     }
+     return home_str;
+ #else
++    if (getuid() == 0) {
++        struct stat statbuf;
++        const char run_homedir[] = "/run/arc/adb";
++        if (stat(run_homedir, &statbuf) == -1) {
++            if (adb_mkdir(run_homedir, 0700) == -1) {
++                PLOG(FATAL) << "Cannot mkdir '" << run_homedir << "'";
++            }
++        }
++        return run_homedir;
++    }
++
+     if (const char* const home = getenv("HOME")) {
+         return home;
+     }

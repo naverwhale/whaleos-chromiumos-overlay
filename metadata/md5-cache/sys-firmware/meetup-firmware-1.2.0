@@ -1,0 +1,9 @@
+DEFINED_PHASES=install
+DESCRIPTION=Logitech MeetUp firmware
+EAPI=5
+KEYWORDS=*
+LICENSE=BSD-Logitech
+RDEPEND=sys-apps/logitech-updater
+SLOT=0
+SRC_URI=gs://chromeos-localmirror/distfiles/meetup-firmware-1.2.0.tar.xz
+_md5_=143f1d647e241444ba3595e0450cebb4

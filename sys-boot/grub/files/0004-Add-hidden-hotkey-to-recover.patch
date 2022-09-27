@@ -1,0 +1,50 @@
+diff --git a/grub-core/kern/main.c b/grub-core/kern/main.c
+index 9cad0c4..320966b 100644
+--- a/grub-core/kern/main.c
++++ b/grub-core/kern/main.c
+@@ -271,7 +271,6 @@ grub_main (void)
+ 
+   /* Hello.  */
+   grub_setcolorstate (GRUB_TERM_COLOR_HIGHLIGHT);
+-  grub_printf ("Welcome to GRUB!\n\n");
+   grub_setcolorstate (GRUB_TERM_COLOR_STANDARD);
+ 
+   grub_load_config ();
+diff --git a/grub-core/normal/menu.c b/grub-core/normal/menu.c
+index 719e2fb..140cf5b 100644
+--- a/grub-core/normal/menu.c
++++ b/grub-core/normal/menu.c
+@@ -342,8 +342,6 @@ grub_menu_execute_with_fallback (grub_menu_t menu,
+ {
+   int fallback_entry;
+ 
+-  callback->notify_booting (entry, callback_data);
+-
+   grub_menu_execute_entry (entry, 1);
+ 
+   /* Deal with fallback entries.  */
+@@ -596,6 +594,24 @@ run_menu (grub_menu_t menu, int nested, int *auto_boot)
+        useful and likely to be a source of confusion, so we disallow this.  */
+     grub_env_unset ("timeout_style");
+ 
++  /* Initialize the time.  */
++  saved_time = grub_get_time_ms ();
++
++  while (1)
++    {
++      if (has_second_elapsed (&saved_time))
++	{
++          *auto_boot = 1;
++          return default_entry;
++	}
++
++      if (grub_getkey_noblock () == (GRUB_TERM_CTRL | 'r'))
++        {
++          *auto_boot = 1;
++          return default_entry ? 0 : 1;
++        }
++    }
++
+   timeout_style = get_timeout_style ();
+ 
+   if (timeout_style == TIMEOUT_STYLE_COUNTDOWN

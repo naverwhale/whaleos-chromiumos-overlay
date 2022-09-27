@@ -1,0 +1,7 @@
+sudo_mask="
+  /etc/pam.d/sudo
+  /usr/lib/tmpfiles.d/sudo.conf
+"
+
+PKG_INSTALL_MASK+=" ${sudo_mask}"
+INSTALL_MASK+=" ${sudo_mask}"

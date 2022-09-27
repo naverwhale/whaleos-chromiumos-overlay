@@ -1,0 +1,10 @@
+DEFINED_PHASES=install
+DESCRIPTION=Install the upstart job that launches avahi.
+EAPI=4
+HOMEPAGE=http://www.chromium.org/
+IUSE=wifi_bootstrapping zeroconf
+KEYWORDS=*
+LICENSE=BSD-Google
+RDEPEND=net-dns/avahi
+SLOT=0
+_md5_=62321bca72e2458d226cfd5146a1dad2

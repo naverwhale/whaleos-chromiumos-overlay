@@ -1,0 +1,14 @@
+diff --git a/libarchive/archive_read_support_format_rar5.c b/libarchive/archive_read_support_format_rar5.c
+index 5d62d16e..32e1757c 100644
+--- a/libarchive/archive_read_support_format_rar5.c
++++ b/libarchive/archive_read_support_format_rar5.c
+@@ -4059,6 +4059,9 @@ static int rar5_init(struct rar5* rar) {
+ }
+ 
+ int archive_read_support_format_rar5(struct archive *_a) {
++	/* Chrome OS has disabled libarchive/rar5 support. */
++	return ARCHIVE_FATAL;
++
+ 	struct archive_read* ar;
+ 	int ret;
+ 	struct rar5* rar;

@@ -1,0 +1,15 @@
+mosys-base: &mosys_base_cmds
+  name: 'mosys'
+  args:
+    # Don't run mosys commands that can vary between devices, e.g.
+    # "id", "sku", or "version". Specific cases can add these commands
+    # if they are guaranteed to not vary, e.g. there is only one sku.
+    - "platform name"
+    - "platform model"
+    - "platform chassis"
+    - "platform brand"
+
+cros-config-unibuild: &cros_config_unibuild_cmds
+  name: 'cros_config'
+  args:
+    - "/ brand-code"

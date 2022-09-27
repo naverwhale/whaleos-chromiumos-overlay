@@ -1,0 +1,169 @@
+diff --git a/tools/perf/util/event.c b/tools/perf/util/event.c
+index fc690fecbfd66..1fe8728cf5349 100644
+--- a/tools/perf/util/event.c
++++ b/tools/perf/util/event.c
+@@ -316,6 +316,107 @@ static int perf_event__synthesize_fork(struct perf_tool *tool,
+ 	return 0;
+ }
+ 
++/*
++ * We use transparent hugepage technique to map hot text section
++ * to impove the performance. After the mapping, the map of chrome
++ * looks like below
++ * 7f9ba2626000-7f9ba2800000 r-xp 00000000 fe:00 49961 /opt/google/chrome/chrome
++ * 7f9ba2800000-7f9ba4600000 r-xp 00000000 00:00 0
++ * 7f9ba4600000-7f9ba8ff9000 r-xp 01fda000 fe:00 49961 /opt/google/chrome/chrome
++ *
++ * Since the hugepage needs to be 2MB aligned, the first row is the small
++ * portion of chrome text section that is not 2MB aligned. The second row is
++ * the hot text section that mapped to the transparent hugepages. So there is
++ * no exename, offset on it. The third row is the remaining of the chrome text
++ * section. The goal of this function is to merge the three rows to make it a whole
++ * chrome binary.
++ *
++ * The idea is if whiling scanning the /proc/{pid}/maps, if
++ * we see a section that it has 'x' attribute, we look ahead two sections.
++ * For the second section, we check whether the size is mulitple of 2MB and the
++ * starting address is 2MB aligned and it does not have exename and it has
++ * 'x' attribute.
++ * For the third section, we check whether it has 'x' attribute and the execname is
++ * the same as the first section and the offset is the sum of the size of the first
++ * two sections.
++ *
++ * If all the conditons above are met, we can infer these three sections are actually
++ * from a single binary and we need to merge them.
++ */
++static int perf_event__merge_mmap_events_for_hugepage(char * second_bf,
++							char * third_bf,
++							union perf_event * event) {
++	char prot[5];
++	unsigned int ino;
++	ssize_t n;
++	char execname[PATH_MAX];
++	union perf_event second_event, third_event;
++	const int hugepage_size = 1<<21;
++
++	if (second_bf[0] == '\0' || third_bf[0] == '\0')
++		return 0;
++
++	strcpy(execname, "");
++	/* 00400000-0040c000 r-xp 00000000 fd:01 41038  /bin/cat */
++	n = sscanf(second_bf, "%"PRIx64"-%"PRIx64" %4s %"PRIx64" %x:%x %u %[^\n]\n",
++			&second_event.mmap2.start, &second_event.mmap2.len, prot,
++			&second_event.mmap2.pgoff, &second_event.mmap2.maj,
++			&second_event.mmap2.min,
++			&ino, execname);
++	if (n < 7)
++		return 0;
++	second_event.mmap2.ino = (u64)ino;
++
++	if (prot[2] != 'x')
++	   	return 0;
++	// The second event should be anonymous region
++	if (strcmp(execname, ""))
++	   	return 0;
++	if (second_event.mmap2.maj || second_event.mmap2.min ||
++	    second_event.mmap2.ino)
++	        return 0;
++	if (second_event.mmap2.start % hugepage_size ||
++		second_event.mmap2.len % hugepage_size)
++		return 0;
++
++	second_event.mmap2.len -= second_event.mmap2.start;
++
++	strcpy(execname, "");
++	n = sscanf(third_bf, "%"PRIx64"-%"PRIx64" %4s %"PRIx64" %x:%x %u %[^\n]\n",
++			&third_event.mmap2.start, &third_event.mmap2.len, prot,
++			&third_event.mmap2.pgoff, &third_event.mmap2.maj,
++			&third_event.mmap2.min,
++			&ino, execname);
++	if (n < 7)
++		return 0;
++	third_event.mmap2.ino = (u64)ino;
++
++	if (prot[2] != 'x')
++		return 0;
++	if (strncmp(execname, event->mmap2.filename, PATH_MAX))
++		return 0;
++
++       third_event.mmap2.len -= third_event.mmap2.start;
++
++	const struct mmap2_event* first_mmap = &event->mmap2;
++	const struct mmap2_event* second_mmap = &second_event.mmap2;
++	const struct mmap2_event* third_mmap = &third_event.mmap2;
++	// Check contiguous virtual memory.
++	if (first_mmap->start + first_mmap->len != second_mmap->start ||
++	    second_mmap->start + second_mmap->len != third_mmap->start)
++	    	return 0;
++	// Check non-anonymous regions backed by the same file.
++	if (first_mmap->maj != third_mmap->maj || first_mmap->min != third_mmap->min ||
++	    first_mmap->ino != third_mmap->ino)
++	    	return 0;
++	// Check non-anonymous regions contiguous within that file.
++	if (first_mmap->pgoff + first_mmap->len + second_mmap->len != third_mmap->pgoff)
++  	   	return 0;
++
++	event->mmap2.len += second_mmap->len + third_mmap->len;
++	return 1;
++}
++
+ int perf_event__synthesize_mmap_events(struct perf_tool *tool,
+ 				       union perf_event *event,
+ 				       pid_t pid, pid_t tgid,
+@@ -332,6 +406,9 @@ int perf_event__synthesize_mmap_events(struct perf_tool *tool,
+ 	int rc = 0;
+ 	const char *hugetlbfs_mnt = hugetlbfs__mountpoint();
+ 	int hugetlbfs_mnt_len = hugetlbfs_mnt ? strlen(hugetlbfs_mnt) : 0;
++	char second_bf[BUFSIZ];
++	char third_bf[BUFSIZ];
++	int merged = 0;
+ 
+ 	if (machine__is_default_guest(machine))
+ 		return 0;
+@@ -348,6 +425,11 @@ int perf_event__synthesize_mmap_events(struct perf_tool *tool,
+ 		return -1;
+ 	}
+ 
++	if (fgets(second_bf, sizeof(second_bf), fp) == NULL)
++		second_bf[0] = '\0';
++	else if (fgets(third_bf, sizeof(third_bf), fp) == NULL)
++		third_bf[0] = '\0';
++
+ 	event->header.type = PERF_RECORD_MMAP2;
+ 	t = rdclock();
+ 
+@@ -360,7 +442,22 @@ int perf_event__synthesize_mmap_events(struct perf_tool *tool,
+ 		size_t size;
+ 		ssize_t n;
+ 
+-		if (fgets(bf, sizeof(bf), fp) == NULL)
++		if (merged) {
++			merged = 0;
++			if (fgets(bf, sizeof(bf), fp) == NULL)
++				bf[0] = '\0';
++			else if (fgets(second_bf, sizeof(second_bf), fp) == NULL)
++				second_bf[0] = '\0';
++			else if (fgets(third_bf, sizeof(third_bf), fp) == NULL)
++				third_bf[0] = '\0';
++		} else {
++			strncpy(bf, second_bf, sizeof(second_bf));
++			strncpy(second_bf, third_bf, sizeof(third_bf));
++			if (fgets(third_bf, sizeof(third_bf), fp) == NULL)
++				third_bf[0] = '\0';
++		}
++
++		if (bf[0] == '\0')
+ 			break;
+ 
+ 		if ((rdclock() - t) > timeout) {
+@@ -444,6 +541,10 @@ int perf_event__synthesize_mmap_events(struct perf_tool *tool,
+ 		event->mmap2.pid = tgid;
+ 		event->mmap2.tid = pid;
+ 
++		if (strcmp(execname, anonstr) && prot[2] == 'x')
++			merged = perf_event__merge_mmap_events_for_hugepage(
++				second_bf, third_bf, event);
++
+ 		if (perf_tool__process_synth_event(tool, event, machine, process) != 0) {
+ 			rc = -1;
+ 			break;

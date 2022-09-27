@@ -1,0 +1,15 @@
+BDEPEND=dev-vcs/git
+DEFINED_PHASES=compile configure info install postinst preinst prepare prerm setup test unpack
+DEPEND=dev-rust/chromeos-dbus-bindings:= =dev-rust/dbus-0.9*:= >=dev-rust/protobuf-2.16.2:= <dev-rust/protobuf-3 >=dev-rust/protoc-rust-2.16.2:= <dev-rust/protoc-rust-3 >=virtual/rust-1.39.0:=
+DESCRIPTION=Chrome OS system API D-Bus bindings for Rust.
+EAPI=7
+HOMEPAGE=https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/system_api/
+IUSE=cros_host cros_workon_tree_3fd6438b63701fd265e3e181ed9c0418c6fbe0d4_a0d8550678a1ed2a4ab62782049032a024bf40df_b00310c222484b624ff9ec2378e041d7cd8f09fb_28de0d8f31b7c079629b40b81e98707f45158909_ac372937b4795711f04d5af57461105605663f83_5c2fc3d693f68ac5e38decc3d1df9c44da6f360f cros-debug asan coverage fuzzer msan tsan ubsan amd64 asan cros_host fuzzer lsan +lto msan sccache test tsan ubsan x86
+KEYWORDS=*
+LICENSE=BSD-Google
+PROPERTIES=live
+RDEPEND=dev-rust/chromeos-dbus-bindings:= =dev-rust/dbus-0.9*:= >=dev-rust/protobuf-2.16.2:= <dev-rust/protobuf-3 >=dev-rust/protoc-rust-2.16.2:= <dev-rust/protoc-rust-3 !chromeos-base/system_api-rust
+REQUIRED_USE=?? ( asan lsan msan tsan )
+SLOT=0/0.24.53-r277
+_eclasses_=cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-credentials	4fd98ebbff6a1534ca9a89547e13dc92	cros-debug	d2750757005d6a444f8eb12bb9eb9944	cros-rust	bfd52d742752ee9912dcb3a33b2e4642	cros-sanitizers	fcc8f96c24bfce0853f07c00f65fb50a	cros-workon	ff100259492312ff6570e490bcb9a320	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=1d40241336d509db707f70a3ff8dd49f

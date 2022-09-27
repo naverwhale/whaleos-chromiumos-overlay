@@ -1,0 +1,94 @@
+# The USE flags specified in this file are applied to packages
+# for all linux targets. In ChromeOS, that means they are applied
+# to the host packages in the chroot, as well as packages built for a
+# target board.
+
+app-admin/webapp-config	-portage
+app-arch/tar		minimal
+app-crypt/mit-krb5	-keyutils
+dev-db/sqlite		extensions
+dev-embedded/libftdi	-cxx tools
+dev-lang/python		sqlite
+# We want to re-enable this, but we'll have to update hard-host-depends to
+# stop pulling in app-crypt/nss and add an upgrade hook to uninstall that
+# from the sdk.
+#dev-libs/nss		utils
+dev-libs/dbus-glib	tools
+dev-libs/gmp		-cxx
+dev-libs/libevent	-ssl -threads
+dev-perl/GD             png
+dev-python/pyudev	pygobject
+# This requires deps we haven't imported (zeromq) and doesn't seem worth the
+# effort at this time.
+dev-python/ipython -smp
+dev-vcs/git		bash-completion curl cvs -gpg subversion webdav
+dev-vcs/subversion	-dso webdav-serf
+games-emulation/zsnes	ao -debug
+media-libs/libao	alsa
+media-libs/freeimage	-cxx
+media-libs/gd           png
+media-libs/libmtp       -crypt
+# We don't want any driver/hw rendering on the host
+media-libs/mesa         -llvm -gallium -classic
+media-sound/alsa-utils	-libsamplerate minimal
+net-misc/curl		ares
+net-misc/socat		-ssl
+net-wireless/bluez	-consolekit
+sci-geosciences/gpsd	-cxx
+# verity and other packages link statically with libuuid.
+sys-apps/util-linux	-perl static-libs
+sys-boot/grub       grub_platforms_pc grub_platforms_efi-64 grub_platforms_coreboot static
+sys-devel/gettext	-git
+# Remove dependency on libmix which is deprecated and unsupported.
+net-analyzer/netcat -crypt
+net-dns/avahi		dbus
+net-misc/dhcpcd -crash
+
+cross-armv7a-cros-linux-gnueabi/gcc   hardfp
+cross-armv7a-cros-linux-gnueabihf/gcc   hardfp
+cross-armv6j-cros-linux-gnueabi/gcc   hardfp -thumb
+sys-devel/clang		multitarget
+sys-devel/llvm		multitarget
+
+sys-apps/pciutils	-udev
+# xz-utils includes liblzma, which is picked by bmpblk_utility (vboot_reference)
+# and may be executed outside chroot.
+app-arch/xz-utils	static-libs
+sys-apps/util-linux	-suid
+# We don't have any font with graphite table. Drop graphite from harfbuzz.
+# We don't need instrospection either.
+media-libs/harfbuzz	-graphite -introspection
+dev-java/icedtea-bin -alsa -cups -X
+# Need png for color font support. bzip2 is not used. It's only for X11 *pcf.bz2
+# that we don't have.
+media-libs/freetype     png -bzip2
+dev-embedded/openocd  ftdi
+# Resolve circular dependency between libcap and pam.
+# http://crbug.com/508630 (see #8)
+sys-libs/libcap	-pam
+
+# Disable obsolete/unused protocols.
+dev-libs/openssl -sslv2 -sslv3 -tls-heartbeat
+
+# Build selected kernels with AutoFDO
+sys-kernel/chromeos-kernel-4_19 kernel_afdo
+sys-kernel/chromeos-kernel-4_14 kernel_afdo
+sys-kernel/chromeos-kernel-4_4 kernel_afdo
+sys-kernel/chromeos-kernel-3_18 kernel_afdo
+
+# start using coreboot-sdk across firmware packages
+sys-boot/coreboot		coreboot-sdk
+sys-boot/libpayload		coreboot-sdk
+sys-boot/depthcharge		coreboot-sdk
+sys-boot/chromeos-seabios	coreboot-sdk
+chromeos-base/chromeos-ec	coreboot-sdk
+
+# clang doesn't recognize gcc pragmas, so libgcrypt needs to turn off -O flags.
+dev-libs/libgcrypt	o-flag-munging
+
+# Use hostname from coreutils so we don't require net-tools anymore.
+sys-apps/coreutils hostname
+sys-apps/net-tools -hostname
+
+# Use the dedicated python-magic package.
+sys-apps/file -python

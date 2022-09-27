@@ -1,0 +1,1 @@
+serde_json-1.0.39.ebuild

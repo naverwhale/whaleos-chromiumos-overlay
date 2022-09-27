@@ -1,0 +1,30 @@
+From bcff7fdd9196789cca156736e6501252f3ffd529 Mon Sep 17 00:00:00 2001
+From: Brendan King <Brendan.King@imgtec.com>
+Date: Mon, 4 Feb 2019 16:06:24 +0000
+Subject: [PATCH 47/48] mapi/gen: always use offsets from static data
+
+The OpenGLES1 entry points were not in sync with the shared glapi
+dispatch table, because of the extra dispatch table entry points
+added by the various IMG patches. Dispatch table offsets from
+static_data.py were not being used for the dispatch table when
+the offset was above static_data.MAX_OFFSETS.
+---
+ src/mapi/glapi/gen/gl_XML.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/mapi/glapi/gen/gl_XML.py b/src/mapi/glapi/gen/gl_XML.py
+index 478f82ca314..259956a0df8 100644
+--- a/src/mapi/glapi/gen/gl_XML.py
++++ b/src/mapi/glapi/gen/gl_XML.py
+@@ -681,7 +681,7 @@ class gl_function( gl_item ):
+             # Only try to set the offset when a non-alias entry-point
+             # is being processed.
+ 
+-            if name in static_data.offsets and static_data.offsets[name] <= static_data.MAX_OFFSETS:
++            if name in static_data.offsets:
+                 self.offset = static_data.offsets[name]
+             else:
+                 self.offset = -1
+-- 
+2.17.1
+

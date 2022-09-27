@@ -1,0 +1,9 @@
+DEFINED_PHASES=-
+DESCRIPTION=List of additional packages for the test OS image; by default, we build a Chromium OS test image. Note: When building a test image, the build system pulls in all packages from the dev image (and by extension the base image) as well.
+EAPI=7
+HOMEPAGE=http://dev.chromium.org/
+KEYWORDS=*
+LICENSE=metapackage
+RDEPEND=virtual/target-chromium-os-test
+SLOT=0
+_md5_=dc6c445e1354ac53ad6e434a7462dce2

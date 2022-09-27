@@ -1,0 +1,82 @@
+From e765f04d5837400770b441cb7e33c5c93e1f9e4f Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Fran=C3=A7ois=20Degros?= <fdegros@chromium.org>
+Date: Mon, 15 Jun 2020 10:56:27 +1000
+Subject: [PATCH] Use PKG_CONFIG in Makefiles
+
+---
+ Makefile                | 7 ++++---
+ lib/Makefile            | 7 ++++---
+ tests/whitebox/Makefile | 5 +++--
+ utils/Makefile          | 5 +++--
+ 4 files changed, 14 insertions(+), 10 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 2cbdecb..1f7b71f 100644
+--- a/Makefile
++++ b/Makefile
+@@ -7,12 +7,13 @@ docdir=$(datarootdir)/doc/$(DEST)
+ mandir=$(datarootdir)/man
+ man1dir=$(mandir)/man1
+ manext=.1
+-LIBS=-Llib -lfusezip $(shell pkg-config fuse --libs) $(shell pkg-config libzip --libs)
++LIBS=-Llib -lfusezip $(shell $(PKG_CONFIG) fuse --libs) $(shell $(PKG_CONFIG) libzip --libs)
+ LIB=lib/libfusezip.a
+ CXXFLAGS=-g -O0 -Wall -Wextra -Wconversion -Wsign-conversion -Wlogical-op -Wshadow -pedantic -Werror -std=c++11
+ RELEASE_CXXFLAGS=-O2 -Wall -Wextra -Wconversion -Wsign-conversion -Wlogical-op -Wshadow -pedantic -Werror -std=c++11
+-FUSEFLAGS=$(shell pkg-config fuse --cflags)
+-ZIPFLAGS=$(shell pkg-config libzip --cflags)
++PKG_CONFIG?=pkg-config
++FUSEFLAGS=$(shell $(PKG_CONFIG) fuse --cflags)
++ZIPFLAGS=$(shell $(PKG_CONFIG) libzip --cflags)
+ SOURCES=main.cpp
+ OBJECTS=$(SOURCES:.cpp=.o)
+ MANSRC=fuse-zip.1
+diff --git a/lib/Makefile b/lib/Makefile
+index 35986ff..d092e0e 100644
+--- a/lib/Makefile
++++ b/lib/Makefile
+@@ -1,9 +1,10 @@
+ DEST=libfusezip.a
+-LIBS=$(shell pkg-config fuse --libs) $(shell pkg-config libzip --libs)
++PKG_CONFIG?=pkg-config
++LIBS=$(shell $(PKG_CONFIG) fuse --libs) $(shell $(PKG_CONFIG) libzip --libs)
+ CXXFLAGS=-g -O0 -Wall -Wextra -Wconversion -Wsign-conversion -Wlogical-op -Wshadow -pedantic -Werror -std=c++11
+ RELEASE_CXXFLAGS=-O2 -Wall -Wextra -Wconversion -Wsign-conversion -Wlogical-op -Wshadow -pedantic -Werror -std=c++11
+-FUSEFLAGS=$(shell pkg-config fuse --cflags)
+-ZIPFLAGS=$(shell pkg-config libzip --cflags)
++FUSEFLAGS=$(shell $(PKG_CONFIG) fuse --cflags)
++ZIPFLAGS=$(shell $(PKG_CONFIG) libzip --cflags)
+ SOURCES=$(sort $(wildcard *.cpp))
+ OBJECTS=$(SOURCES:.cpp=.o)
+ CLEANFILES=$(OBJECTS) $(DEST)
+diff --git a/tests/whitebox/Makefile b/tests/whitebox/Makefile
+index 507009c..493e46c 100644
+--- a/tests/whitebox/Makefile
++++ b/tests/whitebox/Makefile
+@@ -1,6 +1,7 @@
+ CXXFLAGS=-g -O2 -Wall -Wextra -Werror -std=c++11
+-FUSEFLAGS=$(shell pkg-config fuse --cflags)
+-ZIPFLAGS=$(shell pkg-config libzip --cflags)
++PKG_CONFIG?=pkg-config
++FUSEFLAGS=$(shell $(PKG_CONFIG) fuse --cflags)
++ZIPFLAGS=$(shell $(PKG_CONFIG) libzip --cflags)
+ VALGRIND=valgrind -q --leak-check=full --track-origins=yes --error-exitcode=33
+ LIB=../../lib/libfusezip.a
+ 
+diff --git a/utils/Makefile b/utils/Makefile
+index afbfb68..4340b1a 100644
+--- a/utils/Makefile
++++ b/utils/Makefile
+@@ -1,6 +1,7 @@
+-LIBS=-L../lib -lfusezip $(shell pkg-config libzip --libs)
++PKG_CONFIG?=pkg-config
++LIBS=-L../lib -lfusezip $(shell $(PKG_CONFIG) libzip --libs)
+ CXXFLAGS=-g -O0 -Wall -Wextra -Wlogical-op -Wshadow -pedantic -Werror
+-ZIPFLAGS=$(shell pkg-config libzip --cflags)
++ZIPFLAGS=$(shell $(PKG_CONFIG) libzip --cflags)
+ 
+ all: dump-extrafld create-content-size
+ 
+-- 
+2.27.0.111.gc72c7da667-goog
+

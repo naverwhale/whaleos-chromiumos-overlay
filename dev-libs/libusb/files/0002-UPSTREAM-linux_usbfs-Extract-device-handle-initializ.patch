@@ -1,0 +1,97 @@
+From fe80d9a79d3f9afe59a7284e98430b8bbe5ee4e9 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Vianney=20le=20Cl=C3=A9ment=20de=20Saint-Marcq?=
+ <code@quartic.eu>
+Date: Tue, 13 Dec 2016 15:32:39 +0100
+Subject: [PATCH 02/11] UPSTREAM: linux_usbfs: Extract device handle
+ initialization from op_open()
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Slightly refactor op_open() to extract the device handle initialization
+code into a new initialize_handle() function, similar to the
+initialize_device() function.
+
+Signed-off-by: Vianney le Clément de Saint-Marcq <code@quartic.eu>
+Signed-off-by: Nathan Hjelm <hjelmn@me.com>
+(cherry picked from commit 1f22d799b4602b7b51424d7c28a7ffbfd4de8362)
+Signed-off-by: Dmitry Torokhov <dtor@chromium.org>
+---
+ libusb/os/linux_usbfs.c | 48 +++++++++++++++++++++++++----------------
+ 1 file changed, 29 insertions(+), 19 deletions(-)
+
+diff --git a/libusb/os/linux_usbfs.c b/libusb/os/linux_usbfs.c
+index 7bda951..dfbb6c4 100644
+--- a/libusb/os/linux_usbfs.c
++++ b/libusb/os/linux_usbfs.c
+@@ -1352,28 +1352,14 @@ static int linux_default_scan_devices (struct libusb_context *ctx)
+ }
+ #endif
+ 
+-static int op_open(struct libusb_device_handle *handle)
++static int initialize_handle(struct libusb_device_handle *handle, int fd)
+ {
+ 	struct linux_device_handle_priv *hpriv = _device_handle_priv(handle);
+ 	int r;
+ 
+-	hpriv->fd = _get_usbfs_fd(handle->dev, O_RDWR, 0);
+-	if (hpriv->fd < 0) {
+-		if (hpriv->fd == LIBUSB_ERROR_NO_DEVICE) {
+-			/* device will still be marked as attached if hotplug monitor thread
+-			 * hasn't processed remove event yet */
+-			usbi_mutex_static_lock(&linux_hotplug_lock);
+-			if (handle->dev->attached) {
+-				usbi_dbg("open failed with no device, but device still attached");
+-				linux_device_disconnected(handle->dev->bus_number,
+-						handle->dev->device_address);
+-			}
+-			usbi_mutex_static_unlock(&linux_hotplug_lock);
+-		}
+-		return hpriv->fd;
+-	}
++	hpriv->fd = fd;
+ 
+-	r = ioctl(hpriv->fd, IOCTL_USBFS_GET_CAPABILITIES, &hpriv->caps);
++	r = ioctl(fd, IOCTL_USBFS_GET_CAPABILITIES, &hpriv->caps);
+ 	if (r < 0) {
+ 		if (errno == ENOTTY)
+ 			usbi_dbg("getcap not available");
+@@ -1386,9 +1372,33 @@ static int op_open(struct libusb_device_handle *handle)
+ 			hpriv->caps |= USBFS_CAP_BULK_CONTINUATION;
+ 	}
+ 
+-	r = usbi_add_pollfd(HANDLE_CTX(handle), hpriv->fd, POLLOUT);
++	return usbi_add_pollfd(HANDLE_CTX(handle), hpriv->fd, POLLOUT);
++}
++
++static int op_open(struct libusb_device_handle *handle)
++{
++	struct linux_device_handle_priv *hpriv = _device_handle_priv(handle);
++	int fd, r;
++
++	fd = _get_usbfs_fd(handle->dev, O_RDWR, 0);
++	if (fd < 0) {
++		if (fd == LIBUSB_ERROR_NO_DEVICE) {
++			/* device will still be marked as attached if hotplug monitor thread
++			 * hasn't processed remove event yet */
++			usbi_mutex_static_lock(&linux_hotplug_lock);
++			if (handle->dev->attached) {
++				usbi_dbg("open failed with no device, but device still attached");
++				linux_device_disconnected(handle->dev->bus_number,
++						handle->dev->device_address);
++			}
++			usbi_mutex_static_unlock(&linux_hotplug_lock);
++		}
++		return fd;
++	}
++
++	r = initialize_handle(handle, fd);
+ 	if (r < 0)
+-		close(hpriv->fd);
++		close(fd);
+ 
+ 	return r;
+ }
+-- 
+2.22.0.rc2.383.gf4fbbf30c2-goog
+

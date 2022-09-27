@@ -1,0 +1,19 @@
+Remove the Makefile that runs cargo test which is incompatible with ecargo.
+--- a/Makefile	2018-10-21 05:24:00.000000000 +0800
++++ b/Makefile	1970-01-01 08:00:00.000000000 +0800
+@@ -1,15 +0,0 @@
+-all: test
+-.PHONY: all
+-
+-test: 
+-	@echo TEST DEFAULT FEATURES
+-	@cargo test --all
+-	@echo TEST WITH BACKTRACE
+-	@cargo test --features backtrace --all
+-	@echo TEST NO DEFAULT FEATURES
+-	@cargo check --no-default-features --all
+-.PHONY: test
+-
+-check:
+-	@cargo check --all
+-.PHONY: check

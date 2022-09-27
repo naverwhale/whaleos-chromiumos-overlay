@@ -1,0 +1,291 @@
+From 0a7c57b911070bc736fb59af533993f57522d5a5 Mon Sep 17 00:00:00 2001
+From: Cody Schuffelen <schuffelen@google.com>
+Date: Fri, 21 Dec 2018 13:39:36 -0800
+Subject: [PATCH] Add native vsock support to ADB.
+
+vsock is a socket address family for communicating into and out of
+virtual machines. Addresses have a port and CID. The CID is unique to
+each virtual machine on the computer. The VM host always has CID 2.
+http://man7.org/linux/man-pages/man7/vsock.7.html
+
+Inside the android guest, the adb daemon hosts a vsock server with
+VMADDR_CID_ANY, automatically using the guest CID. The adb server
+can now connect to addresses of the form vsock:cid:port, where the CID
+must be specified and the port defaults to 5555.
+
+This is a significant speed improvement for ADB connections in
+Cuttlefish, with 150-200 MB/s for `adb push` and 100-150 MB/s for
+`adb pull`. It also allows removing some proxying steps from Cuttlefish,
+simplifying the full connection path, and removes a dependency on the
+unstable ivshmem protocol.
+
+Commands tested against a Cuttlefish VM with CID 3:
+adb connect vsock:3:5555
+adb -s vsock:3:5555 shell
+adb disconnect vsock:3:5555
+
+Supporting "adb disconnect" and "adb -s" required modifying some of the
+parts that parse addresses / serials.
+
+push/pull trials with native adb vsock support in cuttlefish:
+
+100m: 1 file pushed. 167.9 MB/s (104857600 bytes in 0.596s)
+100m: 1 file pushed. 171.1 MB/s (104857600 bytes in 0.584s)
+100m: 1 file pushed. 175.2 MB/s (104857600 bytes in 0.571s)
+100m: 1 file pushed. 168.7 MB/s (104857600 bytes in 0.593s)
+100m: 1 file pushed. 172.9 MB/s (104857600 bytes in 0.578s)
+100m: 1 file pushed. 168.8 MB/s (104857600 bytes in 0.592s)
+100m: 1 file pushed. 197.5 MB/s (104857600 bytes in 0.506s)
+100m: 1 file pushed. 201.0 MB/s (104857600 bytes in 0.497s)
+100m: 1 file pushed. 199.0 MB/s (104857600 bytes in 0.503s)
+100m: 1 file pushed. 215.5 MB/s (104857600 bytes in 0.464s)
+
+/data/local/tmp/100m: 1 file pulled. 143.8 MB/s (104857600 bytes in 0.696s)
+/data/local/tmp/100m: 1 file pulled. 137.5 MB/s (104857600 bytes in 0.727s)
+/data/local/tmp/100m: 1 file pulled. 135.5 MB/s (104857600 bytes in 0.738s)
+/data/local/tmp/100m: 1 file pulled. 139.6 MB/s (104857600 bytes in 0.716s)
+/data/local/tmp/100m: 1 file pulled. 158.3 MB/s (104857600 bytes in 0.632s)
+/data/local/tmp/100m: 1 file pulled. 126.7 MB/s (104857600 bytes in 0.789s)
+/data/local/tmp/100m: 1 file pulled. 129.8 MB/s (104857600 bytes in 0.771s)
+/data/local/tmp/100m: 1 file pulled. 154.8 MB/s (104857600 bytes in 0.646s)
+/data/local/tmp/100m: 1 file pulled. 156.9 MB/s (104857600 bytes in 0.637s)
+/data/local/tmp/100m: 1 file pulled. 152.2 MB/s (104857600 bytes in 0.657s)
+
+Bug: 121166534
+Change-Id: I50f21fb5c9acafb8daa789df4e28c9e1bbbbf2ef
+Test: adb connect/shell/disconnect
+---
+
+diff --git a/adb/adb.cpp b/adb/adb.cpp
+index c791c7b..a8145bf 100644
+--- a/adb/adb.cpp
++++ b/adb/adb.cpp
+@@ -1153,7 +1153,9 @@
+         std::string host;
+         int port = DEFAULT_ADB_LOCAL_TRANSPORT_PORT;
+         std::string error;
+-        if (!android::base::ParseNetAddress(address, &host, &port, &serial, &error)) {
++        if (address.find("vsock:") == 0) {
++            serial = address;
++        } else if (!android::base::ParseNetAddress(address, &host, &port, &serial, &error)) {
+             return SendFail(reply_fd, android::base::StringPrintf("couldn't parse '%s': %s",
+                                                                   address.c_str(), error.c_str()));
+         }
+diff --git a/adb/sockets.cpp b/adb/sockets.cpp
+index 04bd080..c083bcb 100644
+--- a/adb/sockets.cpp
++++ b/adb/sockets.cpp
+@@ -584,6 +584,14 @@
+         if (ipv6_end != nullptr) {
+             service = ipv6_end;
+         }
++    } else if (!strncmp(service, "vsock:", 6)) {
++        // vsock serials are vsock:cid:port, which have an extra colon compared to tcp.
++        char* colon_ptr = strchr(service, ':');
++        if (!colon_ptr) {
++            // Missing CID
++            return nullptr;
++        }
++        service = colon_ptr + 1;
+     }
+ 
+     // The next colon we find must either begin the port field or the command field.
+diff --git a/adb/transport_local.cpp b/adb/transport_local.cpp
+index 560a031..2b073c2 100644
+--- a/adb/transport_local.cpp
++++ b/adb/transport_local.cpp
+@@ -31,8 +31,10 @@
+ #include <unordered_map>
+ #include <vector>
+ 
++#include <android-base/parseint.h>
+ #include <android-base/parsenetaddress.h>
+ #include <android-base/stringprintf.h>
++#include <android-base/strings.h>
+ #include <android-base/thread_annotations.h>
+ #include <cutils/sockets.h>
+ 
+@@ -46,6 +48,10 @@
+ #include "adb_utils.h"
+ #include "sysdeps/chrono.h"
+ 
++#if defined(__linux__)
++#include "vm_sockets.h"
++#endif
++
+ #if ADB_HOST
+ 
+ // Android Wear has been using port 5601 in all of its documentation/tooling,
+@@ -76,12 +82,55 @@
+     std::string serial;
+     std::string host;
+     int port = DEFAULT_ADB_LOCAL_TRANSPORT_PORT;
+-    if (!android::base::ParseNetAddress(address, &host, &port, &serial, response)) {
++    int fd = -1;
++
++#if defined(__linux__)
++    if (android::base::StartsWith(address, "vsock:")) {
++        std::vector<std::string> fragments = android::base::Split(address, ":");
++        unsigned int cid = 0;
++        if (fragments.size() != 2 && fragments.size() != 3) {
++            *response = android::base::StringPrintf("expected vsock:cid or vsock:port:cid in '%s'",
++                                                    address.c_str());
++            return;
++        }
++        if (!android::base::ParseUint(fragments[1], &cid)) {
++            *response =
++                android::base::StringPrintf("could not parse vsock cid in '%s'", address.c_str());
++            return;
++        }
++        if (fragments.size() == 3 && !android::base::ParseInt(fragments[2], &port)) {
++            *response =
++                android::base::StringPrintf("could not parse vsock port in '%s'", address.c_str());
++            return;
++        }
++        fd = socket(AF_VSOCK, SOCK_STREAM, 0);
++        if (fd < 0) {
++            *response = "could not open vsock socket";
++            return;
++        }
++        sockaddr_vm addr;
++        memset(&addr, '\0', sizeof(addr));
++        addr.svm_family = AF_VSOCK;
++        addr.svm_port = port;
++        addr.svm_cid = cid;
++        if (connect(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr))) {
++            *response = android::base::StringPrintf("could not connect to vsock address '%s'",
++                                                    address.c_str());
++            unix_close(fd);
++            return;
++        }
++        serial = android::base::StringPrintf("vsock:%u:%d", cid, port);
++        host = android::base::StringPrintf("vsock:%d", cid);
++    } else
++#endif  // defined(__linux__)
++        if (!android::base::ParseNetAddress(address, &host, &port, &serial, response)) {
+         return;
+     }
+ 
+     std::string error;
+-    int fd = network_connect(host.c_str(), port, SOCK_STREAM, 10, &error);
++    if (fd == -1) {
++        fd = network_connect(host.c_str(), port, SOCK_STREAM, 10, &error);
++    }
+     if (fd == -1) {
+         *response = android::base::StringPrintf("unable to connect to %s: %s",
+                                                 serial.c_str(), error.c_str());
+@@ -242,6 +291,55 @@
+     D("transport: server_socket_thread() exiting");
+ }
+ 
++static void server_vsock_thread(int port) {
++    adb_thread_setname("server vsock");
++    D("transport: server_vsock_thread() starting");
++    int serverfd = -1;
++    for (;;) {
++        if (serverfd == -1) {
++            serverfd = socket(AF_VSOCK, SOCK_STREAM, 0);
++            if (serverfd == -1) {
++                if (errno == EAFNOSUPPORT || errno == EINVAL || errno == EPROTONOSUPPORT) {
++                    D("vsock: not supported (%s)", strerror(errno));
++                    return;
++                }
++                D("vsock: cannot bind socket yet: %s", strerror(errno));
++                std::this_thread::sleep_for(1s);
++                continue;
++            }
++            struct sockaddr_vm addr;
++            addr.svm_family = AF_VSOCK;
++            addr.svm_reserved1 = 0;
++            addr.svm_port = port;
++            addr.svm_cid = VMADDR_CID_ANY;
++            if (bind(serverfd, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr))) {
++                adb_close(serverfd);
++                D("vsock: cannot bind socket yet: %s", strerror(errno));
++                std::this_thread::sleep_for(1s);
++                continue;
++            }
++            if (listen(serverfd, 4)) {
++                adb_close(serverfd);
++                D("vsock: cannot bind socket yet: %s", strerror(errno));
++                std::this_thread::sleep_for(1s);
++                continue;
++            }
++        }
++
++        D("vsock: trying to get new connection from %d", port);
++        int fd = adb_socket_accept(serverfd, nullptr, nullptr);
++        if (fd >= 0) {
++            D("server: new connection on fd %d", fd);
++            close_on_exec(fd);
++            disable_tcp_nagle(fd);
++            std::string serial = android::base::StringPrintf("host-%d", fd);
++            if (register_socket_transport(fd, serial.c_str(), port, 1) != 0) {
++                adb_close(fd);
++            }
++        }
++    }
++}
++
+ /* This is relevant only for ADB daemon running inside the emulator. */
+ /*
+  * Redefine open and write for qemu_pipe.h that contains inlined references
+@@ -386,6 +484,7 @@
+     // For the adbd daemon in the system image we need to distinguish
+     // between the device, and the emulator.
+     func = use_qemu_goldfish() ? qemu_socket_thread : server_socket_thread;
++    std::thread(server_vsock_thread, port).detach();
+     debug_name = "server";
+ #endif // !ADB_HOST
+ 
+diff --git a/adb/vm_sockets.h b/adb/vm_sockets.h
+new file mode 100644
+index 0000000..52af3c5
+--- /dev/null
++++ b/adb/vm_sockets.h
+@@ -0,0 +1,45 @@
++/****************************************************************************
++ ****************************************************************************
++ ***
++ ***   This header was automatically generated from a Linux kernel header
++ ***   of the same name, to make information necessary for userspace to
++ ***   call into the kernel available to libc.  It contains only constants,
++ ***   structures, and macros generated from the original header, and thus,
++ ***   contains no copyrightable information.
++ ***
++ ***   Copied and modified from bionic/libc/kernel/uapi/linux/vm_sockets.h
++ ***
++ ****************************************************************************
++ ****************************************************************************/
++#ifndef _UAPI_VM_SOCKETS_H
++#define _UAPI_VM_SOCKETS_H
++#include <linux/socket.h>
++#define SO_VM_SOCKETS_BUFFER_SIZE 0
++#define SO_VM_SOCKETS_BUFFER_MIN_SIZE 1
++#define SO_VM_SOCKETS_BUFFER_MAX_SIZE 2
++#define SO_VM_SOCKETS_PEER_HOST_VM_ID 3
++#define SO_VM_SOCKETS_TRUSTED 5
++#define SO_VM_SOCKETS_CONNECT_TIMEOUT 6
++#define SO_VM_SOCKETS_NONBLOCK_TXRX 7
++#define VMADDR_CID_ANY -1U
++#define VMADDR_PORT_ANY -1U
++#define VMADDR_CID_HYPERVISOR 0
++#define VMADDR_CID_RESERVED 1
++#define VMADDR_CID_HOST 2
++#define VM_SOCKETS_INVALID_VERSION -1U
++#define VM_SOCKETS_VERSION_EPOCH(_v) (((_v)&0xFF000000) >> 24)
++#define VM_SOCKETS_VERSION_MAJOR(_v) (((_v)&0x00FF0000) >> 16)
++#define VM_SOCKETS_VERSION_MINOR(_v) (((_v)&0x0000FFFF))
++struct sockaddr_vm {
++    __kernel_sa_family_t svm_family;
++    unsigned short svm_reserved1;
++    unsigned int svm_port;
++    unsigned int svm_cid;
++    unsigned char svm_zero[sizeof(struct sockaddr) - sizeof(sa_family_t) - sizeof(unsigned short) -
++                           sizeof(unsigned int) - sizeof(unsigned int)];
++};
++#define IOCTL_VM_SOCKETS_GET_LOCAL_CID _IO(7, 0xb9)
++#ifndef AF_VSOCK
++#define AF_VSOCK 40
++#endif
++#endif

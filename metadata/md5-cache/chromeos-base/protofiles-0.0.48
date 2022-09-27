@@ -1,0 +1,12 @@
+BDEPEND=>=dev-vcs/git-1.8.2.1[curl]
+DEFINED_PHASES=compile install setup unpack
+DESCRIPTION=Protobuf installer for the device policy proto definitions.
+EAPI=7
+HOMEPAGE=https://chromium.googlesource.com/chromium/src/components/policy
+KEYWORDS=*
+LICENSE=BSD-Google
+PROPERTIES=live
+RDEPEND=!<chromeos-base/chromeos-chrome-82.0.4056.0_rc-r1
+SLOT=0/0.0.48
+_eclasses_=cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	git-r3	c8f4649ab5a3c07ee2b75b12bc446f6a	multilib	2477ebe553d3e4d2c606191fe6c33602	python-any-r1	54a3178500786b0a7ede4a23b7f2a6ad	python-utils-r1	157a6a7a3e99c7dbdf81acc9dd4f57cd	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=d0d207ef5c1e44b604f8b7ed24d97031

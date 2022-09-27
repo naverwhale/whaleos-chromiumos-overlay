@@ -1,0 +1,7 @@
+DEFINED_PHASES=-
+DESCRIPTION=Board specific factory test image resources
+EAPI=7
+KEYWORDS=*
+LICENSE=BSD-Google
+SLOT=0
+_md5_=bf243d53ad5b69c17c4cb05e16b30d1c

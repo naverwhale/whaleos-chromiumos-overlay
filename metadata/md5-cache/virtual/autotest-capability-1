@@ -1,0 +1,8 @@
+DEFINED_PHASES=-
+DESCRIPTION=Virtual package installing files define the capability of DUTs. We run or skip test cases base on those capabilities. See README.md for details.
+EAPI=7
+KEYWORDS=*
+LICENSE=metapackage
+RDEPEND=chromeos-base/autotest-capability-default
+SLOT=0
+_md5_=bc7fe3c9f5bdde12ca459e2facda3ef4

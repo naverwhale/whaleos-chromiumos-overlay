@@ -1,0 +1,9 @@
+DEFINED_PHASES=install
+DESCRIPTION=Ebuild for Android toolchain (compilers, linker, libraries, headers).
+EAPI=5
+KEYWORDS=-* amd64
+LICENSE=GPL-3 LGPL-3 GPL-3 libgcc libstdc++ gcc-runtime-library-exception-3.1 FDL-1.2 UoI-NCSA
+RESTRICT=strip
+SLOT=0
+SRC_URI=http://commondatastorage.googleapis.com/chromeos-localmirror/distfiles/arc-toolchain-r-2020.07.10.tar.gz
+_md5_=70f751e0f0be6b7fbdea5496670d4c23

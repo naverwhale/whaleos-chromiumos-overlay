@@ -1,0 +1,2 @@
+# Used in the build to fetch files.
+include chromiumos/chromite:/OWNERS.build

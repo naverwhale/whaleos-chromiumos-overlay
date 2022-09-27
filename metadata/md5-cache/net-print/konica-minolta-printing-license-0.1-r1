@@ -1,0 +1,10 @@
+DEFINED_PHASES=-
+DESCRIPTION=Licenses for Konica Minolta PPD files
+EAPI=6
+HOMEPAGE=http://dev.chromium.org
+IUSE=internal
+KEYWORDS=*
+LICENSE=LICENSE.konica-minolta-ppds
+REQUIRED_USE=internal
+SLOT=0
+_md5_=63ffcf447d26d2ec5a7b124c631a3145

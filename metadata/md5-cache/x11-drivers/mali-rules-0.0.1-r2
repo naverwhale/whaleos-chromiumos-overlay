@@ -1,0 +1,7 @@
+DEFINED_PHASES=install
+DESCRIPTION=Rules for setting permissions right on /dev/mali0
+EAPI=4
+KEYWORDS=arm
+LICENSE=BSD-Google
+SLOT=0
+_md5_=257ab04c17f895f3266068591f750595

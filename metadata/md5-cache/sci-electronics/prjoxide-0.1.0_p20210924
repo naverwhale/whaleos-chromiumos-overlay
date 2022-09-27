@@ -1,0 +1,14 @@
+DEFINED_PHASES=compile configure install postinst preinst prepare prerm setup test unpack
+DEPEND==dev-rust/capnp-0.14*:= =dev-rust/clap-3*:= =dev-rust/flate2-1*:= =dev-rust/include_dir-0.6*:= >=dev-rust/itertools-0.8.2:= <dev-rust/itertools-0.9.0 >=dev-rust/lazy_static-1.4.0:= <dev-rust/lazy_static-2.0.0 >=dev-rust/log-0.4.11:= <dev-rust/log-0.5.0 =dev-rust/multimap-0.8*:= =dev-rust/num-bigint-0.4*:= >=dev-rust/pulldown-cmark-0.6.1:= <dev-rust/pulldown-cmark-0.7.0 =dev-rust/regex-1*:= >=dev-rust/ron-0.5.1:= <dev-rust/ron-0.6.0 =dev-rust/serde-1*:= =dev-rust/serde_json-1*:= =dev-rust/capnpc-0.14*:= >=virtual/rust-1.39.0:=
+DESCRIPTION=Project Oxide - documenting Lattice's 28nm "Nexus" FPGA parts
+EAPI=7
+HOMEPAGE=https://github.com/gatecat/prjoxide
+IUSE=cros-debug asan coverage fuzzer msan tsan ubsan amd64 asan cros_host fuzzer lsan +lto msan sccache test tsan ubsan x86
+KEYWORDS=*
+LICENSE=ISC
+RDEPEND==dev-rust/capnp-0.14*:= =dev-rust/clap-3*:= =dev-rust/flate2-1*:= =dev-rust/include_dir-0.6*:= >=dev-rust/itertools-0.8.2:= <dev-rust/itertools-0.9.0 >=dev-rust/lazy_static-1.4.0:= <dev-rust/lazy_static-2.0.0 >=dev-rust/log-0.4.11:= <dev-rust/log-0.5.0 =dev-rust/multimap-0.8*:= =dev-rust/num-bigint-0.4*:= >=dev-rust/pulldown-cmark-0.6.1:= <dev-rust/pulldown-cmark-0.7.0 =dev-rust/regex-1*:= >=dev-rust/ron-0.5.1:= <dev-rust/ron-0.6.0 =dev-rust/serde-1*:= =dev-rust/serde_json-1*:= =dev-rust/capnpc-0.14*:= sci-electronics/yosys
+REQUIRED_USE=?? ( asan lsan msan tsan )
+SLOT=0
+SRC_URI=https://github.com/gatecat/prjoxide/archive/318331f8b30c2e2a31cc41d51f104b671e180a8a.tar.gz -> prjoxide-318331f8b30c2e2a31cc41d51f104b671e180a8a.tar.gz https://github.com/gatecat/prjoxide-db/archive/48cb5537977c41d38c40ddff45ba1bbcec384ba8.tar.gz -> prjoxide-db-48cb5537977c41d38c40ddff45ba1bbcec384ba8.tar.gz https://github.com/SymbiFlow/fpga-interchange-schema/archive/78abf3f30770ccc6d0e1f5dbfeaef2666f55acf6.tar.gz -> fpga-interchange-schema-78abf3f30770ccc6d0e1f5dbfeaef2666f55acf6.tar.gz
+_eclasses_=cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-debug	d2750757005d6a444f8eb12bb9eb9944	cros-rust	bfd52d742752ee9912dcb3a33b2e4642	cros-sanitizers	fcc8f96c24bfce0853f07c00f65fb50a	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=ee65e1e16efaa00bc4dc0101edcc0a82

@@ -1,0 +1,9 @@
+DEFINED_PHASES=install
+DESCRIPTION=Google3 face detection library.
+EAPI=7
+IUSE=march_alderlake march_armv8 march_bdver4 march_corei7 march_goldmont march_silvermont march_skylake march_tigerlake march_tremont march_znver1
+KEYWORDS=*
+LICENSE=BSD-Google
+SLOT=0
+SRC_URI=gs://chromeos-localmirror/distfiles/chromeos-facessd-lib-2021.07.07.tar.bz2
+_md5_=d5e8a34137fe98e98711e1a9d7569a4c

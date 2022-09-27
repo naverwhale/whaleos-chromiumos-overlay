@@ -1,0 +1,49 @@
+From 2a51b64358e5e9a0f3cce8009aa36303720ec4ec Mon Sep 17 00:00:00 2001
+From: Zubin Mithra <zsm@chromium.org>
+Date: Wed, 27 Jan 2021 10:19:31 -0800
+Subject: [PATCH] cros-syzkaller: use arm toolchain available within chroot
+
+---
+ sys/targets/targets.go | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/sys/targets/targets.go b/sys/targets/targets.go
+index ff218aa6c..6daf3d708 100644
+--- a/sys/targets/targets.go
++++ b/sys/targets/targets.go
+@@ -210,7 +210,7 @@ var List = map[string]map[string]*Target{
+ 			PtrSize:          8,
+ 			PageSize:         4 << 10,
+ 			LittleEndian:     true,
+-			Triple:           "aarch64-linux-gnu",
++			Triple:           "aarch64-cros-linux-gnu",
+ 			KernelArch:       "arm64",
+ 			KernelHeaderArch: "arm64",
+ 		},
+@@ -219,8 +219,8 @@ var List = map[string]map[string]*Target{
+ 			PtrSize:          4,
+ 			PageSize:         4 << 10,
+ 			LittleEndian:     true,
+-			CFlags:           []string{"-D__LINUX_ARM_ARCH__=6", "-march=armv6"},
+-			Triple:           "arm-linux-gnueabi",
++			CFlags:           []string{"-D__LINUX_ARM_ARCH__=6", "-march=armv8-a+crc"},
++			Triple:           "armv7a-cros-linux-gnueabihf",
+ 			KernelArch:       "arm",
+ 			KernelHeaderArch: "arm",
+ 		},
+@@ -643,6 +643,12 @@ func (target *Target) setCompiler(clang bool) {
+ 			target.CCompiler = target.Triple + "-" + target.CCompiler
+ 		}
+ 	}
++	if target.OS == "linux" && target.Arch == "arm" {
++		target.CCompiler = "armv7a-cros-linux-gnueabihf-clang++"
++	}
++	if target.OS == "linux" && target.Arch == "aarch64" {
++		target.CCompiler = "aarch64-cros-linux-gnu-clang++"
++	}
+ }
+ 
+ func (target *Target) replaceSourceDir(param *string, sourceDir string) {
+-- 
+2.20.0
+

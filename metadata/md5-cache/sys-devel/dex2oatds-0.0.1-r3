@@ -1,0 +1,8 @@
+DEFINED_PHASES=install
+DESCRIPTION=Ebuild which pulls in binaries of dex2oatds
+EAPI=5
+KEYWORDS=*
+LICENSE=BSD-Google
+SLOT=0
+SRC_URI=gs://chromeos-localmirror/distfiles/dex2oatds-0.0.1.tbz2 gs://chromeos-localmirror/distfiles/dex2oatds-0.0.1-pi.tbz2 gs://chromeos-localmirror/distfiles/dex2oatds-0.0.1-rvc.tbz2
+_md5_=f86b8de514ab4bfffeeccb9907c42400

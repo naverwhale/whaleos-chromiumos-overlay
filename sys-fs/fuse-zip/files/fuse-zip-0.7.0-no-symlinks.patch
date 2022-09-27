@@ -1,0 +1,125 @@
+From 86894bf6dcaff212b695460f4c81ac7b220a8968 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Fran=C3=A7ois=20Degros?= <fdegros@chromium.org>
+Date: Wed, 2 Sep 2020 19:52:36 +1000
+Subject: [PATCH] No symlinks
+
+Do not show symbolic links recorded in the ZIP.
+Pretend they don't exist.
+---
+ lib/fuse-zip.cpp    | 50 ---------------------------------------------
+ lib/fuse-zip.h      |  4 ----
+ lib/fuseZipData.cpp |  4 ++++
+ main.cpp            |  2 --
+ 4 files changed, 4 insertions(+), 56 deletions(-)
+
+diff --git a/lib/fuse-zip.cpp b/lib/fuse-zip.cpp
+index 661e03b..4a1b139 100644
+--- a/lib/fuse-zip.cpp
++++ b/lib/fuse-zip.cpp
+@@ -609,53 +609,3 @@ int fusezip_access(const char *, int) {
+     return 0;
+ }
+ 
+-int fusezip_readlink(const char *path, char *buf, size_t size) {
+-    if (*path == '\0') {
+-        return -ENOENT;
+-    }
+-    FileNode *node = get_file_node(path + 1);
+-    if (node == NULL) {
+-        return -ENOENT;
+-    }
+-    if (!S_ISLNK(node->mode())) {
+-        return -EINVAL;
+-    }
+-    int res;
+-    if ((res = node->open()) != 0) {
+-        if (res == -EMFILE) {
+-            res = -ENOMEM;
+-        }
+-        return res;
+-    }
+-    int count = node->read(buf, size - 1, 0);
+-    buf[count] = '\0';
+-    node->close();
+-    return 0;
+-}
+-
+-int fusezip_symlink(const char *dest, const char *path) {
+-    if (*path == '\0') {
+-        return -EACCES;
+-    }
+-    FileNode *node = get_file_node(path + 1);
+-    if (node != NULL) {
+-        return -EEXIST;
+-    }
+-    node = FileNode::createSymlink (get_zip(), path + 1);
+-    if (node == NULL) {
+-        return -ENOMEM;
+-    }
+-    get_data()->insertNode (node);
+-
+-    int res;
+-    if ((res = node->open()) != 0) {
+-        if (res == -EMFILE) {
+-            res = -ENOMEM;
+-        }
+-        return res;
+-    }
+-    res = node->write(dest, strlen(dest), 0);
+-    node->close();
+-    return (res < 0) ? -ENOMEM : 0;
+-}
+-
+diff --git a/lib/fuse-zip.h b/lib/fuse-zip.h
+index 0e9730f..74990db 100644
+--- a/lib/fuse-zip.h
++++ b/lib/fuse-zip.h
+@@ -115,10 +115,6 @@ int fusezip_releasedir(const char *, struct fuse_file_info *);
+ 
+ int fusezip_access(const char *, int);
+ 
+-int fusezip_readlink(const char *, char *, size_t);
+-
+-int fusezip_symlink(const char *, const char *);
+-
+ }
+ 
+ #endif
+diff --git a/lib/fuseZipData.cpp b/lib/fuseZipData.cpp
+index 3a71b0a..461cd4b 100644
+--- a/lib/fuseZipData.cpp
++++ b/lib/fuseZipData.cpp
+@@ -122,6 +122,8 @@ void FuseZipData::build_tree(bool readonly) {
+ 
+         const char *const name = sb.name;
+         mode_t mode = getEntryAttributes(id, name, isHardlink);
++        if (S_ISLNK(mode))
++            continue;
+         
+         if (isHardlink)
+             continue;
+@@ -153,6 +155,8 @@ void FuseZipData::build_tree(bool readonly) {
+         bool isHardlink;
+         const char *name = zip_get_name(m_zip, id, ZIP_FL_ENC_GUESS);
+         mode_t mode = getEntryAttributes(id, name, isHardlink);
++        if (S_ISLNK(mode))
++            continue;
+ 
+         if (!isHardlink)
+             continue;
+diff --git a/main.cpp b/main.cpp
+index f1e605d..63cc2c5 100644
+--- a/main.cpp
++++ b/main.cpp
+@@ -272,8 +272,6 @@ int main(int argc, char *argv[]) try {
+     fusezip_oper.getxattr   =   fusezip_getxattr;
+     fusezip_oper.listxattr  =   fusezip_listxattr;
+     fusezip_oper.removexattr=   fusezip_removexattr;
+-    fusezip_oper.readlink   =   fusezip_readlink;
+-    fusezip_oper.symlink    =   fusezip_symlink;
+ 
+ #if FUSE_VERSION >= 28
+     // don't allow NULL path
+-- 
+2.33.0.464.g1972c5931b-goog
+

@@ -1,0 +1,53 @@
+This patch get the symbol table size by visiting the ELF section header.
+Previous it figures the symbol table size by assuming string table always
+directly follows the symbol table, but this assumption does not hold for
+LLD.
+--- a/libsandbox/wrapper-funcs/__wrapper_exec.c
++++ b/libsandbox/wrapper-funcs/__wrapper_exec.c
+@@ -83,11 +83,12 @@ static bool sb_check_exec(const char *fi
+ ({ \
+ 	Elf##n##_Ehdr *ehdr = (void *)elf; \
+ 	Elf##n##_Phdr *phdr = (void *)(elf + ehdr->e_phoff); \
++	Elf##n##_Shdr *shdr = (void *)(elf + ehdr->e_shoff); \
+ 	Elf##n##_Addr vaddr, filesz, vsym = 0, vstr = 0, vhash = 0; \
+ 	Elf##n##_Off offset, symoff = 0, stroff = 0, hashoff = 0; \
+ 	Elf##n##_Dyn *dyn; \
+ 	Elf##n##_Sym *sym, *symend; \
+-	uint##n##_t ent_size = 0, str_size = 0; \
++	uint##n##_t ent_size = 0, str_size = 0, sym_table_size = 0; \
+ 	bool dynamic = false; \
+ 	size_t i; \
+ 	\
+@@ -114,6 +115,13 @@ static bool sb_check_exec(const char *fi
+ 		} \
+ 	} \
+ 	\
++	for (i = 0; i < ehdr->e_shnum; ++i) { \
++	  if (shdr[i].sh_type == SHT_DYNSYM) { \
++	    sym_table_size = shdr[i].sh_size; \
++	    break; \
++	    } \
++	}\
++	\
+ 	if (dynamic && vsym && ent_size && vstr && str_size) { \
+ 		/* Figure out where in the file these tables live. */ \
+ 		for (i = 0; i < ehdr->e_phnum; ++i) { \
+@@ -136,16 +144,13 @@ static bool sb_check_exec(const char *fi
+ 			/* Hash entries are always 32-bits. */ \
+ 			uint32_t *hashes = (void *)(elf + hashoff); \
+ 			/* Nowhere is the # of symbols recorded, or the size of the symbol \
+-			 * table.  Instead, we do what glibc does: use the sysv hash table \
+-			 * if it exists, else assume that the string table always directly \
+-			 * follows the symbol table.  This seems like a poor assumption to \
+-			 * make, but glibc has gotten by this long. \
++			 * table.  Get the symbol table size by accessing the section headers. \
+ 			 * \
+ 			 * We don't sanity check the ranges here as you aren't executing \
+ 			 * corrupt programs in the sandbox. \
+ 			 */ \
+ 			sym = (void *)(elf + symoff); \
+-			symend = vhash ? (sym + hashes[1]) : (void *)(elf + stroff); \
++			symend = vhash ? (sym + hashes[1]) : (void *)(elf + symoff + sym_table_size); \
+ 			while (sym < symend) { \
+ 				char *symname = (void *)(elf + stroff + sym->st_name); \
+ 				if (ELF##n##_ST_VISIBILITY(sym->st_other) == STV_DEFAULT && \

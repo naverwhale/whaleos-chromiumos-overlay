@@ -1,0 +1,45 @@
+From 595c704bab036cfb74a350103e48e233315ba402 Mon Sep 17 00:00:00 2001
+From: Fergus Dall <sidereal@google.com>
+Date: Thu, 1 Apr 2021 15:57:51 +1100
+Subject: [PATCH] Fix lxd import error
+
+Currently if the snapshots directory doesn't exist, and backup.yaml
+had snapshots listed, this is a hard error, whereas other conflicts
+can be bypassed by adding --force. This happens because if there are
+no snapshots, the directory containing them doesn't exist
+either. Change the handling to treat a non-existent directory as "no
+snapshots" rather then as an error.
+---
+ lxd/api_internal.go | 13 +++++++------
+ 1 file changed, 7 insertions(+), 6 deletions(-)
+
+diff --git a/lxd/api_internal.go b/lxd/api_internal.go
+index 758f17b40..6b4d6e7dd 100644
+--- a/lxd/api_internal.go
++++ b/lxd/api_internal.go
+@@ -547,15 +547,16 @@ func internalImport(d *Daemon, r *http.Request) Response {
+ 		case "btrfs":
+ 			snapshotsDirPath := driver.GetSnapshotMountPoint(projectName, poolName, req.Name)
+ 			snapshotsDir, err := os.Open(snapshotsDirPath)
+-			if err != nil {
++			if err != nil && !os.IsNotExist(err) {
+ 				return InternalError(err)
+-			}
+-			onDiskSnapshots, err = snapshotsDir.Readdirnames(-1)
+-			if err != nil {
++			} else if err == nil {
++				onDiskSnapshots, err = snapshotsDir.Readdirnames(-1)
++				if err != nil {
++					snapshotsDir.Close()
++					return InternalError(err)
++				}
+ 				snapshotsDir.Close()
+-				return InternalError(err)
+ 			}
+-			snapshotsDir.Close()
+ 		case "dir":
+ 			snapshotsDirPath := driver.GetSnapshotMountPoint(projectName, poolName, req.Name)
+ 			snapshotsDir, err := os.Open(snapshotsDirPath)
+-- 
+2.31.0.291.g576ba9dcdaf-goog
+

@@ -1,0 +1,97 @@
+From b5357c5a761b4b6f7ddb14b93f1ab29f28cb819d Mon Sep 17 00:00:00 2001
+From: Frank Binns <frank.binns@imgtec.com>
+Date: Thu, 5 Jun 2014 12:07:01 +0100
+Subject: [PATCH 02/10] dri: Add some new DRI formats and fourccs
+
+Add ARGB4444 DRI format and fourcc.
+Add YVU444_PACK10_IMG DRI format and fourcc.
+Add BGR888 DRI format and fourcc.
+---
+ include/GL/internal/dri_interface.h    | 8 ++++++++
+ include/drm-uapi/drm_fourcc.h          | 1 +
+ src/egl/drivers/dri2/egl_dri2.c        | 1 +
+ src/mesa/drivers/dri/common/dri_util.c | 4 ++++
+ 4 files changed, 14 insertions(+)
+
+diff --git a/include/GL/internal/dri_interface.h b/include/GL/internal/dri_interface.h
+index 0858092ecf5..e5e5aff3cc8 100644
+--- a/include/GL/internal/dri_interface.h
++++ b/include/GL/internal/dri_interface.h
+@@ -1292,6 +1292,9 @@ struct __DRIdri2ExtensionRec {
+ #define __DRI_IMAGE_FORMAT_XBGR2101010  0x1010
+ #define __DRI_IMAGE_FORMAT_ABGR2101010  0x1011
+ #define __DRI_IMAGE_FORMAT_SABGR8       0x1012
++#define __DRI_IMAGE_FORMAT_ARGB4444     0x1013
++#define __DRI_IMAGE_FORMAT_YVU444_PACK10_IMG 0x1014
++#define __DRI_IMAGE_FORMAT_BGR888       0x1015
+ 
+ #define __DRI_IMAGE_USE_SHARE		0x0001
+ #define __DRI_IMAGE_USE_SCANOUT		0x0002
+@@ -1322,6 +1325,7 @@ struct __DRIdri2ExtensionRec {
+ #define __DRI_IMAGE_FOURCC_ARGB1555	0x35315241
+ #define __DRI_IMAGE_FOURCC_R16		0x20363152
+ #define __DRI_IMAGE_FOURCC_GR1616	0x32335247
++#define __DRI_IMAGE_FOURCC_ARGB4444	0x32315241
+ #define __DRI_IMAGE_FOURCC_RGB565	0x36314752
+ #define __DRI_IMAGE_FOURCC_ARGB8888	0x34325241
+ #define __DRI_IMAGE_FOURCC_XRGB8888	0x34325258
+@@ -1329,6 +1333,7 @@ struct __DRIdri2ExtensionRec {
+ #define __DRI_IMAGE_FOURCC_XBGR8888	0x34324258
+ #define __DRI_IMAGE_FOURCC_SARGB8888	0x83324258
+ #define __DRI_IMAGE_FOURCC_SABGR8888	0x84324258
++#define __DRI_IMAGE_FOURCC_BGR888       0x34324742
+ #define __DRI_IMAGE_FOURCC_ARGB2101010	0x30335241
+ #define __DRI_IMAGE_FOURCC_XRGB2101010	0x30335258
+ #define __DRI_IMAGE_FOURCC_ABGR2101010	0x30334241
+@@ -1354,6 +1359,9 @@ struct __DRIdri2ExtensionRec {
+ #define __DRI_IMAGE_FOURCC_YVU420	0x32315659
+ #define __DRI_IMAGE_FOURCC_YVU422	0x36315659
+ #define __DRI_IMAGE_FOURCC_YVU444	0x34325659
++#define __DRI_IMAGE_FOURCC_YVU444_PACK10_IMG 0x32474d49
++#define __DRI_IMAGE_FOURCC_NV21		0x3132564e
++#define __DRI_IMAGE_FOURCC_SBGR888	0xff324742
+ 
+ #define __DRI_IMAGE_FOURCC_P010		0x30313050
+ #define __DRI_IMAGE_FOURCC_P012		0x32313050
+diff --git a/include/drm-uapi/drm_fourcc.h b/include/drm-uapi/drm_fourcc.h
+index bab20298f42..f0c2e23bb7e 100644
+--- a/include/drm-uapi/drm_fourcc.h
++++ b/include/drm-uapi/drm_fourcc.h
+@@ -236,6 +236,7 @@ extern "C" {
+ #define DRM_FORMAT_YUV444	fourcc_code('Y', 'U', '2', '4') /* non-subsampled Cb (1) and Cr (2) planes */
+ #define DRM_FORMAT_YVU444	fourcc_code('Y', 'V', '2', '4') /* non-subsampled Cr (1) and Cb (2) planes */
+ 
++#define DRM_FORMAT_YVU444_PACK10_IMG fourcc_code('I', 'M', 'G', '2')
+ 
+ /*
+  * Format Modifiers:
+diff --git a/src/egl/drivers/dri2/egl_dri2.c b/src/egl/drivers/dri2/egl_dri2.c
+index 9c9b753fafe..00a5881275e 100644
+--- a/src/egl/drivers/dri2/egl_dri2.c
++++ b/src/egl/drivers/dri2/egl_dri2.c
+@@ -2248,6 +2248,7 @@ dri2_num_fourcc_format_planes(EGLint format)
+    case DRM_FORMAT_VYUY:
+    case DRM_FORMAT_AYUV:
+    case DRM_FORMAT_XYUV8888:
++   case DRM_FORMAT_YVU444_PACK10_IMG:
+       return 1;
+ 
+    case DRM_FORMAT_NV12:
+diff --git a/src/mesa/drivers/dri/common/dri_util.c b/src/mesa/drivers/dri/common/dri_util.c
+index ac3a04bceff..666e1335c54 100644
+--- a/src/mesa/drivers/dri/common/dri_util.c
++++ b/src/mesa/drivers/dri/common/dri_util.c
+@@ -882,6 +882,10 @@ static const struct {
+       .image_format = __DRI_IMAGE_FORMAT_ARGB1555,
+       .mesa_format  =        MESA_FORMAT_B5G5R5A1_UNORM,
+    },
++   {
++      .image_format = __DRI_IMAGE_FORMAT_ARGB4444,
++      .mesa_format =         MESA_FORMAT_B4G4R4A4_UNORM,
++   },
+    {
+       .image_format = __DRI_IMAGE_FORMAT_XRGB8888,
+       .mesa_format  =        MESA_FORMAT_B8G8R8X8_UNORM,
+-- 
+2.22.0
+

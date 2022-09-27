@@ -1,0 +1,11 @@
+[
+    {
+        "comment": "Do not create a native build when LLDB_TABLEGEN_EXE is already provided.",
+        "rel_patch_path": "lldb-tablegen.patch"
+    },
+    {
+        "comment": "Update NativeRegisterContextLinux_arm64.{cpp,h} to match changes to LinuxPTraceDefines_arm64sve.h file.",
+        "rel_patch_path": "lldb-server-aarch64.patch",
+        "end_version": 431464
+    }
+]

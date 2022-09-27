@@ -1,0 +1,15 @@
+# The winapi, cloudabi and fuchsia-cprng crates are removed as dependencies
+# after setting CROS_RUST_REMOVE_TARGET_CFG=1 in ebuild. They have to be removed
+# from the `std` feature as well because it's enabled by default.
+
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -45,7 +45,7 @@ default = ["std"]
+ i128_support = []
+ nightly = ["i128_support"]
+ serde1 = ["serde", "serde_derive", "rand_core/serde1"]
+-std = ["rand_core/std", "alloc", "libc", "winapi", "cloudabi", "fuchsia-cprng"]
++std = ["rand_core/std", "alloc", "libc"]
+ [target."cfg(unix)".dependencies.libc]
+ version = "0.2"
+ optional = true
