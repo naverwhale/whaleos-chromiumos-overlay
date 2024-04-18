@@ -1,4 +1,4 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -15,7 +15,7 @@ PLATFORM_SUBDIR="usb_bouncer"
 inherit tmpfiles cros-workon platform user cros-fuzzer cros-sanitizers
 
 DESCRIPTION="Manage the usbguard whitelist"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/usb_bouncer/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/usb_bouncer/"
 
 LICENSE="BSD-Google"
 SLOT="0/0"
@@ -27,13 +27,22 @@ COMMON_DEPEND="
 	>=chromeos-base/metrics-0.0.1-r3152:=
 	chromeos-base/minijail:=
 	dev-libs/openssl:0=
+	dev-libs/re2:=
 	sys-apps/usbguard:=
+	sys-libs/libcap:=
 "
 RDEPEND="${COMMON_DEPEND}"
 DEPEND="${COMMON_DEPEND}
 	chromeos-base/session_manager-client:="
 
+BDEPEND="
+	chromeos-base/minijail
+	dev-libs/protobuf
+"
+
 src_install() {
+	platform_src_install
+
 	insinto /lib/udev/rules.d
 	doins "${S}/40-usb-bouncer.rules"
 

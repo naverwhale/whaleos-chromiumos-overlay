@@ -1,17 +1,25 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2012 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # @ECLASS: cros-workon.eclass
 # @MAINTAINER:
 # ChromiumOS Build Team
 # @BUGREPORTS:
-# Please report bugs via http://crbug.com/new (with label Build)
-# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/master/eclass/@ECLASS@
+# Please report bugs via
+# https://issuetracker.google.com/issues/new?component=1037860
+# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/eclass/@ECLASS@
 # @BLURB: helper eclass for building ChromiumOS packages from git
 # @DESCRIPTION:
 # A lot of ChromiumOS packages (src/platform/ and src/third_party/) are
 # managed in the same way.  You've got a git tree and you want to build
 # it.  This automates a lot of that common stuff in one place.
+
+if [[ -z "${_ECLASS_CROS_WORKON}" ]]; then
+_ECLASS_CROS_WORKON=1
+
+case ${EAPI:-0} in
+[0123456]) die "Unsupported EAPI=${EAPI:-0} (too old) for ${ECLASS}" ;;
+esac
 
 inherit cros-constants cros-credentials
 
@@ -57,7 +65,7 @@ SLOT="0/${PVR}"
 #   of items as other array variables when CROS_WORKON_SUBTREE is used.
 #   See the variable description below for more details.
 ARRAY_VARIABLES=(
-	CROS_WORKON_{SUBTREE,REPO,PROJECT,LOCALNAME,DESTDIR,COMMIT,SRCPATH,EGIT_BRANCH,OPTIONAL_CHECKOUT} )
+	CROS_WORKON_{SUBTREE,REPO,PROJECT,LOCALNAME,DESTDIR,COMMIT,EGIT_BRANCH,OPTIONAL_CHECKOUT} )
 
 # @ECLASS-VARIABLE: CROS_WORKON_SUBTREE
 # @DESCRIPTION:
@@ -116,7 +124,7 @@ ARRAY_VARIABLES=(
 # Git commit hashes of the source repositories.
 # It is guaranteed that files identified by tree hashes in CROS_WORKON_TREE
 # can be found in the commit.
-# CROW_WORKON_COMMIT is updated only when CROS_WORKON_TREE below is updated,
+# CROS_WORKON_COMMIT is updated only when CROS_WORKON_TREE below is updated,
 # so it does not necessarily point to HEAD in the source repository.
 : "${CROS_WORKON_COMMIT:=}"
 
@@ -194,17 +202,10 @@ ARRAY_VARIABLES=(
 # ebuild, or if the git repo you're using is not part of the official manifest.
 # e.g. If you set CROS_WORKON_REPO or EGIT_REPO_URI to an external (to Google)
 # site, set this to "1".
-# Note that you must specify the CROS_WORKON_MANUAL_UPREV="1" line in both the
-# unstable (i.e. 9999) and stable (e.g. 0.0.1-r) ebuild files.
 : "${CROS_WORKON_MANUAL_UPREV:=}"
 if [[ -n ${CROS_WORKON_BLACKLIST} ]]; then
 	die "CROS_WORKON_BLACKLIST has been renamed to CROS_WORKON_MANUAL_UPREV"
 fi
-
-# @ECLASS-VARIABLE: CROS_WORKON_MAKE_COMPILE_ARGS
-# @DESCRIPTION:
-# Args to pass to `make` when running src_compile. Not intended for ebuilds
-# to set, just to respect. Used by `cros_workon_make` and friends.
 
 # @ECLASS-VARIABLE: CROS_WORKON_EGIT_BRANCH
 # @DESCRIPTION:
@@ -221,12 +222,12 @@ fi
 # If set to "1", don't try to do a local fetch for 9999 ebuilds.
 : ${CROS_WORKON_ALWAYS_LIVE:=}
 
-# @ECLASS-VARIABLE: CROS_WORKON_SRCPATH
+# @ECLASS-VARIABLE: CROS_WORKON_PRECLONE_HOOK
 # @DESCRIPTION:
-# Location of the source directory relative to the brick source root. This is
-# used for locally sourced packages and, if defined, takes precedence over
-# Chrome OS specific source locations.
-: ${CROS_WORKON_SRCPATH:=}
+# Hook to run prior to cloning the source into the sandbox. Has access to
+# the global "path" variable. This allows ebuilds to call unpack-related
+# functions before moving into the sandbox.
+: ${CROS_WORKON_PRECLONE_HOOK:=true}
 
 # @ECLASS-VARIABLE: CROS_WORKON_OPTIONAL_CHECKOUT
 # @DESCRIPTION:
@@ -245,11 +246,14 @@ fi
 # The default value is "true" meaning all projects are checked out.
 : ${CROS_WORKON_OPTIONAL_CHECKOUT:="true"}
 
+# Directory containing git tree artifacts.
+CROS_WORKON_TREE_CACHE="/var/cache/trees"
+
 # Join the tree commits to produce a unique identifier
 CROS_WORKON_TREE_COMPOSITE=$(IFS="_"; echo "${CROS_WORKON_TREE[*]}")
 IUSE="cros_host cros_workon_tree_$CROS_WORKON_TREE_COMPOSITE"
 
-inherit flag-o-matic toolchain-funcs
+inherit flag-o-matic
 
 # We need git-2 only for packages that define CROS_WORKON_PROJECT. Otherwise,
 # there's no dependence on git and we don't want it pulled in.
@@ -266,35 +270,24 @@ if [[ ${CROS_WORKON_SUBDIR+set} == "set" ]]; then
 	die "CROS_WORKON_SUBDIR is no longer supported.  Please use CROS_WORKON_LOCALNAME instead."
 fi
 
+# Needed for _cros-workon_emit_src_to_buid_dest_map
+BDEPEND+=" app-misc/jq"
+
 # Sanitize all variables, autocomplete where necessary.
 # This function possibly modifies all CROS_WORKON_ variables inplace. It also
 # provides a global project_count variable which contains the number of
 # projects.
 array_vars_autocomplete() {
-	# CROS_WORKON_{PROJECT,SRCPATH} must have all values explicitly filled in.
-	# They have to be of the same length, or one may be undefined (length <= 1
-	# and empty).
+	# CROS_WORKON_PROJECT must have all values explicitly filled in.
 	project_count=${#CROS_WORKON_PROJECT[@]}
-	local srcpath_count=${#CROS_WORKON_SRCPATH[@]}
-	if [[ ${project_count} -lt ${srcpath_count} ]]; then
-		if [[ ${project_count} -gt 1 ]] || [[ -n "${CROS_WORKON_PROJECT[@]}" ]]; then
-			die "CROS_WORKON_PROJECT has fewer values than _SRCPATH"
-		fi
-		project_count=${srcpath_count}
-	elif [[ ${project_count} -gt ${srcpath_count} ]]; then
-		if [[ ${srcpath_count} -gt 1 ]] || [[ -n "${CROS_WORKON_SRCPATH[@]}" ]]; then
-			die "CROS_WORKON_SRCPATH has fewer values than _PROJECT"
-		fi
-	fi
-
 	# No project_count is really bad.
 	if [[ ${project_count} -eq 0 ]]; then
-		die "Must have at least one value in CROS_WORKON_{PROJECT,SRCPATH}"
+		die "Must have at least one value in CROS_WORKON_PROJECT"
 	fi
 	# For one value, defaults will suffice, unless it's blank (likely undefined).
 	if [[ ${project_count} -eq 1 ]]; then
-		if [[ -z "${CROS_WORKON_SRCPATH[@]}" ]] && [[ -z "${CROS_WORKON_PROJECT[@]}" ]]; then
-			die "Undefined CROS_WORKON_{PROJECT,SRCPATH}"
+		if [[ -z "${CROS_WORKON_PROJECT[@]}" ]]; then
+			die "Undefined CROS_WORKON_PROJECT"
 		fi
 		return
 	fi
@@ -321,18 +314,31 @@ array_vars_autocomplete() {
 	done
 }
 
-# Filter ARRAY_VARIABLES based on CROS_WORKON_OPTIONAL_CHECKOUT. This function
-# possibly modifies all of ARRAY_VARIABLES and project_count inplace.
+# Filter ARRAY_VARIABLES and CROS_WORKON_TREE based on
+# CROS_WORKON_OPTIONAL_CHECKOUT. This function possibly modifies all of
+# ARRAY_VARIABLES, CROS_WORKON_TREE, and project_count inplace.
 filter_optional_projects() {
 	local kept_indices=()
-	local i
+	local -i i
+	local kept_tree_indices=()
+	local -i i_tree=0
 	for (( i = 0; i < project_count; ++i )); do
+		local -a project_subtrees
+		local -i project_subtree_cnt
+		IFS=' ' read -ra project_subtrees <<< "${CROS_WORKON_SUBTREE[i]}"
+		if [[ "${#project_subtrees[@]}" -eq 0 ]]; then
+			project_subtrees=(".")
+		fi
+		project_subtree_cnt="${#project_subtrees[@]}"
+
 		local cmd=${CROS_WORKON_OPTIONAL_CHECKOUT[i]}
 		if eval "${cmd}"; then
 			kept_indices+=( "${i}" )
+			kept_tree_indices+=( $(seq "${i_tree}" "$(($i_tree+$project_subtree_cnt-1))") )
 		else
 			einfo "Filtering out project ${CROS_WORKON_PROJECT[i]}: '${cmd}' returned false"
 		fi
+		i_tree+=${project_subtree_cnt}
 	done
 
 	if [[ "${#kept_indices[@]}" -eq "${project_count}" ]]; then
@@ -355,13 +361,21 @@ filter_optional_projects() {
 		eval "${var}"='( "${filtered_var[@]}" )'
 	done
 
+	if [[ "${#CROS_WORKON_TREE[@]}" -gt 0 ]]; then
+		local filtered_tree=()
+		for i in "${kept_tree_indices[@]}"; do
+			filtered_tree+=( "${CROS_WORKON_TREE[i]}" )
+		done
+		CROS_WORKON_TREE=( "${filtered_tree[@]}" )
+	fi
+
 	project_count=${#kept_indices[@]}
 }
 
 # Calculate path where code should be checked out.
 # Result passed through global variable "path" to preserve proper array quoting.
 get_paths() {
-	local pathbase srcbase
+	local pathbase
 	pathbase="${CROS_WORKON_SRCROOT}"
 
 	if [[ "${CATEGORY}" == "chromeos-base" ||
@@ -371,21 +385,15 @@ get_paths() {
 		pathbase+=/src/third_party
 	fi
 
-	srcbase="$(dirname "$(dirname "$(dirname "$(dirname "${EBUILD}")")")")/src"
-
 	path=()
 	local pathelement i
 	for (( i = 0; i < project_count; ++i )); do
-		if [[ -n "${CROS_WORKON_SRCPATH[i]}" ]]; then
-			pathelement="${CROS_WORKON_SRCROOT}/${CROS_WORKON_SRCPATH[i]}"
-		else
-			pathelement="${pathbase}/${CROS_WORKON_LOCALNAME[i]}"
-			if [[ ! -d "${pathelement}" ]]; then
-				ewarn "Could not find \"${pathelement}\"."
-				ewarn "The CROS_WORKON_LOCALNAME for this ebuild should be updated"
-				ewarn "to be relative to \"${pathbase}\"."
-				pathelement="${pathbase}/platform/${CROS_WORKON_LOCALNAME[i]}"
-			fi
+		pathelement="${pathbase}/${CROS_WORKON_LOCALNAME[i]}"
+		if [[ ! -d "${pathelement}" ]]; then
+			ewarn "Could not find \"${pathelement}\"."
+			ewarn "The CROS_WORKON_LOCALNAME for this ebuild should be updated"
+			ewarn "to be relative to \"${pathbase}\"."
+			pathelement="${pathbase}/platform/${CROS_WORKON_LOCALNAME[i]}"
 		fi
 		path+=( "${pathelement}" )
 	done
@@ -395,7 +403,7 @@ local_copy_cp() {
 	local src="${1}"
 	local dst="${2}"
 	einfo "Copying sources from ${src}"
-	local blacklist=(
+	local ignorelist=(
 		# Python compiled objects are a pain.
 		"--exclude=*.py[co]"
 		# Assume any dir named ".git" is an actual git dir.  We don't copy them
@@ -408,14 +416,21 @@ local_copy_cp() {
 	for sl in "${CROS_WORKON_SUBDIRS_TO_COPY[@]}"; do
 		if [[ -d "${src}/${sl}" ]]; then
 			mkdir -p "${dst}/${sl}"
+			# Reset file permissions as we sync them across to avoid any badness
+			# the developer has created in their tree.  For example, if they chmod
+			# 600 a source file, we don't want that propagating over.  Files should
+			# be 644 or 755, while dirs should all be 755.  Any permissions that we
+			# want on installed files should come from the build system or ebuilds.
+			# This matches general git behavior too.
 			rsync -a --safe-links \
+				--no-perms --executability --chmod=ugo=rwX \
 				--exclude-from=<(
 					cd "${src}/${sl}" || \
 						die "cd ${src}/${sl}"
 					git ls-files --others --ignored --exclude-standard --directory 2>/dev/null | \
 						sed 's:^:/:'
-				) "${blacklist[@]}" "${src}/${sl}/" "${dst}/${sl}/" || \
-				die "rsync -a --safe-links --exclude-from=<(...) ${blacklist[*]} ${src}/${sl}/ ${dst}/${sl}/"
+				) "${ignorelist[@]}" "${src}/${sl}/" "${dst}/${sl}/" || \
+				die "rsync -a --safe-links --exclude-from=<(...) ${ignorelist[*]} ${src}/${sl}/ ${dst}/${sl}/"
 		fi
 	done
 }
@@ -451,6 +466,39 @@ local_copy() {
 	fi
 }
 
+# @FUNCTION: _cros-workon_emit_src_to_buid_dest_map
+# @USAGE: <src_paths build_dest_paths>
+# @RETURN:
+# @INTERNAL
+# @DESCRIPTION:
+# Before compiling, portage copies src from chromeos repos to build
+# work directory. This function emits the src to build work directory
+# map to a file named src_to_build_dest_map.json.
+_cros-workon_emit_src_to_buid_dest_map() {
+	local -n src_paths="$1"
+	local -n build_dest_paths="$2"
+	local json='{"version":1.0, "mapping":[]}'
+	local length_src_paths=${#src_paths[@]}
+	local length_build_dest_paths=${#build_dest_paths[@]}
+
+	if [[ "${length_src_paths}" -eq "${length_build_dest_paths}" ]]; then
+		local j
+		for (( j = 0; j < length_src_paths; j++ )); do
+
+			local src_path="${src_paths[$j]/"${CHROOT_SOURCE_ROOT}"\//}"
+			json=$(
+				echo "${json}" |
+				jq --arg src_path "${src_path}" \
+				--arg build_dest_path "${build_dest_paths[$j]}" \
+				'.mapping += [{src_path: $src_path, build_dest_path: $build_dest_path}]' \
+			) || die
+		done
+		local output_json_path="${CROS_ARTIFACTS_TMP_DIR}/eclass/cros-workon/"
+		mkdir -p "${output_json_path}"
+		echo "${json}" >> "${output_json_path}/src_to_build_dest_map.json" || die
+	fi
+}
+
 set_vcsid() {
 	export VCSID="${PVR}-${1}"
 
@@ -465,6 +513,55 @@ set_vcsid() {
 
 get_rev() {
 	GIT_DIR="$1" git rev-parse HEAD
+}
+
+# Callback invoked on die that checks -9999 ebuilds if the source paths have
+# local branches that need to be rebased. This is motivated by how common this
+# pitfall comes up in developer workflows, and how hard it is to debug the root
+# cause unless the developer knows what to look for.
+cros-workon_on_die_rebase_check() {
+	if [[ "${PV}" != "9999" ]]; then
+		return
+	fi
+
+	local path
+	get_paths 2> /dev/null || return
+	# Include the ebuild's git repository.
+	path+=(
+		"$(dirname "$(dirname "$(dirname "${EBUILD}")")")"
+	)
+
+	# Disable portage sandbox since .git directories are added to the deny list
+	# when CROS_WORKON_OUTOFTREE_BUILD is set and the ebuild is about to exit
+	# anyway.
+	export SANDBOX_ON=0
+	local i
+	for (( i = 0; i < project_count + 1; ++i )); do
+		# Use a subshell so the PWD remains the same outside.
+		(
+			cd "${path[i]}" || exit
+
+			local upstream
+			if ! upstream="$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2> /dev/null)"; then
+				eerror
+				eerror "A cros-workon package '${P}' failed to build above."
+				eerror "Local branch for '${path[i]}' has no upstream and may be out of sync."
+				eerror "You may need to run:"
+				eerror "git branch --set-upstream-to=m/main && git rebase --rebase-merges"
+				eerror
+				exit
+			fi
+
+			local commits_behind="$(git rev-list --count --left-right "${upstream}"...HEAD | cut -f 1)"
+			if [[ "${commits_behind}" != 0 ]]; then
+				eerror
+				eerror "A cros-workon package '${P}' failed to build above."
+				eerror "Local branch for '${path[i]}' is out of sync."
+				eerror "You may need to run: git rebase --rebase-merges"
+				eerror
+			fi
+		)
+	done
 }
 
 cros-workon_src_unpack() {
@@ -558,11 +655,17 @@ cros-workon_src_unpack() {
 		fetch_method=git
 	fi
 
+	# Checks if the repo is out of sync.
+	register_die_hook cros-workon_on_die_rebase_check
+
 	local repo=( "${CROS_WORKON_REPO[@]}" )
 	local project=( "${CROS_WORKON_PROJECT[@]}" )
 	local destdir=( "${CROS_WORKON_DESTDIR[@]}" )
+	local subtree=( "${CROS_WORKON_SUBTREE[@]}" )
 	local branch=( "${CROS_WORKON_EGIT_BRANCH[@]}" )
+	local path
 	get_paths
+	_cros-workon_emit_src_to_buid_dest_map path destdir
 
 	# Automatically build out-of-tree for common.mk packages.
 	# TODO(vapier): Enable this once all common.mk packages have converted.
@@ -581,7 +684,7 @@ cros-workon_src_unpack() {
 					# Needed as `git status` likes to grab a repo lock.
 					addpredict "${PWD}:${CHROOT_SOURCE_ROOT}/.repo"
 					# Ignore untracked files as they (should) be ignored by the build too.
-					git status --porcelain | grep -v '^[?][?]'
+					git --no-optional-locks status --porcelain | grep -v '^[?][?]'
 				)
 				if [[ -z ${changes} ]] ; then
 					fetch_method=local
@@ -600,10 +703,57 @@ cros-workon_src_unpack() {
 		fi
 	fi
 
+	# Run any ebuild hooks that need to access ${path}
+	"${CROS_WORKON_PRECLONE_HOOK}"
+
 	if [[ "${fetch_method}" == "git" ]] ; then
 		local creds_setup="false"
 
+		local -i tree_idx_base=0 prev_subtree_cnt=0
+
 		for (( i = 0; i < project_count; ++i )); do
+			local -a project_subtrees
+			local -i project_subtree_cnt
+			IFS=' ' read -ra project_subtrees <<< "${subtree[i]}"
+			if [[ "${#project_subtrees[@]}" -eq 0 ]]; then
+				project_subtrees=(".")
+			fi
+			project_subtree_cnt="${#project_subtrees[@]}"
+
+			# We do this here so the `continue`s below don't need to be modified.
+			tree_idx_base+="$prev_subtree_cnt"
+			prev_subtree_cnt="${project_subtree_cnt}"
+
+			# When building under bazel, bazel will inject the individual
+			# CROS_WORKON_TREE artifacts into the $CROS_WORKON_TREE_CACHE directory.
+			# If we happen to find the artifacts for a project then we can skip the
+			# git clone of the actual repository.
+			local -i found_trees=0 subtree_idx
+			for (( subtree_idx = 0; subtree_idx < "${project_subtree_cnt}"; ++subtree_idx )); do
+				local subtree_path="${project_subtrees[subtree_idx]}"
+				local tree_hash="${CROS_WORKON_TREE[tree_idx_base + subtree_idx]}"
+				local target_path="${destdir[i]}/${subtree_path}"
+
+				if [[ -f "${CROS_WORKON_TREE_CACHE}/${tree_hash}" ]]; then
+					mkdir -p "$(dirname "${target_path}")" || die
+					cp "${CROS_WORKON_TREE_CACHE}/${tree_hash}" "${target_path}" || die
+					found_trees+=1
+				elif [[ -f "${CROS_WORKON_TREE_CACHE}/${tree_hash}.tar.zst" ]]; then
+					mkdir -p "${target_path}" || die
+					tar -xf "${CROS_WORKON_TREE_CACHE}/${tree_hash}.tar.zst" -C "${target_path}"
+					found_trees+=1
+				fi
+			done
+
+			if [[ "${found_trees}" -gt 0 ]]; then
+				if [[ "${found_trees}" -ne "${project_subtree_cnt}" ]]; then
+					die "Only found ${found_trees}/${project_subtree_cnt} trees in ${CROS_WORKON_TREE_CACHE}"
+				fi
+
+				# destdir was setup using the tree cache
+				continue
+			fi
+
 			if [[ -d "${path[i]}" ]]; then
 				# Looks like we have a local copy of the repository.
 				# Let's use it and checkout ${CROS_WORKON_COMMIT}.
@@ -637,11 +787,11 @@ cros-workon_src_unpack() {
 					# specify CROS_WORKON_COMMIT for all ebuilds, and update this
 					# code path to fail and explain the problem.
 					git clone -s "${path[i]}" "${destdir[i]}" || \
-						die "Can't clone ${path[i]}."
+						die "Can't clone ${path[i]} to ${destdir[i]}."
 					continue
 				else
 					git clone -sn "${path[i]}" "${destdir[i]}" || \
-						die "Can't clone ${path[i]}."
+						die "Can't clone ${path[i]} to ${destdir[i]}."
 					if ! (cd "${destdir[i]}" && git checkout -q "${CROS_WORKON_COMMIT[i]}") ; then
 						ewarn "Cannot run git checkout ${CROS_WORKON_COMMIT[i]} in ${destdir[i]}."
 						ewarn "Is ${path[i]} up to date? Try running repo sync."
@@ -675,11 +825,13 @@ cros-workon_src_unpack() {
 		done
 
 		# TODO(zbehan): Support multiple projects for vcsid?
-		# We should run get_rev in destdir[0] because CROS_WORKON_COMMIT
-		# is only checked out there. Also, we can't use
-		# CROS_WORKON_COMMIT directly because it could be a named or
-		# abbreviated ref.
-		set_vcsid "$(get_rev "${destdir[0]}/.git")"
+		# If CROS_WORKON_COMMIT is a git SHA then we can use it directly, otherwise
+		# it could be a tag or abbreviated hash.
+		if [[ "${CROS_WORKON_COMMIT[0]}" =~ ^[a-z0-9]{40}$ ]]; then
+			set_vcsid "${CROS_WORKON_COMMIT[0]}"
+		else
+			set_vcsid "$(get_rev "${destdir[0]}/.git")"
+		fi
 		cros-workon_enforce_subtrees
 		return
 	fi
@@ -712,7 +864,12 @@ cros-workon_src_unpack() {
 		done
 	fi
 	if [[ "${EMPTY_PROJECT}" == "0" ]]; then
-		set_vcsid "$(get_rev "${path[0]}/.git")"
+		local gitrev
+		if gitrev="$(get_rev "${path[0]}/.git")"; then
+			set_vcsid "${gitrev}"
+		else
+			ewarn "Failed to get VCSID"
+		fi
 	fi
 	cros-workon_enforce_subtrees
 }
@@ -731,7 +888,7 @@ cros-workon_enforce_subtrees() {
 	fi
 
 	# Gather the subtrees specified by CROS_WORKON_SUBTREE. All directories
-	# and files under those subtrees are not blacklisted.
+	# and files under those subtrees are not ignorelisted.
 	local keep_dirs=()
 	for (( i = 0; i < project_count; ++i )); do
 		if [[ -z "${CROS_WORKON_SUBTREE[i]}" ]]; then
@@ -773,7 +930,7 @@ cros-workon_enforce_subtrees() {
 	done
 
 	# Gather the parent directories of subtrees to use.
-	# Those directories are exempted from blacklist because we need them to
+	# Those directories are exempted from ignorelist because we need them to
 	# reach subtrees.
 	local keep_parents=()
 	for p in "${keep_dirs[@]}"; do
@@ -790,18 +947,18 @@ cros-workon_enforce_subtrees() {
 	keep_parents=( $(IFS=$'\n'; LC_ALL=C sort -u <<<"${keep_parents[*]}") )
 
 	# Construct arguments to pass to find(1) to list directories/files to
-	# blacklist.
+	# ignorelist.
 	#
 	# The command line built here is tricky, but it does the following
 	# during traversal of the filesystem by depth-first order:
 	#
 	#   1. Do nothing about the root directory ($S). Note that we should not
-	#      reach here if there is nothing to blacklist.
+	#      reach here if there is nothing to ignorelist.
 	#   2. If the visiting file is a parent directory of a subtree (i.e. in
 	#      $keep_parents[@]), then recurse into its contents.
 	#   3. If the visiting file is the top directory of a subtree (i.e. in
 	#      $keep_dirs[@]), then do not recurse into its contents.
-	#   4. Otherwise, blacklist the visiting file, and if it is a directory,
+	#   4. Otherwise, ignorelist the visiting file, and if it is a directory,
 	#      do not recursive into its contents.
 	#
 	local find_args=( "${S}" -mindepth 1 )
@@ -813,8 +970,11 @@ cros-workon_enforce_subtrees() {
 		find_args+=( ! -path "${p}" )
 	done
 
+	# We need to permit access to Clang Tidy files for linting.
+	find_args+=( ! -path "**/.clang-tidy" )
+
 	if [[ "${S}" == "${WORKDIR}"/* ]]; then
-		# $S is writable, so just remove blacklisted files.
+		# $S is writable, so just remove ignorelisted files.
 		find "${find_args[@]}" -exec rm -rf {} +
 	else
 		# $S is read-only, so use portage sandbox.
@@ -847,6 +1007,12 @@ cros-workon_pkg_setup() {
 		addwrite "${out}"
 		mkdir -p -m 755 "${out}"
 		chown ${PORTAGE_USERNAME}:${PORTAGE_GRPNAME} "${out}" "${out%/*}"
+
+		# Recover ownership of .ninja_log to avoid permission deny when used with
+		# meson.eclass. See b:216080295 for more details.
+		if [[ -f "${out}/.ninja_log" ]]; then
+			chown ${PORTAGE_USERNAME}:${PORTAGE_GRPNAME} "${out}/.ninja_log" "${out}/.ninja_deps" || die
+		fi
 	fi
 }
 
@@ -854,6 +1020,7 @@ cros-workon_pkg_info() {
 	print_quoted_array() { printf '"%s"\n' "$@"; }
 
 	array_vars_autocomplete > /dev/null
+	local path
 	get_paths
 	CROS_WORKON_SRCDIR=("${path[@]}")
 
@@ -865,3 +1032,5 @@ cros-workon_pkg_info() {
 }
 
 EXPORT_FUNCTIONS pkg_setup src_unpack pkg_info
+
+fi

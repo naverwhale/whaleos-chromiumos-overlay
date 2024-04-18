@@ -1,0 +1,13 @@
+BDEPEND=>=dev-util/ninja-1.8.2 >=dev-util/cmake-3.20.5
+DEFINED_PHASES=compile configure install prepare test unpack
+DEPEND=dev-util/vulkan-headers
+DESCRIPTION=Serialization format for persistent Vulkan object types.
+EAPI=7
+HOMEPAGE=https://github.com/ValveSoftware/Fossilize
+KEYWORDS=*
+LICENSE=MIT
+RDEPEND=media-libs/vulkan-loader virtual/vulkan-icd
+SLOT=0
+SRC_URI=https://github.com/ValveSoftware/Fossilize/archive/7f3895dd074d44a1013f8b26333b56f594dd553f.tar.gz -> fossilize-7f3895dd074d44a1013f8b26333b56f594dd553f.tar.gz https://github.com/KhronosGroup/SPIRV-Cross/archive/5e963d62fa3f2f0ff891c9f9ca150097127c3aad.tar.gz -> SPIRV-Cross-5e963d62fa3f2f0ff891c9f9ca150097127c3aad.tar.gz https://github.com/KhronosGroup/SPIRV-Headers/archive/fc7d2462765183c784a0c46beb13eee9e506a067.tar.gz -> SPIRV-Headers-fc7d2462765183c784a0c46beb13eee9e506a067.tar.gz https://github.com/KhronosGroup/SPIRV-Tools/archive/a996591b1c67e789e88e99ae3881272f5fc47374.tar.gz -> SPIRV-Tools-a996591b1c67e789e88e99ae3881272f5fc47374.tar.gz https://github.com/tronkko/dirent/archive/c885633e126a3a949ec0497273ec13e2c03e862c.tar.gz -> dirent-c885633e126a3a949ec0497273ec13e2c03e862c.tar.gz https://github.com/zeux/volk/archive/65e811e401bc09a9525265aea584db898d67e54f.tar.gz -> volk-65e811e401bc09a9525265aea584db898d67e54f.tar.gz https://github.com/miloyip/rapidjson/archive/8f4c021fa2f1e001d2376095928fc0532adf2ae6.tar.gz -> rapidjson-8f4c021fa2f1e001d2376095928fc0532adf2ae6.tar.gz
+_eclasses_=cmake	34502c2b638b59994575d53ba3805d7b	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	ninja-utils	578ba3585e2f3ebe63ab00c07874016e	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	xdg-utils	ff2ff954e6b17929574eee4efc5152ba
+_md5_=fda2ecb5e8078287945a0190f21ac829

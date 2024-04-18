@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright 2011 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -13,12 +13,7 @@ HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform/crostestutils/"
 LICENSE="BSD-Google"
 KEYWORDS="~*"
 
-RDEPEND="app-emulation/qemu
-	app-portage/gentoolkit
-	app-shells/bash
-	chromeos-base/cros-devutils
-	dev-python/django
-	"
+RDEPEND=""
 
 # These are all either bash / python scripts.  No actual builds DEPS.
 DEPEND=""

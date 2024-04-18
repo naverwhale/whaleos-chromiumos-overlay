@@ -1,8 +1,12 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
 brk: 1
+clock_gettime: 1
 close: 1
 execve: 1
 exit: 1
@@ -19,6 +23,7 @@ getgid: 1
 getpid: 1
 getrandom: 1
 getrlimit: 1
+gettid: 1
 getuid: 1
 lseek: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
@@ -38,3 +43,4 @@ set_tid_address: 1
 set_robust_list: 1
 write: 1
 fstatfs: 1
+statx: 1

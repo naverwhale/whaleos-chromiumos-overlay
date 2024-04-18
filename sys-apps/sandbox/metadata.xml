@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
 <pkgmetadata>
-
-<!-- portage lacks a herd.  correct this when we have one. -->
-
 <maintainer type="project">
   <email>sandbox@gentoo.org</email>
-  <description>Sandbox Maintainers</description>
+  <name>Sandbox Maintainers</name>
 </maintainer>
+<use>
+  <flag name="nnp">Enable NO_NEW_PRIVS which blocks set*id programs from gaining privileges (e.g. sudo)</flag>
+</use>
 </pkgmetadata>

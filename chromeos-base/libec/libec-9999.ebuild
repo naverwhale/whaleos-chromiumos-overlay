@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -18,7 +18,12 @@ HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/libec"
 LICENSE="BSD-Google"
 KEYWORDS="~*"
 
-COMMON_DEPEND=""
+COMMON_DEPEND="
+	chromeos-base/chromeos-ec-headers:=
+	chromeos-base/power_manager-client:=
+	dev-cpp/abseil-cpp:=
+	virtual/libusb:1=
+"
 
 RDEPEND="
 	${COMMON_DEPEND}
@@ -26,23 +31,24 @@ RDEPEND="
 
 DEPEND="
 	${COMMON_DEPEND}
-	chromeos-base/chromeos-ec-headers:=
+	chromeos-base/system_api
 "
 
 src_install() {
-	dolib.so "${OUT}"/lib/libec*.so
-	dolib.a "${OUT}"/libec*.a
+	platform_src_install
 
-	insinto /usr/"$(get_libdir)"/pkgconfig
-	doins "${OUT}"/obj/libec/libec*.pc
-
-	insinto /usr/include/libec
-	doins ./*.h
-
-	insinto /usr/include/libec/fingerprint
-	doins ./fingerprint/*.h
+	# Install fuzzers.
+	local fuzzer_component_id="782045"
+	local fuzz_targets=(
+		"libec_ec_panicinfo_fuzzer"
+	)
+	local fuzz_target
+	for fuzz_target in "${fuzz_targets[@]}"; do
+		platform_fuzzer_install "${S}"/OWNERS "${OUT}"/"${fuzz_target}" \
+			--comp "${fuzzer_component_id}"
+	done
 }
 
 platform_pkg_test() {
-	platform_test "run" "${OUT}/libec_tests"
+	platform test_all
 }

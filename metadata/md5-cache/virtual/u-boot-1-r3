@@ -6,4 +6,4 @@ KEYWORDS=*
 LICENSE=metapackage
 RDEPEND=sys-boot/u-boot
 SLOT=0
-_md5_=8af2148a631245a8505d3571d2817af6
+_md5_=45d03add4372e895354fbe2df7afeece

@@ -1,0 +1,58 @@
+From a66ab2ebb15566118c933dae2f03cade0d77aa18 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Fran=C3=A7ois=20Degros?= <fdegros@chromium.org>
+Date: Mon, 22 Nov 2021 17:00:06 +1100
+Subject: [PATCH] Use chrome-icu
+
+Link and initialize the ChromeOS-specific version of ICU (chrome-icu).
+---
+ Makefile     | 3 ++-
+ lib/Makefile | 4 +++-
+ lib/tree.cc  | 3 +++
+ 3 files changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 07a677f..b1bf01d 100644
+--- a/Makefile
++++ b/Makefile
+@@ -20,7 +20,8 @@ prefix = /usr
+ exec_prefix = $(prefix)
+ bindir = $(exec_prefix)/bin
+ PKG_CONFIG ?= pkg-config
+-DEPS = fuse libzip icu-uc icu-i18n
++DEPS = fuse libzip
++LIBS += -licui18n-chrome -licuuc-chrome
+ LIBS += -Llib -lmountzip
+ LIBS += $(shell $(PKG_CONFIG) --libs $(DEPS))
+ CXXFLAGS += $(shell $(PKG_CONFIG) --cflags $(DEPS))
+diff --git a/lib/Makefile b/lib/Makefile
+index 3de34c9..910f058 100644
+--- a/lib/Makefile
++++ b/lib/Makefile
+@@ -17,7 +17,9 @@
+ 
+ DEST = libmountzip.a
+ PKG_CONFIG ?= pkg-config
+-DEPS = fuse libzip icu-uc icu-i18n
++DEPS = fuse libzip
++CXXFLAGS += -I"$(SYSROOT)/usr/include/icu-chrome/common"
++CXXFLAGS += -I"$(SYSROOT)/usr/include/icu-chrome/i18n"
+ CXXFLAGS += $(shell $(PKG_CONFIG) --cflags $(DEPS))
+ CXXFLAGS += -Wall -Wextra -Wno-sign-compare -Wno-missing-field-initializers -pedantic -std=c++20
+ ifeq ($(DEBUG), 1)
+diff --git a/lib/tree.cc b/lib/tree.cc
+index 97323d3..fe87ace 100644
+--- a/lib/tree.cc
++++ b/lib/tree.cc
+@@ -354,6 +354,9 @@ void Tree::BuildTree() {
+   Log(LOG_DEBUG, "Total uncompressed size = ", total_uncompressed_size,
+       " bytes");
+ 
++  // Initialize ICU library and ensure it will be cleaned up.
++  const IcuGuard guard("/opt/google/chrome/icudtl.dat");
++
+   // Detect filename encoding.
+   std::string encoding;
+   if (opts_.encoding)
+-- 
+2.42.0.609.gbb76f46606-goog
+

@@ -10,3 +10,5 @@ sys-apps/coreutils selinux
 sys-apps/findutils selinux
 app-arch/tar selinux
 media-sound/adhd selinux
+sys-fs/erofs-utils selinux
+sys-fs/squashfs-tools selinux

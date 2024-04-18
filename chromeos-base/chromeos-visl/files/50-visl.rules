@@ -1,0 +1,17 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+ACTION!="add", GOTO="media_end"
+SUBSYSTEM!="video4linux", GOTO="v4l_end"
+
+# Chrome expects video decoder nodes at "video-decN".
+ATTR{name}=="visl", SYMLINK+="video-dec$minor"
+
+LABEL="v4l_end"
+SUBSYSTEM!="media", GOTO="media_end"
+
+# Chrome expects media nodes for stateless video decoders at "media-decN".
+ATTR{model}=="visl", SYMLINK+="media-dec$minor"
+
+LABEL="media_end"

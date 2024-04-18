@@ -1,0 +1,14 @@
+BDEPEND=app-arch/makeself app-arch/zip dev-java/java-config dev-lang/closure-compiler-bin dev-libs/closure-library dev-libs/protobuf || ( ( dev-lang/python:3.8 dev-python/jsonrpclib[python_targets_python3_8(-),python_single_target_python3_8(+)] dev-python/jsonschema[python_targets_python3_8(-),python_single_target_python3_8(+)] dev-python/protobuf-python[python_targets_python3_8(-),python_single_target_python3_8(+)] dev-python/pyyaml[python_targets_python3_8(-),python_single_target_python3_8(+)] ) ( dev-lang/python:3.9 dev-python/jsonrpclib[python_targets_python3_9(-),python_single_target_python3_9(+)] dev-python/jsonschema[python_targets_python3_9(-),python_single_target_python3_9(+)] dev-python/protobuf-python[python_targets_python3_9(-),python_single_target_python3_9(+)] dev-python/pyyaml[python_targets_python3_9(-),python_single_target_python3_9(+)] ) ( dev-lang/python:3.10 dev-python/jsonrpclib[python_targets_python3_10(-),python_single_target_python3_10(+)] dev-python/jsonschema[python_targets_python3_10(-),python_single_target_python3_10(+)] dev-python/protobuf-python[python_targets_python3_10(-),python_single_target_python3_10(+)] dev-python/pyyaml[python_targets_python3_10(-),python_single_target_python3_10(+)] ) ( dev-lang/python:3.11 dev-python/jsonrpclib[python_targets_python3_11(-),python_single_target_python3_11(+)] dev-python/jsonschema[python_targets_python3_11(-),python_single_target_python3_11(+)] dev-python/protobuf-python[python_targets_python3_11(-),python_single_target_python3_11(+)] dev-python/pyyaml[python_targets_python3_11(-),python_single_target_python3_11(+)] ) ) sys-devel/gettext dev-vcs/git app-misc/jq
+DEFINED_PHASES=compile configure info install setup unpack
+DEPEND=virtual/chromeos-bsp-factory:= virtual/chromeos-regions:=
+DESCRIPTION=Subset of factory software to be installed in test images
+EAPI=7
+IUSE=cros_host cros_workon_tree_dc8714f89570a293664fa364c7a9afec68131703
+KEYWORDS=*
+LICENSE=BSD-Google
+PROPERTIES=live
+RDEPEND=chromeos-base/factory-deps
+SLOT=0/0.0.1-r3646
+SRC_URI=http://commondatastorage.googleapis.com/chromeos-localmirror//distfiles/webgl-aquarium-20221212.tar.bz2
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	python-any-r1	54a3178500786b0a7ede4a23b7f2a6ad	python-utils-r1	76252008070e69454f51fa80c07638c9	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=e47bcf352869ccffb9ee32e83e77b416

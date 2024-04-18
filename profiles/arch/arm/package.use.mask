@@ -37,6 +37,3 @@ sys-apps/flashrom drkaiser gfxnvidia nicintel nicintel_spi nicrealtek ogp_spi sa
 # These are only used on 32-bit ARM targets.
 sys-devel/gcc -hardfp -thumb
 sys-libs/gcc-libs -hardfp -thumb
-
-# Masking as Lacros isn't supported on this arch.
-virtual/target-chromium-os lacros_rootfs

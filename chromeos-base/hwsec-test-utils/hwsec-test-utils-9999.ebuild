@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -8,14 +8,14 @@ CROS_WORKON_INCREMENTAL_BUILD=1
 CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_OUTOFTREE_BUILD=1
-CROS_WORKON_SUBTREE="attestation common-mk hwsec-test-utils libhwsec libhwsec-foundation trunks .gn"
+CROS_WORKON_SUBTREE="attestation common-mk hwsec-test-utils libhwsec libhwsec-foundation tpm_manager trunks .gn"
 
 PLATFORM_SUBDIR="hwsec-test-utils"
 
 inherit cros-workon platform
 
 DESCRIPTION="Hwsec-related test-only features. This package resides in test images only."
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/hwsec-test-utils/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/hwsec-test-utils/"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
@@ -26,38 +26,27 @@ REQUIRED_USE="
 "
 
 RDEPEND="
-	tpm2? (
-		chromeos-base/trunks:=
-	)
 	tpm? (
 		app-crypt/trousers:=
 	)
+	chromeos-base/attestation:=
+	chromeos-base/libhwsec:=
+	chromeos-base/libhwsec-foundation:=
+	chromeos-base/system_api:=
+	chromeos-base/tpm_manager-client:=
+	tpm2? (
+		chromeos-base/trunks:=
+	)
+	dev-libs/openssl:=
+	dev-libs/protobuf:=
 "
 
 DEPEND="${RDEPEND}
 	tpm2? (
 		chromeos-base/trunks:=[test?]
 	)
-	chromeos-base/attestation:=
-	chromeos-base/libhwsec-foundation:=
-	chromeos-base/system_api:=
-	dev-libs/openssl:=
-	dev-libs/protobuf:=
 "
 
-src_install() {
-
-	# Installs attestation-injected-keys
-	dobin "${OUT}/attestation-injected-keys"
-
-	# Installs hwsec-test-va
-	dobin "${OUT}/hwsec-test-va"
-
-	# Install fake pca agent
-	dobin "${OUT}"/fake_pca_agentd
-
-}
-
 platform_pkg_test() {
-	platform_test "run" "${OUT}/hwsec-test-utils_testrunner"
+	platform test_all
 }

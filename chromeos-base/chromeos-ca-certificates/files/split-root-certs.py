@@ -1,7 +1,8 @@
-#!/usr/bin/python3
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+#!/usr/bin/env python3
+# Copyright 2019 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
 """Extract individual root cert pem files from bundle.
 
 We expect the bundle is downloaded from https://pki.goog/roots.pem and contains
@@ -25,21 +26,23 @@ class ExtractedCert:
         self.prefix = prefix
 
     def get_label(self):
+        """Find the label for this certification."""
         for line in self.lines:
             if line.startswith('# Label:'):
                 m = re.search('# Label: "([^"]+)"', line)
                 label = m.group(1)
                 return label
+        raise ValueError('Could not find label')
 
     def get_filename(self):
         """Construct path to write to, based on "Label" comment."""
-
         label_underscores = self.get_label().replace(' ', '_')
         filename = '%s.pem' % label_underscores
         path = os.path.join(self.prefix, filename)
         return path
 
     def write(self):
+        """Write certificate to disk."""
         cert_file = self.get_filename()
         parent_dir = os.path.dirname(cert_file)
         if not os.path.exists(parent_dir):
@@ -50,7 +53,6 @@ class ExtractedCert:
 
 def lex_pem_file(roots_pem):
     """Generator that splits lines from |roots_pem| on cert boundaries."""
-
     with open(roots_pem) as f:
         lines = f.readlines()
 
@@ -66,11 +68,10 @@ def extract_certs(roots_pem, extract_to):
     """Extracts all certs as individual pem files.
 
     Args:
-      roots_pem: Path to bundle file that is a concatenation of certs.
-      extract_to: Directory where extracted certs are written. When None,
-        extracted certs will not be written to disk.
+        roots_pem: Path to bundle file that is a concatenation of certs.
+        extract_to: Directory where extracted certs are written. When None,
+            extracted certs will not be written to disk.
     """
-
     for line_list in lex_pem_file(roots_pem):
         cert = ExtractedCert(line_list, prefix=extract_to)
         if extract_to:
@@ -78,6 +79,7 @@ def extract_certs(roots_pem, extract_to):
 
 
 def main(argv):
+    """The script entry point."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--roots-pem', help='File containing many certs.',
                         required=True)

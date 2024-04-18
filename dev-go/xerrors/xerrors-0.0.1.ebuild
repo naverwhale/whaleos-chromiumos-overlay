@@ -1,7 +1,7 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2.
 
-EAPI=6
+EAPI=7
 
 # Use latest in Go 1.15 branch
 # 1a77d5e9f316d6917d88a497ab4db07399cbc923 (HEAD, origin/release-branch.go1.15)

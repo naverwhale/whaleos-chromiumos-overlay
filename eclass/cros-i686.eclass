@@ -1,4 +1,4 @@
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Copyright 2016 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # @ECLASS: cros-i686.eclass
@@ -27,7 +27,7 @@ board_setup_32bit_au_env()
 	__AU_OLD_CXX=${CXX}
 	export ARCH=x86 ABI=x86 LIBDIR_x86="lib"
 	__AU_OLD_CHOST=${CHOST}
-	export CHOST=i686-pc-linux-gnu
+	export CHOST=i686-cros-linux-gnu
 	if [[ ${CC} == *"clang"* ]]; then
 		export CC=${CHOST}-clang
 		export CXX=${CHOST}-clang++

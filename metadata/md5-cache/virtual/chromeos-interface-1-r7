@@ -7,4 +7,4 @@ KEYWORDS=*
 LICENSE=metapackage
 RDEPEND=!chromeless_tty? ( chromeos-base/chromeos-login chromeos-base/chromeos-chrome )
 SLOT=0
-_md5_=2f0ae6228f7c49bfcfea1e551e888a91
+_md5_=c35c360fcad4dafdd4628556fd956b4e

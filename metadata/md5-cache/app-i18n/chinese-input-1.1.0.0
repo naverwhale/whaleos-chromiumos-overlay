@@ -1,0 +1,11 @@
+DEFINED_PHASES=-
+DEPEND=!internal? ( app-i18n/chromeos-cangjie app-i18n/chromeos-pinyin app-i18n/chromeos-zhuyin )
+DESCRIPTION=This is a meta package for installing Chinese IME packages
+EAPI=7
+HOMEPAGE=https://www.google.com/inputtools/
+IUSE=internal
+KEYWORDS=*
+LICENSE=metapackage
+RDEPEND=!internal? ( app-i18n/chromeos-cangjie app-i18n/chromeos-pinyin app-i18n/chromeos-zhuyin )
+SLOT=0
+_md5_=e61376a42f8ed0fdfa044214d59c07cb

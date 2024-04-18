@@ -1,0 +1,115 @@
+# hehe
+
+--- a/external/binary-reference-assemblies/build/monowasm/Makefile
++++ b/external/binary-reference-assemblies/build/monowasm/Makefile
+@@ -2,7 +2,7 @@ PROFILE := monowasm
+ SOURCEDIR := ../../src/$(PROFILE)/
+ 
+ CSC ?= csc
+-CSC_COMMON_ARGS := -nologo -noconfig -optimize -nostdlib -unsafe -deterministic -publicsign -debug- -target:library -nowarn:612,618,809
++CSC_COMMON_ARGS := -nologo -noconfig -optimize -nostdlib -unsafe -deterministic -delaysign -debug- -target:library -nowarn:612,618,809
+ Q_CSC = $(if $(V),,@echo "CSC   [$(PROFILE)] $(1)";)
+ 
+ ASSEMBLIES := mscorlib System System.Xml System.Numerics System.Core System.Net.Http WebAssembly.Net.Http WebAssembly.Net.WebSockets
+--- a/external/binary-reference-assemblies/v4.8/Makefile
++++ b/external/binary-reference-assemblies/v4.8/Makefile
+@@ -2,7 +2,7 @@ PROFILE := v4.8
+ SOURCEDIR := ../src/$(PROFILE)/
+ 
+ CSC ?= csc
+-CSC_COMMON_ARGS := -nologo -noconfig -optimize -nostdlib -unsafe -deterministic -publicsign -debug- -target:library -nowarn:612 -nowarn:618
++CSC_COMMON_ARGS := -nologo -noconfig -optimize -nostdlib -unsafe -deterministic -delaysign -debug- -target:library -nowarn:612 -nowarn:618
+ Q_CSC = $(if $(V),,@echo "CSC   [$(PROFILE)] $(1)";)
+ 
+ ASSEMBLIES := Accessibility CustomMarshalers	\
+@@ -81,15 +81,15 @@ System.ComponentModel.DataAnnotations_REFS := mscorlib System System.Core
+ System.Configuration.Install_REFS := mscorlib System
+ System.Configuration_REFS := mscorlib bare/System.Xml System
+ System.Core_REFS := mscorlib System
+-System.Data.DataSetExtensions_REFS := mscorlib System.Data System System.Core
++System.Data.DataSetExtensions_REFS := mscorlib System.Data System System.Core System.Xml
+ System.Data.Entity_REFS := mscorlib System.Core System System.Data System.Runtime.Serialization System.ComponentModel.DataAnnotations System.Xml System.Xml.Linq System.Transactions System.Configuration
+ System.Data.Linq_REFS := mscorlib System.Data System.Core System System.Xml System.Runtime.Serialization
+-System.Data.OracleClient_REFS := mscorlib System.Data System System.Drawing System.EnterpriseServices System.Transactions
++System.Data.OracleClient_REFS := mscorlib System.Data System System.Drawing System.EnterpriseServices System.Transactions System.Xml
+ System.Data.Services.Client_REFS := mscorlib System System.Xml System.Core System.Xml.Linq
+ System.Data.Services_REFS := mscorlib System.Configuration System.ServiceModel System.ServiceModel.Web System System.ServiceModel.Activation System.Core System.Data.Services.Client
+ System.Data_REFS := mscorlib System.Configuration System.Xml System System.Numerics System.Core System.Transactions System.EnterpriseServices
+ System.Deployment_REFS := mscorlib
+-System.Design_REFS := mscorlib System.Drawing System.Drawing.Design System System.Windows.Forms System.Data bare/System.Web System.Configuration System.Xml
++System.Design_REFS := mscorlib System.Drawing System.Drawing.Design System System.Windows.Forms System.Data bare/System.Web System.Configuration System.Xml Accessibility
+ System.Diagnostics.Tracing_REFS := mscorlib
+ System.DirectoryServices.Protocols_REFS := mscorlib System.Xml System System.DirectoryServices
+ System.DirectoryServices_REFS := mscorlib System
+@@ -117,22 +117,22 @@ System.Runtime.Serialization_REFS := mscorlib System.Xml System System.Configura
+ System.Security_REFS := mscorlib System System.Xml
+ System.ServiceModel.Activation_REFS := mscorlib System.ServiceModel System System.Web
+ System.ServiceModel.Discovery_REFS := mscorlib System.ServiceModel System System.Xml System.Xml.Linq System.Runtime.Serialization System.Configuration System.Core
+-System.ServiceModel.Routing_REFS := mscorlib System.ServiceModel System.Configuration System System.Runtime.Serialization
++System.ServiceModel.Routing_REFS := mscorlib System.ServiceModel System.Configuration System System.Runtime.Serialization System.Xml
+ System.ServiceModel.Web_REFS := mscorlib System.ServiceModel System System.Runtime.Serialization System.Xml System.Xml.Linq System.Configuration System.ServiceModel.Activation System.Core System.Web.Extensions
+ System.ServiceModel_REFS := mscorlib System.Xml System.Xml.Linq System.Xaml System System.EnterpriseServices System.Transactions System.IdentityModel System.Runtime.Serialization System.Runtime.DurableInstancing System.Security System.Web.ApplicationServices System.Messaging System.Net.Http System.IdentityModel.Selectors System.Web.Services System.Configuration System.Web System.Core bare/System.ServiceModel.Activation
+ System.ServiceProcess_REFS := mscorlib System System.Configuration.Install System.Windows.Forms
+ System.Transactions_REFS := mscorlib System.Configuration
+-System.Web.Abstractions_REFS := mscorlib System.Web
++System.Web.Abstractions_REFS := mscorlib System.Web System
+ System.Web.ApplicationServices_REFS := mscorlib System System.Configuration
+ System.Web.DynamicData_REFS := mscorlib System System.Drawing System.Web System.Web.Extensions System.Core System.ComponentModel.DataAnnotations System.Data.Linq
+-System.Web.Extensions.Design_REFS := mscorlib System System.Design System.Drawing System.Web System.Web.Extensions
++System.Web.Extensions.Design_REFS := mscorlib System System.Design System.Drawing System.Web System.Web.Extensions System.Windows.Forms
+ System.Web.Extensions_REFS := mscorlib System.Web System System.Xml System.Drawing System.Design System.Data.Linq System.Web.Services System.ServiceModel System.ServiceModel.Activation System.Runtime.Serialization System.Web.ApplicationServices System.Core System.Configuration
+ System.Web.Mobile_REFS := mscorlib
+ System.Web.RegularExpressions_REFS := mscorlib System
+ System.Web.Routing_REFS := mscorlib System.Web
+ System.Web.Services_REFS := mscorlib System System.Configuration System.EnterpriseServices System.Xml bare/System.Web System.DirectoryServices System.Design System.Data
+ System.Web_REFS := mscorlib System.Configuration System.Xml System System.Data System.Drawing System.Runtime.Serialization.Formatters.Soap System.Core System.EnterpriseServices System.Web.ApplicationServices System.ComponentModel.DataAnnotations System.Web.Services
+-System.Windows.Forms.DataVisualization_REFS := mscorlib System.Drawing System.Windows.Forms System System.Xml System.Data System.Core
++System.Windows.Forms.DataVisualization_REFS := mscorlib System.Drawing System.Windows.Forms System System.Xml System.Data System.Core Accessibility
+ System.Windows.Forms_REFS := mscorlib System System.Xml System.Drawing System.Runtime.Serialization.Formatters.Soap Accessibility System.Configuration System.Data
+ System.Windows_REFS := mscorlib System
+ System.Workflow.Activities_REFS := mscorlib
+@@ -164,7 +164,7 @@ Facades/System.ComponentModel.Primitives_REFS := mscorlib System
+ Facades/System.ComponentModel.TypeConverter_REFS := mscorlib System
+ Facades/System.ComponentModel_REFS := mscorlib System
+ Facades/System.Console_REFS := mscorlib
+-Facades/System.Data.Common_REFS := mscorlib System.Data
++Facades/System.Data.Common_REFS := mscorlib System.Data System System.Xml
+ Facades/System.Diagnostics.Contracts_REFS := mscorlib
+ Facades/System.Diagnostics.Debug_REFS := mscorlib System
+ Facades/System.Diagnostics.FileVersionInfo_REFS := mscorlib System
+@@ -174,7 +174,7 @@ Facades/System.Diagnostics.TextWriterTraceListener_REFS := mscorlib System
+ Facades/System.Diagnostics.Tools_REFS := mscorlib System
+ Facades/System.Diagnostics.TraceSource_REFS := mscorlib System
+ Facades/System.Drawing.Primitives_REFS := mscorlib System.Drawing
+-Facades/System.Dynamic.Runtime_REFS := mscorlib System.Core
++Facades/System.Dynamic.Runtime_REFS := mscorlib System.Core System
+ Facades/System.Globalization.Calendars_REFS := mscorlib
+ Facades/System.Globalization.Extensions_REFS := mscorlib System
+ Facades/System.Globalization_REFS := mscorlib
+@@ -223,7 +223,7 @@ Facades/System.Runtime.Numerics_REFS := mscorlib System.Numerics
+ Facades/System.Runtime.Serialization.Formatters_REFS := mscorlib
+ Facades/System.Runtime.Serialization.Json_REFS := mscorlib System.Runtime.Serialization
+ Facades/System.Runtime.Serialization.Primitives_REFS := mscorlib System.Runtime.Serialization
+-Facades/System.Runtime.Serialization.Xml_REFS := mscorlib System.Runtime.Serialization System Facades/System.Runtime.Serialization.Primitives
++Facades/System.Runtime.Serialization.Xml_REFS := mscorlib System.Runtime.Serialization System Facades/System.Runtime.Serialization.Primitives System.Xml
+ Facades/System.Runtime_REFS := mscorlib System.Core System System.ComponentModel.Composition
+ Facades/System.Security.Claims_REFS := mscorlib
+ Facades/System.Security.Cryptography.Algorithms_REFS := mscorlib System.Core
+@@ -236,7 +236,7 @@ Facades/System.Security.SecureString_REFS := mscorlib System
+ Facades/System.ServiceModel.Duplex_REFS := mscorlib System.ServiceModel
+ Facades/System.ServiceModel.Http_REFS := mscorlib System.ServiceModel
+ Facades/System.ServiceModel.NetTcp_REFS := mscorlib System.ServiceModel
+-Facades/System.ServiceModel.Primitives_REFS := mscorlib System.IdentityModel System.ServiceModel
++Facades/System.ServiceModel.Primitives_REFS := mscorlib System.IdentityModel System.ServiceModel System.Xml
+ Facades/System.ServiceModel.Security_REFS := mscorlib System.ServiceModel
+ Facades/System.Text.Encoding.Extensions_REFS := mscorlib
+ Facades/System.Text.Encoding_REFS := mscorlib
+@@ -250,7 +250,7 @@ Facades/System.Threading.Timer_REFS := mscorlib
+ Facades/System.Threading_REFS := mscorlib System System.Core
+ Facades/System.ValueTuple_REFS := mscorlib
+ Facades/System.Xml.ReaderWriter_REFS := mscorlib System.Xml
+-Facades/System.Xml.XDocument_REFS := mscorlib System.Xml.Linq
++Facades/System.Xml.XDocument_REFS := mscorlib System.Xml.Linq System.Xml
+ Facades/System.Xml.XPath.XDocument_REFS := mscorlib System.Xml.Linq
+ Facades/System.Xml.XPath_REFS := mscorlib System.Xml
+ Facades/System.Xml.XmlDocument_REFS := mscorlib System.Xml

@@ -1,0 +1,14 @@
+BDEPEND=sys-devel/gettext virtual/pkgconfig >=app-portage/elt-patches-20170815 || ( >=sys-devel/automake-1.16.5-r1:1.16 >=sys-devel/automake-1.15.1-r2:1.15 ) >=sys-devel/autoconf-2.69 >=sys-devel/libtool-2.4 virtual/pkgconfig
+DEFINED_PHASES=configure install prepare
+DEPEND=>=media-libs/libv4l-1.24.1 qt4? ( dev-qt/qtgui:4 dev-qt/qtopengl:4 virtual/opengl media-libs/alsa-lib ) udev? ( virtual/libudev ) !media-tv/v4l2-ctl !<media-tv/ivtv-utils-1.4.0-r2
+DESCRIPTION=Separate utilities ebuild from upstream v4l-utils package
+EAPI=7
+HOMEPAGE=http://git.linuxtv.org/v4l-utils.git
+IUSE=qt4 udev
+KEYWORDS=*
+LICENSE=GPL-2+ LGPL-2.1+
+RDEPEND=>=media-libs/libv4l-1.24.1 qt4? ( dev-qt/qtgui:4 dev-qt/qtopengl:4 virtual/opengl media-libs/alsa-lib ) udev? ( virtual/libudev ) !media-tv/v4l2-ctl !<media-tv/ivtv-utils-1.4.0-r2
+SLOT=0
+SRC_URI=http://linuxtv.org/downloads/v4l-utils/v4l-utils-1.24.1.tar.bz2
+_eclasses_=autotools	9adb87822e85056674b476e1090a72ae	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	ad475baa777c9978fa035216c8264a10	libtool	f143db5a74ccd9ca28c1234deffede96	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	udev	eec0bbab06977f1cfc5597269c1fa152
+_md5_=e8b4a4b8f0a9e023f0292bba031b4001

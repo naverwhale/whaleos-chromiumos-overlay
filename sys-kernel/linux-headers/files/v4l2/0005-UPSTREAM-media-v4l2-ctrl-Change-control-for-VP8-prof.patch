@@ -1,0 +1,64 @@
+From 32b55ab3b80f67e9f5059261f99fdd746edcf484 Mon Sep 17 00:00:00 2001
+From: Keiichi Watanabe <keiichiw@chromium.org>
+Date: Mon, 18 Jun 2018 03:58:52 -0400
+Subject: [PATCH] UPSTREAM: media: v4l2-ctrl: Change control for VP8 profile to
+ menu control
+
+Add a menu control V4L2_CID_MPEG_VIDEO_VP8_PROFILE for VP8 profile and make
+V4L2_CID_MPEG_VIDEO_VPX_PROFILE an alias of it. This new control is used to
+select the desired profile for VP8 encoder and query for supported profiles by
+VP8 encoder/decoder.
+
+Though we have originally a control V4L2_CID_MPEG_VIDEO_VPX_PROFILE and its name
+contains 'VPX', it works only for VP8 because supported profiles usually differ
+between VP8 and VP9. In addition, this control cannot be used for querying since
+it is not a menu control but an integer control, which cannot return an
+arbitrary set of supported profiles.
+
+The new control V4L2_CID_MPEG_VIDEO_VP8_PROFILE is a menu control as with
+controls for other codec profiles. (e.g. H264)
+
+In addition, this patch also fixes the use of V4L2_CID_MPEG_VIDEO_VPX_PROFILE in
+drivers of Qualcomm's venus and Samsung's s5p-mfc.
+
+Signed-off-by: Keiichi Watanabe <keiichiw@chromium.org>
+Signed-off-by: Hans Verkuil <hans.verkuil@cisco.com>
+Signed-off-by: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>
+(cherry picked from commit 5520b9467a39d5ec9ce9cd8a9ed01f826b817524)
+
+non-uAPI changes dropped.
+
+BUG=b:278157861
+TEST=Check header
+
+Change-Id: I3069e89f5c77afd9ec338833b0f53924de921287
+Signed-off-by: Chen-Yu Tsai <wenst@chromium.org>
+---
+ include/uapi/linux/v4l2-controls.h | 11 ++++++++++-
+ 1 file changed, 10 insertions(+), 1 deletion(-)
+
+diff --git a/include/uapi/linux/v4l2-controls.h b/include/uapi/linux/v4l2-controls.h
+index 8d473c979b61..2001823c3072 100644
+--- a/include/uapi/linux/v4l2-controls.h
++++ b/include/uapi/linux/v4l2-controls.h
+@@ -587,7 +587,16 @@ enum v4l2_vp8_golden_frame_sel {
+ #define V4L2_CID_MPEG_VIDEO_VPX_MAX_QP			(V4L2_CID_MPEG_BASE+508)
+ #define V4L2_CID_MPEG_VIDEO_VPX_I_FRAME_QP		(V4L2_CID_MPEG_BASE+509)
+ #define V4L2_CID_MPEG_VIDEO_VPX_P_FRAME_QP		(V4L2_CID_MPEG_BASE+510)
+-#define V4L2_CID_MPEG_VIDEO_VPX_PROFILE			(V4L2_CID_MPEG_BASE+511)
++
++#define V4L2_CID_MPEG_VIDEO_VP8_PROFILE			(V4L2_CID_MPEG_BASE+511)
++enum v4l2_mpeg_video_vp8_profile {
++	V4L2_MPEG_VIDEO_VP8_PROFILE_0				= 0,
++	V4L2_MPEG_VIDEO_VP8_PROFILE_1				= 1,
++	V4L2_MPEG_VIDEO_VP8_PROFILE_2				= 2,
++	V4L2_MPEG_VIDEO_VP8_PROFILE_3				= 3,
++};
++/* Deprecated alias for compatibility reasons. */
++#define V4L2_CID_MPEG_VIDEO_VPX_PROFILE	V4L2_CID_MPEG_VIDEO_VP8_PROFILE
+ 
+ /* CIDs for HEVC encoding. */
+ 
+-- 
+2.40.1.606.ga4b1b128d6-goog
+

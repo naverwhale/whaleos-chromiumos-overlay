@@ -1,10 +1,10 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Downloads Chrome sources to ${CHROMIUM_SOURCE_DIR} which is typically
 # set to /var/cache/chromeos-cache/distfiles/target/chrome-src.
 
-EAPI="6"
+EAPI="7"
 inherit chromium-source
 
 DESCRIPTION="Source code for the open-source version of Google Chrome web browser"

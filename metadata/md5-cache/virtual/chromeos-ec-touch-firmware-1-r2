@@ -5,4 +5,4 @@ HOMEPAGE=https://chromium.googlesource.com/chromiumos/platform/ec/
 KEYWORDS=*
 LICENSE=metapackage
 SLOT=0
-_md5_=709a9a67715a4bf85c136aac1bcd3961
+_md5_=66bad631aabf3fe7eede951e72875765

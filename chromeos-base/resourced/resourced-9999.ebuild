@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -10,7 +10,7 @@ CROS_WORKON_PROJECT="chromiumos/platform2"
 # using "provided by ebuild" macro which supported by cros-rust.
 CROS_WORKON_SUBTREE="resourced"
 
-inherit cros-workon cros-rust user
+inherit cros-workon cros-rust udev user
 
 DESCRIPTION="ChromeOS Resource Management Daemon"
 HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/resourced/"
@@ -20,15 +20,39 @@ SLOT="0/${PVR}"
 KEYWORDS="~*"
 IUSE="+seccomp"
 
-DEPEND="
-	=dev-rust/anyhow-1*:=
-	=dev-rust/dbus-0.9*:=
-	=dev-rust/dbus-tree-0.9*:=
-	=dev-rust/glob-0.3*:=
-	=dev-rust/once_cell-1.7*:=
-	=dev-rust/regex-1.5*:=
-	dev-rust/sys_util:=
+RDEPEND="
+	chromeos-base/featured:=
+	chromeos-base/metrics:=
+	dev-libs/openssl:0=
+	sys-apps/dbus:=
 "
+DEPEND="
+	${RDEPEND}
+	dev-rust/third-party-crates-src:=
+	dev-rust/featured:=
+	dev-rust/libchromeos:=
+	dev-rust/metrics_rs:=
+	dev-rust/system_api:=
+"
+
+BDEPEND="
+	chromeos-base/minijail
+"
+
+src_compile() {
+	local features=(
+		chromeos
+	)
+
+	ecargo_build -v \
+		--features="${features[*]}" ||
+		die "cargo build failed"
+}
+
+src_test() {
+	# Single threaded test execution to reduce test flakiness
+	cros-rust_src_test -- --test-threads=1
+}
 
 src_install() {
 	dobin "$(cros-rust_get_build_dir)/resourced"
@@ -40,6 +64,18 @@ src_install() {
 	# init script.
 	insinto /etc/init
 	doins init/resourced.conf
+
+	# Minijail configuration.
+	insinto /usr/share/minijail
+	doins minijail/resourced.conf
+
+	# Install udev rules.
+	udev_dorules udev/99-resourced.rules
+
+	if [[ -d tmpfiles.d ]]; then
+		insinto /usr/lib/tmpfiles.d
+		doins -r tmpfiles.d/*
+	fi
 
 	# seccomp policy file.
 	insinto /usr/share/policy

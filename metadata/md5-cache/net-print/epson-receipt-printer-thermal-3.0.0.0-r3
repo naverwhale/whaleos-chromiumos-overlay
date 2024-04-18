@@ -1,0 +1,15 @@
+BDEPEND=dev-util/cmake
+DEFINED_PHASES=compile configure install
+DEPEND=net-print/cups
+DESCRIPTION=Epson Thermal Receipt Printer Driver
+EAPI=7
+HOMEPAGE=https://epson.com/Support/Point-of-Sale/Thermal-Printers/sh/s530
+IUSE=asan cfi cfi_diag cfi_recover coverage fuzzer msan thinlto tsan ubsan
+KEYWORDS=*
+LICENSE=GPL-2
+RDEPEND=net-print/cups
+REQUIRED_USE=cfi? ( thinlto ) cfi_diag? ( cfi ) cfi_recover? ( cfi_diag )
+SLOT=0
+SRC_URI=https://ftp.epson.com/drivers/pos/tmx-cups-src-ThermalReceipt-3.0.0.0.tar.gz
+_eclasses_=cros-sanitizers	4504f3661db0fe02309acd3555785cf2	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=c1ad67f27214448cd294bf0a1547faf3

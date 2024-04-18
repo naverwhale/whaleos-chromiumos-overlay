@@ -4,7 +4,7 @@
 <herd>chromium</herd>
 <maintainer>
 	<email>chromium-os-dev@chromium.org</email>
-	<description>Maintained by The Chromium OS Authors.</description>
+	<description>Maintained by The ChromiumOS Authors</description>
 </maintainer>
 <longdescription>The Chromium OS base package pulls in dependencies to build a Chromium OS system.</longdescription>
 <use>
@@ -15,6 +15,8 @@
 	<flag name='compupdates'>Enable component updates.</flag>
 	<flag name="dlp">Enable Data Leak Prevention daemon</flag>
 	<flag name='cros_ec'>Enables CrOS Embedded Controller.</flag>
+	<flag name='factory_branch'>Enables customization for factory builds.</flag>
+	<flag name='fusebox'>Enable FuseBox daemon.</flag>
 	<flag name='gdmwimax'>Enables WiMax dependencies.</flag>
 	<flag name='iioservice'>Enable Chrome OS IIO sensor service daemon.</flag>
 	<flag name='kerberos_daemon'>Enable Chrome OS Kerberos system daemon</flag>

@@ -1,7 +1,7 @@
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright 2013 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="6"
+EAPI="7"
 
 CROS_WORKON_PROJECT="chromiumos/platform/mttools"
 CROS_WORKON_LOCALNAME="platform/mttools"
@@ -21,9 +21,11 @@ RESTRICT="test"
 RDEPEND="chromeos-base/gestures
 	app-misc/utouch-evemu
 	chromeos-base/libevdev:=
-	chromeos-base/touch_firmware_test"
+	chromeos-base/touch_firmware_test
+	dev-libs/jsoncpp:=
+"
 
-DEPEND=${RDEPEND}
+DEPEND="${RDEPEND}"
 
 src_configure() {
 	sanitizers-setup-env

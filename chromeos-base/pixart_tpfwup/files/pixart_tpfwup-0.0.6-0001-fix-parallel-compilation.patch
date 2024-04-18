@@ -1,0 +1,34 @@
+From: Henry Barnor <hbarnor@chromium.org>
+Bug: https://issuetracker.google.com/issues/290982616
+
+Update makefile to make the output directory a prerequisite of the
+object files instead of a parallel prerequisite of the `all` target.
+
+Filed https://issuetracker.google.com/issues/290982616 to get upstream fixed
+and also submitted a [PR][1] with this patch to upstream.
+
+[1]: https://github.com/PixArt-Imaging-Inc/pix_tpfwup/pull/1
+
+--- a/Makefile
++++ b/Makefile
+@@ -8,15 +8,17 @@ CXXFLAGS += -std=c++11 -Wall
+ LDFLAGS ?= -g
+ #LIBS = 
+ 
+-all: dir $(APP)
++all: $(APP)
+ 
+-dir:
++$(OUT):
+ 	mkdir -p $(OUT)
+ 
+ $(APP): $(OBJS)
+ 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(LIBS) -o $(APP)
+ 
+-$(OBJS): $(OUT)/%.o: src/%.cpp
++$(OBJS): | $(OUT)
++
++$(OUT)/%.o: src/%.cpp
+ 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c $< -o $@
+ 
+ clean:

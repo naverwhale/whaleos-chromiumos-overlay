@@ -1,9 +1,9 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
 
-PYTHON_COMPAT=( python3_{6,7} )
+PYTHON_COMPAT=( python3_{6..9} )
 
 CROS_WORKON_LOCALNAME="aosp/system/update_engine"
 CROS_WORKON_PROJECT="aosp/platform/system/update_engine"
@@ -18,11 +18,11 @@ HOMEPAGE="https://chromium.googlesource.com/aosp/platform/system/update_engine"
 LICENSE="Apache-2.0"
 KEYWORDS="~*"
 
-RDEPEND="
+RDEPEND="${PYTHON_DEPS}
 	dev-python/protobuf-python[${PYTHON_USEDEP}]
 	!<chromeos-base/devserver-0.0.3
 "
-DEPEND=""
+DEPEND="${PYTHON_DEPS}"
 
 src_install() {
 	# Install update_payload scripts.

@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -18,7 +18,7 @@ HOMEPAGE="https://chromium.googlesource.com/chromiumos/third_party/libtextclassi
 
 MODEL_URI=(
 	"gs://chromeos-localmirror/distfiles/mlservice-model-language_identification-20190924.smfb"
-	"gs://chromeos-localmirror/distfiles/mlservice-model-text_classifier_en-v711_vocab-v1.fb"
+	"gs://chromeos-localmirror/distfiles/mlservice-model-text_classifier_en-v714_vocab-with_beginner_words-20220318.fb"
 )
 
 SRC_URI="${MODEL_URI[*]}"
@@ -48,7 +48,13 @@ DEPEND="
 	dev-libs/marisa-aosp:=
 "
 
+BDEPEND="
+	dev-libs/flatbuffers
+"
+
 src_install() {
+	platform_src_install
+
 	# Installs the model files.
 	insinto /opt/google/chrome/ml_models
 	local model_files=( "${MODEL_URI[@]##*/}" )

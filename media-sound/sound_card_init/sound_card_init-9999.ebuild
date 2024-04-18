@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -16,19 +16,22 @@ DESCRIPTION="Sound Card Initializer"
 HOMEPAGE="https://chromium.googlesource.com/chromiumos/third_party/adhd/+/HEAD/sound_card_init"
 
 LICENSE="BSD-Google"
-KEYWORDS="-* ~amd64 ~arm"
+KEYWORDS="~*"
 
 DEPEND="
-	dev-rust/cc:=
-	dev-rust/getopts:=
-	dev-rust/sys_util:=
-	dev-rust/serde_yaml:=
-	dev-rust/remain:=
+	dev-rust/third-party-crates-src:=
+	dev-rust/libchromeos:=
 	media-sound/audio_streams:=
 	media-sound/cros_alsa:=
-	media-sound/libcras:=
+	media-sound/cras-client:=
 	media-sound/sof_sys:=
 "
+
+src_prepare() {
+	cros-rust_src_prepare
+	cros-rust-patch-cargo-toml "${S}/amp/Cargo.toml"
+	cros-rust-patch-cargo-toml "${S}/dsm/Cargo.toml"
+}
 
 src_install() {
 	dobin "$(cros-rust_get_build_dir)/sound_card_init"

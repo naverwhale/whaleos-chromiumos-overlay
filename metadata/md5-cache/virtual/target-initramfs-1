@@ -6,4 +6,4 @@ KEYWORDS=*
 LICENSE=metapackage
 RDEPEND=virtual/target-chromium-os-initramfs
 SLOT=0
-_md5_=64e9543ec7df0c39bcb50f407ec2eb9e
+_md5_=df8151e7d79b9105563424cf30cf97ea

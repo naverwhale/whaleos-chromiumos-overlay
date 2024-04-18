@@ -1,0 +1,16 @@
+BDEPEND=>=app-portage/elt-patches-20170815 || ( >=sys-devel/automake-1.16.5-r1:1.16 >=sys-devel/automake-1.15.1-r2:1.15 ) >=sys-devel/autoconf-2.69 >=sys-devel/libtool-2.4 dev-vcs/git app-misc/jq
+DEFINED_PHASES=compile configure info install prepare setup unpack
+DEPEND=media-libs/libv4l
+DESCRIPTION=Separate plugin library from upstream v4l-utils package
+EAPI=7
+HOMEPAGE=http://git.linuxtv.org/v4l-utils.git
+IUSE=rockchip rockchip_v2 cros_host cros_workon_tree_785dc2a0149c113045f6b8ecbbb42cccb050ee17
+KEYWORDS=*
+LICENSE=LGPL-2.1
+PROPERTIES=live
+RDEPEND=media-libs/libv4l
+REQUIRED_USE=^^ ( rockchip rockchip_v2 )
+SLOT=0
+SRC_URI=http://linuxtv.org/downloads/v4l-utils/v4l-utils-1.18.1.tar.bz2
+_eclasses_=autotools	9adb87822e85056674b476e1090a72ae	cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-workon	247d4700539e27bc12026f785ec53757	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	libtool	f143db5a74ccd9ca28c1234deffede96	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=97485d2b56b96a7aa2d1e542a8568287

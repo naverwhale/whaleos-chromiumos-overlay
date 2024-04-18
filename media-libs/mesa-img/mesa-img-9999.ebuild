@@ -2,9 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header: /var/cvsroot/gentoo-x86/media-libs/mesa/mesa-7.9.ebuild,v 1.3 2010/12/05 17:19:14 arfrever Exp $
 
-EAPI=6
-
-MESON_AUTO_DEPEND=no
+EAPI=7
 
 EGIT_REPO_URI="git://anongit.freedesktop.org/mesa/mesa"
 CROS_WORKON_PROJECT="chromiumos/third_party/mesa"
@@ -16,21 +14,13 @@ if [[ ${PV} = 9999* ]]; then
 	EXPERIMENTAL="true"
 fi
 
-inherit base flag-o-matic meson toolchain-funcs ${GIT_ECLASS} cros-workon
+inherit flag-o-matic meson toolchain-funcs ${GIT_ECLASS} cros-workon
 
 FOLDER="${PV/_rc*/}"
 [[ ${PV/_rc*/} == ${PV} ]] || FOLDER+="/RC"
 
 DESCRIPTION="OpenGL-like graphic library for Linux"
 HOMEPAGE="http://mesa3d.sourceforge.net/"
-
-#SRC_PATCHES="mirror://gentoo/${P}-gentoo-patches-01.tar.bz2"
-if [[ $PV = 9999* ]] || [[ -n ${CROS_WORKON_COMMIT} ]]; then
-	SRC_URI="${SRC_PATCHES}"
-else
-	SRC_URI="ftp://ftp.freedesktop.org/pub/mesa/${FOLDER}/${P}.tar.bz2
-		${SRC_PATCHES}"
-fi
 
 # Most of the code is MIT/X11.
 # ralloc is LGPL-3
@@ -47,8 +37,9 @@ for card in ${VIDEO_CARDS}; do
 done
 
 IUSE="${IUSE_VIDEO_CARDS}
-	+classic debug dri drm egl -gallium -gbm gles1 gles2 -llvm +nptl pic
-	selinux shared-glapi kernel_FreeBSD vulkan wayland xlib-glx X libglvnd"
+	+classic debug dri drm egl -gallium -gbm gles1 gles2 kernel_FreeBSD
+	kvm_guest -llvm +nptl pic selinux shared-glapi vulkan wayland xlib-glx X
+	libglvnd zstd"
 
 LIBDRM_DEPSTRING=">=x11-libs/libdrm-2.4.60"
 
@@ -71,8 +62,6 @@ RDEPEND="
 	)
 	llvm? ( virtual/libelf )
 	dev-libs/expat
-	dev-libs/libgcrypt
-	virtual/udev
 	${LIBDRM_DEPSTRING}
 "
 
@@ -86,10 +75,14 @@ DEPEND="${RDEPEND}
 	llvm? ( sys-devel/llvm )
 	video_cards_powervr? (
 		virtual/img-ddk
-		!<media-libs/img-ddk-1.9
-		!<media-libs/img-ddk-bin-1.9
+		!<media-libs/img-ddk-1.13
+		!<media-libs/img-ddk-bin-1.13
 	)
 "
+
+PATCHES=(
+	"${FILESDIR}"/FROMLIST-anv-advertise-rectangularLines-only-for-Gen10.patch
+)
 
 driver_list() {
 	local drivers="$(sort -u <<< "${1// /$'\n'}")"
@@ -97,24 +90,12 @@ driver_list() {
 }
 
 src_prepare() {
-	# apply patches
-	if [[ ${PV} != 9999* && -n ${SRC_PATCHES} ]]; then
-		EPATCH_FORCE="yes" \
-		EPATCH_SOURCE="${WORKDIR}/patches" \
-		EPATCH_SUFFIX="patch" \
-		epatch
-	fi
 	# FreeBSD 6.* doesn't have posix_memalign().
 	if [[ ${CHOST} == *-freebsd6.* ]]; then
 		sed -i \
 			-e "s/-DHAVE_POSIX_MEMALIGN//" \
 			configure.ac || die
 	fi
-
-	epatch "${FILESDIR}"/UPSTREAM-mesa-Expose-EXT_texture_query_lod-and-add-support-fo.patch
-
-	# Produce a dummy git_sha1.h file because .git will not be copied to portage tmp directory
-	echo '#define MESA_GIT_SHA1 "git-0000000"' > src/git_sha1.h
 	default
 }
 
@@ -122,34 +103,26 @@ src_configure() {
 	tc-getPROG PKG_CONFIG pkg-config
 
 	cros_optimize_package_for_speed
-	# For llvmpipe on ARM we'll get errors about being unable to resolve
-	# "__aeabi_unwind_cpp_pr1" if we don't include this flag; seems wise
-	# to include it for all platforms though.
-	use video_cards_llvmpipe && append-flags "-rtlib=libgcc -shared-libgcc"
 
-	# IMG code
+	#
+	# No gallium, IMG code
+	#
+
 	dri_driver_enable video_cards_powervr pvr
 
 	#
-	# IMG vulkan driver is part of img-ddk
-	# nothing to do here
+	# No Vulkan, IMG vulkan driver is part of img-ddk nothing to do here
 	#
 
 	LLVM_ENABLE=false
 	if use llvm && use !video_cards_softpipe; then
-		emesonargs+=( -Dshared-llvm=false )
+		emesonargs+=( -Dshared-llvm=disabled )
 		export LLVM_CONFIG=${SYSROOT}/usr/lib/llvm/bin/llvm-config-host
 		LLVM_ENABLE=true
 	fi
 
 	local egl_platforms=""
 	if use egl; then
-		egl_platforms="surfaceless"
-
-		if use drm; then
-			egl_platforms="${egl_platforms},drm"
-		fi
-
 		if use wayland; then
 			egl_platforms="${egl_platforms},wayland"
 		fi
@@ -158,6 +131,7 @@ src_configure() {
 			egl_platforms="${egl_platforms},x11"
 		fi
 	fi
+	egl_platforms="${egl_platforms##,}"
 
 	if use X; then
 		glx="dri"
@@ -165,7 +139,9 @@ src_configure() {
 		glx="disabled"
 	fi
 
-	append-flags "-UENABLE_SHADER_CACHE"
+	if use kvm_guest; then
+		emesonargs+=( -Ddri-search-path=/opt/google/cros-containers/lib )
+	fi
 
 	emesonargs+=(
 		-Dexecmem=false
@@ -173,11 +149,13 @@ src_configure() {
 		-Dglx="${glx}"
 		-Dllvm="${LLVM_ENABLE}"
 		-Dplatforms="${egl_platforms}"
-		$(meson_use egl)
-		$(meson_use gbm)
-		$(meson_use X gl)
-		$(meson_use gles1)
-		$(meson_use gles2)
+		-Dprefer-iris=false
+		-Dshader-cache-default=false
+		$(meson_feature egl)
+		$(meson_feature gbm)
+		$(meson_feature gles1)
+		$(meson_feature gles2)
+		$(meson_feature zstd)
 		$(meson_use selinux)
 		-Ddri-drivers=$(driver_list "${DRI_DRIVERS[*]}")
 		-Dgallium-drivers=$(driver_list "${GALLIUM_DRIVERS[*]}")

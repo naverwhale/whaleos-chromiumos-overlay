@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Remove embedded controller firmware code for official devices.
@@ -15,7 +15,7 @@ USE="${USE} -power_management"
 USE="${USE} -powerknobs"
 
 # Disable non-essential networking services.
-USE="${USE} -bluetooth -network_time -nfc"
+USE="${USE} -bluetooth -floss -network_time -nfc"
 
 # No graphics related support by default.
 USE="${USE} -egl -opengl -opengles -fonts -X"
@@ -30,23 +30,26 @@ USE="${USE} -device-mapper"
 USE="${USE} -doc -profile -profiling -python"
 
 # Make stuff small.
-USE="${USE} -attestation -buffet -cellular chromeless_tty -crash_reporting"
-USE="${USE} -cros_disks cros_embedded -diagnostics -debugd -encrypted_stateful"
-USE="${USE} -featured -gdmwimax -lorgnette -memd -mist -missive -ml_service"
-USE="${USE} -ondevice_grammar -pam -passive_metrics -perfetto -power_management"
-USE="${USE} -scanner -secanomalyd -tpm -usb_bouncer -usbguard -vpn -wimax"
+USE="${USE} -attestation -cellular chromeless_tty -crash_reporting"
+USE="${USE} -cros_disks cros_embedded -diagnostics -diagnostics-minidiag -debugd -encrypted_stateful"
+USE="${USE} -featured -gdmwimax -iioservice -lorgnette -memd -mist -missive -ml_service"
+USE="${USE} -ondevice_grammar -ondevice_text_suggestions -pam -passive_metrics"
+USE="${USE} -ondevice_handwriting"
+USE="${USE} -ime_addons"
+USE="${USE} -perfetto -power_management -scanner -secagent -secanomalyd -tpm"
+USE="${USE} -usb_bouncer -usbguard -vpn -wimax"
 
 # Disable auth frameworks.
 USE="${USE} -kerberos -kerberos_daemon -system_proxy"
 
 # Disable filesystem extensions.
-USE="${USE} -drivefs -samba -smbprovider"
+USE="${USE} -drivefs -fusebox -samba -smbprovider"
 
 # Remove most of the unused firmware in kernel build (see crbug.com/378877).
 USE="${USE} -firmware_install"
 
 # Don't turn on printing; among the reasons: some cups filters require bash.
-USE="${USE} -cups"
+USE="${USE} -cups -printscanmgr"
 
 # No need for input-methods and app-i18n.
 USE="${USE} -ime"
@@ -60,6 +63,9 @@ USE="${USE} -arc-camera3"
 # Disable document scanning.
 USE="${USE} -ondevice_document_scanner"
 
+# Disable Camera Frame Annotator.
+USE="${USE} -camera_feature_frame_annotator"
+
 # Disable oobe config.
 USE="${USE} -oobe_config"
 
@@ -70,10 +76,37 @@ USE="${USE} -dlc"
 USE="${USE} -lacros_rootfs"
 
 # Disable dns-proxy.
-USE="{$USE} -dns-proxy"
+USE="${USE} -dns-proxy"
 
 # Disable Data Leak Prevention daemon (DLP).
 USE="${USE} -dlp"
+
+# Disable Runtime AVL Compliance Check (RACC) packages
+USE="${USE} -racc"
+
+# Disable RGB Keyboard daemon.
+USE="${USE} -rgbkbd"
+
+# Disable Private Computing daemon.
+USE="${USE} -private_computing"
+
+# Disable disk usage daemon.
+USE="${USE} -spaced"
+
+# Disable ML benchmarking
+USE="${USE} -ml_benchmark_drivers"
+
+# Disable SELinux.
+USE="${USE} -selinux"
+
+# Disable ondevice speech.
+USE="${USE} -ondevice_speech"
+
+# Disable federated service.
+USE="${USE} -federated_service"
+
+# Disable kdump.
+USE="${USE} -kdump"
 
 # Make each board select the firmware it needs.
 LINUX_FIRMWARE=""

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -11,13 +11,14 @@ TPM_FIRMWARE_UPDATE_SRK_VULNERABLE_ROCA="/run/tpm_firmware_update_srk_vulnerable
 
 main() {
   # Record whether the SRK is vulnerable to ROCA.
-  if tpm-manager get_srk_status | grep -q '^srk_vulnerable_roca 1$'; then
+  if libhwsec_client is_srk_roca_vulnerable | grep -q '^true$'; then
     touch "${TPM_FIRMWARE_UPDATE_SRK_VULNERABLE_ROCA}"
   fi
 
   # Write to temp file and move so the correct state appears atomically.
-  local tpm_version_info="$(tpm-manager get_version_info)"
-  local ifx_upgrade_info="$(tpm-manager get_ifx_field_upgrade_info)"
+  local tpm_version_info ifx_upgrade_info
+  tpm_version_info="$(libhwsec_client get_version_info)"
+  ifx_upgrade_info="$(libhwsec_client get_ifx_field_upgrade_info)"
   if tpm-firmware-locate-update "${tpm_version_info}" "${ifx_upgrade_info}" \
                                 > "${TPM_FIRMWARE_UPDATE_LOCATION}.tmp"; then
     mv "${TPM_FIRMWARE_UPDATE_LOCATION}.tmp" "${TPM_FIRMWARE_UPDATE_LOCATION}"

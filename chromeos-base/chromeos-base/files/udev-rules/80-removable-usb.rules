@@ -1,0 +1,13 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+ACTION=="remove", GOTO="cros_usb_location_end"
+SUBSYSTEM!="usb", GOTO="cros_usb_location_end"
+ENV{DEVTYPE}!="usb_device", GOTO="cros_usb_location_end"
+
+ATTR{removable}=="removable", ENV{CROS_USB_LOCATION}="external"
+ATTR{removable}=="fixed", ENV{CROS_USB_LOCATION}="internal"
+ATTR{removable}=="unknown", ENV{CROS_USB_LOCATION}="unknown"
+
+LABEL="cros_usb_location_end"

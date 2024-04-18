@@ -1,12 +1,14 @@
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Copyright 2016 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=5
+EAPI=7
+
+PYTHON_COMPAT=( python3_{8..11} )
 
 CROS_WORKON_PROJECT="chromiumos/third_party/autotest"
 CROS_WORKON_LOCALNAME="third_party/autotest/files"
 
-inherit autotest cros-workon flag-o-matic
+inherit autotest cros-workon flag-o-matic python-any-r1
 
 DESCRIPTION="Public ARC autotests"
 
@@ -36,4 +38,3 @@ src_prepare() {
 	export PYTHONPATH="${TMP_DIR}/telemetry/src/third_party/catapult/telemetry"
 	autotest_src_prepare
 }
-

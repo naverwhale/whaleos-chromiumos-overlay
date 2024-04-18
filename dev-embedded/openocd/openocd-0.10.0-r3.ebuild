@@ -1,1 +1,0 @@
-openocd-0.10.0.ebuild

@@ -1,0 +1,10 @@
+DEFINED_PHASES=configure install
+DESCRIPTION=Wacom EMR/AES flash for Firmware Update
+EAPI=7
+HOMEPAGE=https://github.com/flying-elephant/wacom_source/
+KEYWORDS=*
+LICENSE=GPL-2
+SLOT=0
+SRC_URI=https://github.com/flying-elephant/wacom_source/archive/v1.4.0.tar.gz -> wacom_fw_flash-1.4.0.tar.gz
+_eclasses_=flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=b4369c1ca7481904ad7a6b95ab5eb223

@@ -1,9 +1,13 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2012 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
 access: 1
 brk: 1
+clock_gettime: 1
 close: 1
 exit_group: 1
 faccessat: 1
@@ -17,6 +21,7 @@ getegid: 1
 geteuid: 1
 getgid: 1
 getpid: 1
+gettid: 1
 getuid: 1
 lseek: 1
 lstat: 1
@@ -31,5 +36,6 @@ open: arg1 in O_RDONLY|O_NONBLOCK|0x10000|0x80000
 openat: arg2 in O_RDONLY|O_NONBLOCK|0x10000|0x80000
 read: 1
 stat: 1
+statx: 1
 write: 1
 fstatfs: 1

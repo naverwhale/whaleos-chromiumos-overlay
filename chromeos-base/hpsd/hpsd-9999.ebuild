@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -11,22 +11,20 @@ CROS_WORKON_INCREMENTAL_BUILD="1"
 
 PLATFORM_SUBDIR="hps"
 
-inherit cros-workon platform user
+inherit cros-workon platform udev user
 
 DESCRIPTION="Chrome OS HPS daemon."
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
-IUSE="hpsd-roflash"
 
 RDEPEND="
-	hpsd-roflash? ( dev-embedded/stm32flash:= )
+	chromeos-base/metrics:=
+	virtual/libusb:1
 "
 
 DEPEND="${RDEPEND}
-	chromeos-base/metrics:=
 	chromeos-base/system_api:=
-	dev-embedded/libftdi:=
 "
 
 pkg_preinst() {
@@ -35,6 +33,7 @@ pkg_preinst() {
 }
 
 src_install() {
+	platform_src_install
 
 	dosbin "${OUT}"/hpsd
 
@@ -42,12 +41,12 @@ src_install() {
 	insinto /etc/init
 	doins daemon/init/hpsd.conf
 
-	if use hpsd-roflash ; then
-		doins daemon/init/hpsd_roflash.conf
-	fi
-
 	insinto /etc/dbus-1/system.d
 	doins daemon/dbus/org.chromium.Hps.conf
+
+	exeinto "$(get_udevdir)"
+	doexe udev/*.sh
+	udev_dorules udev/*.rules
 }
 
 platform_pkg_test() {

@@ -1,12 +1,12 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # This ebuild is for running tast DLC test in the lab and local dev setup.
 # For future DLC autotests, a new installation process needs to be re-designed.
 
-EAPI=6
+EAPI="7"
 
-PYTHON_COMPAT=( python2_7 python3_{6,7} )
+PYTHON_COMPAT=( python3_{6..9} )
 
 CROS_WORKON_PROJECT="chromiumos/platform/dev-util"
 CROS_WORKON_LOCALNAME="platform/dev"
@@ -23,7 +23,9 @@ LICENSE="BSD-Google"
 SLOT="0"
 KEYWORDS="~*"
 
-RDEPEND="!chromeos-base/gmerge"
+RDEPEND="${PYTHON_DEPS}
+	!chromeos-base/gmerge"
+DEPEND="${PYTHON_DEPS}"
 
 # Add an empty src_compile() so we bypass compile stage.
 src_compile() { :; }
@@ -34,12 +36,13 @@ src_install() {
 
 	insinto /etc/init
 	doins nebraska/nebraska.conf
+	sed -i "s:@LIBDIR@:$(get_libdir):g" "${ED}"/etc/init/nebraska.conf || die
 }
 
 src_test() {
 	# Run the unit tests.
 	python_test() {
-		"$PYTHON" nebraska/nebraska_unittest.py || die
+		"${PYTHON}" nebraska/nebraska_unittest.py || die
 	}
 	python_foreach_impl python_test
 }

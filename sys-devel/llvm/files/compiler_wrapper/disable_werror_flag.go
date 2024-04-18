@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium OS Authors. All rights reserved.
+// Copyright 2019 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -17,6 +17,10 @@ import (
 )
 
 const numWErrorEstimate = 30
+
+func getForceDisableWerrorDir(env env, cfg *config) string {
+	return path.Join(getCompilerArtifactsDir(env), cfg.newWarningsDir)
+}
 
 func shouldForceDisableWerror(env env, cfg *config, ty compilerType) bool {
 	if cfg.isAndroidWrapper {
@@ -178,20 +182,21 @@ func doubleBuildWithWNoError(env env, cfg *config, originalCmd *command) (exitCo
 	oldMask := env.umask(0)
 	defer env.umask(oldMask)
 
+	warningsDir := getForceDisableWerrorDir(env, cfg)
 	// Allow root and regular users to write to this without issue.
-	if err := os.MkdirAll(cfg.newWarningsDir, 0777); err != nil {
-		return 0, wrapErrorwithSourceLocf(err, "error creating warnings directory %s", cfg.newWarningsDir)
+	if err := os.MkdirAll(warningsDir, 0777); err != nil {
+		return 0, wrapErrorwithSourceLocf(err, "error creating warnings directory %s", warningsDir)
 	}
 
 	// Have some tag to show that files aren't fully written. It would be sad if
 	// an interrupted build (or out of disk space, or similar) caused tools to
 	// have to be overly-defensive.
-	incompleteSuffix := ".incomplete"
+	const incompleteSuffix = ".incomplete"
 
 	// Coming up with a consistent name for this is difficult (compiler command's
 	// SHA can clash in the case of identically named files in different
 	// directories, or similar); let's use a random one.
-	tmpFile, err := ioutil.TempFile(cfg.newWarningsDir, "warnings_report*.json"+incompleteSuffix)
+	tmpFile, err := ioutil.TempFile(warningsDir, "warnings_report*.json"+incompleteSuffix)
 	if err != nil {
 		return 0, wrapErrorwithSourceLocf(err, "error creating warnings file")
 	}

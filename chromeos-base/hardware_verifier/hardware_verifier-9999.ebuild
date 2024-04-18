@@ -1,4 +1,4 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -14,7 +14,7 @@ PLATFORM_SUBDIR="hardware_verifier"
 inherit cros-workon cros-unibuild platform user
 
 DESCRIPTION="Hardware Verifier Tool/Lib for Chrome OS"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/hardware_verifier/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/hardware_verifier/"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
@@ -22,8 +22,14 @@ KEYWORDS="~*"
 DEPEND="
 	chromeos-base/chromeos-config-tools:=
 	>=chromeos-base/metrics-0.0.1-r3152:=
+	chromeos-base/runtime_probe-client:=
 	chromeos-base/system_api:=
 	chromeos-base/vboot_reference:=
+"
+
+BDEPEND="
+	chromeos-base/chromeos-dbus-bindings
+	dev-libs/protobuf
 "
 
 pkg_preinst() {
@@ -32,13 +38,6 @@ pkg_preinst() {
 	enewgroup "hardware_verifier"
 }
 
-src_install() {
-	dobin "${OUT}/hardware_verifier"
-
-	insinto /etc/init
-	doins init/hardware-verifier.conf
-}
-
 platform_pkg_test() {
-	platform_test "run" "${OUT}/unittest_runner"
+	platform test_all
 }

@@ -6,4 +6,4 @@ KEYWORDS=*
 LICENSE=metapackage
 RDEPEND=chromeos-base/chromeos-auth-config
 SLOT=0
-_md5_=3fa7b077a252ae5dc428b5e0e29fe4d1
+_md5_=2ee5c0111edb599c887cc0c779de951e

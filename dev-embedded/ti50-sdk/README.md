@@ -53,64 +53,77 @@ Update the LLVM_SHA variable in the ebuild file to ${sha}.
 After running `ebuild manifest` as described in the section above, you should be
 able to start testing these changes via `sudo emerge dev-embedded/ti50-sdk`.
 
-## Upgrading newlib
-
-In order to upgrade newlib, you'll need to pull it from [its
-upstream repo](https://sourceware.org/git/newlib-cygwin.git). With that at
-`${dir}`, you can create a git tarball:
-
-```
-files/pack_git_tarball.py --git-dir "${dir}" --output-prefix /tmp/newlib
-```
-
-This should give you a path that looks like `/tmp/newlib-${sha}-src.tar.xz`. You
-can now upload that to gs:
-
-```
-gsutil cp -n -a public-read /tmp/newlib-${sha}-src.tar.xz \
-    gs://chromeos-localmirror/distfiles/newlib-${sha}-src.tar.xz
-```
-
-Update the NEWLIB_SHA variable in the ebuild file to ${sha}.
-
-After running `ebuild manifest` as described in the section above, you should be
-able to start testing these changes via `sudo emerge dev-embedded/ti50-sdk`.
-
 ## Upgrading rust
 
-First, determine which build of rust you wish to use.  An easy way to ensure
-a buildable version is to visit https://static.rust-lang.org/dist/${build_date}/
-, download rust-${channel}-i686-unknown-linux-gnu.tar.xz, and use its
+First, determine which build of rust you wish to use. Stable versions can be
+found at [build tags](https://github.com/rust-lang/rust/tags). This is a preferred
+way to go, as the nightly channel can be enabled in `config.toml` created by a build script.
+
+Another approach is to visit https://static.rust-lang.org/dist/ {build_date},
+download `rust-{channel}-i686-unknown-linux-gnu.tar.xz`, and use its
 git-commit-hash file's content.
 
-${build_date} is in the format yyyy-mm-dd and ${channel} will be one of
-stable|beta|nightly.  They are related to rustup's RUST_TOOLCHAIN_VERSION
-variable via ${channel}-${build_date}.
+Check [How to Build and Run the Rust Compiler](https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html)
+for more details about the process.
+
+`{build_date}` is in the format yyyy-mm-dd and `{channel}` will be one of
+`stable|beta|nightly`.  They are related to rustup's `RUST_TOOLCHAIN_VERSION`
+variable via `{channel}-{build_date}`.
 
 In order to upgrade rust, you'll need to pull it from [its upstream
 repo](https://github.com/rust-lang/rust). With that at
-`${dir}`, you can create a git tarball. **Note** that Rust makes use of two
-things that add complexity here:
+`{dir}`, you can create a git tarball.
+
+### Upgrading ChromeOS patches for Rust
+Check http://cs/chromeos_public/src/third_party/chromiumos-overlay/dev-lang/rust/files/
+for potential updates for `rustc`.
+
+### Preparing `rustc` source code package
+
+**Note** that our Rust toolchainmakes use of two things that add complexity here:
 
 - Submodules
 - Vendored dependencies
 
-A convenient shorthand to ensure all submodules are at the correct revision is
-`git checkout ${git-commit-hash}; ${dir}/x.py help`. You have to manually
-ensure all submodules are up-to-date before trying to pack rust's sources.
-Without this, things may be at inconsistent versions, which can lead to build
-errors.
+To get all the submodules (primarily llvm) and vendored deps, do the following:
+
+```
+git clone https://github.com/rust-lang/rust rustc
+cd rustc
+git checkout ${git-commit-hash}
+mkdir vendor
+
+# Download stage0/bin/cargo
+./x.py help
+
+# This downloads the llvm-project submodule and also verifies a successful build, but
+# build will most likely fail due to incomplete configuration options.
+CXX=clang++ ./x.py build
+
+# Optionally check vendor deps work.
+build/x86_64-unknown-linux-gnu/stage0/bin/cargo vendor --manifest-path ./Cargo.toml \
+-s ./src/bootstrap/Cargo.toml -s ./src/tools/build-manifest/Cargo.toml -s ./src/tools/bump-stage0/Cargo.toml
+```
 
 Dependency vendoring is handled by passing an extra flag to
 `files/pack_git_tarball.py`. Your invocation should look something like:
 
 ```
-files/pack_git_tarball.py --git-dir "${dir}" --output-prefix /tmp/rustc \
-    --post-copy-command 'cargo vendor'
+files/pack_git_tarball.py --git-dir ./rustc --output-prefix /tmp/rustc \
+--post-copy-command "$(realpath ./rustc/build/x86_64-unknown-linux-gnu/stage0/bin/cargo) vendor \
+--manifest-path ./Cargo.toml -s ./src/tools/rust-analyzer/Cargo.toml -s ./src/bootstrap/Cargo.toml \
+-s ./src/tools/build-manifest/Cargo.toml -s ./src/rustdoc-json-types/Cargo.toml \
+-s ./compiler/rustc_llvm/Cargo.toml -s ./src/tools/rust-analyzer/Cargo.toml \
+-s ./src/tools/rust-analyzer/crates/proc-macro-srv/Cargo.toml  \
+-s ./src/tools/build-manifest/Cargo.toml -s ./src/tools/cargotest/Cargo.toml \
+-s ./src/tools/rust-analyzer/xtask/Cargo.toml -s ./src/tools/rust-installer/Cargo.toml \
+-s ./src/tools/cargo/crates/cargo-test-support/Cargo.toml -s ./src/tools/cargo/Cargo.toml \
+-s ./src/tools/bump-stage0/Cargo.toml"
 ```
 
 (Emphasis on "please ensure `--post-copy-command 'cargo vendor'` is specified."
-Your build will break otherwise. :) )
+Your build will break otherwise. :).  This is because even though vendor was
+already performed, the pack script only copies files known to git.)
 
 This should give you a path that looks like `/tmp/rustc-${sha}-src.tar.xz`. You
 can now upload that to gs:
@@ -120,33 +133,71 @@ gsutil cp -n -a public-read /tmp/rustc-${sha}-src.tar.xz \
     gs://chromeos-localmirror/distfiles/rust-${sha}-rustc-${sha}-src.tar.xz
 ```
 
-Update RUST_SHA to ${sha}, RUST_STAGE0_DATE to the date in its src/stage0.txt
+### Updating .ebuild script
+
+In `rustc/src/stage0.json` check for data required to set `RUST_STAGE0_DATE` and
+`RUST_STAGE0_VERSION` in ebuild file. For example in [Rust 1.66.1]
+(https://github.com/rust-lang/rust/blob/90743e7298aca107ddaa0c202a4d3604e29bfeb6/src/stage0.json#L19)
+you can find:
+
+```
+   "compiler": {
+    "date": "2022-11-03",
+    "version": "1.65.0"
+  },
+```
+
+Update RUST_SHA to ${sha}, RUST_STAGE0_DATE and RUST_STAGE0_VERSION to the date and version as in src/stage0.json
 in the ebuild file.
 
-After running `ebuild manifest` as described in the section above, you should be
+Additional dependencies for build are partially downloaded in to `rustc/build/cache/${RUST_STAGE0_DATE}`
+and can also be downloaded from https://static.rust-lang.org/dist/${RUST_STAGE0_DATE}.
+
+Upload the remaining artifacts to gs:
+
+```
+cd rustc/build/cache/${RUST_STAGE0_DATE}
+
+gsutil cp -n -a public-read rustc-${RUST_STAGE0_VERSION}-x86_64-unknown-linux-gnu.tar.xz \
+    gs://chromeos-localmirror/distfiles/rust-${sha}-rustc-${RUST_STAGE0_VERSION}-x86_64-unknown-linux-gnu.tar.xz
+
+gsutil cp -n -a public-read cargo-${RUST_STAGE0_VERSION}-x86_64-unknown-linux-gnu.tar.xz \
+    gs://chromeos-localmirror/distfiles/rust-${sha}-cargo-${RUST_STAGE0_VERSION}-x86_64-unknown-linux-gnu.tar.xz
+
+gsutil cp -n -a public-read  rust-std-${RUST_STAGE0_VERSION}-x86_64-unknown-linux-gnu.tar.xz \
+    gs://chromeos-localmirror/distfiles/rust-${sha}-rust-std-${RUST_STAGE0_VERSION}-x86_64-unknown-linux-gnu.tar.xz
+
+gsutil cp -n -a public-read  rustfmt-${RUST_STAGE0_VERSION}-x86_64-unknown-linux-gnu.tar.xz \
+    gs://chromeos-localmirror/distfiles/rust-${sha}-rustfmt-${RUST_STAGE0_VERSION}-x86_64-unknown-linux-gnu.tar.xz
+
+```
+
+After running `ebuild ${ti50-sdk.ebuild} manifest` as described in the section above, you should be
 able to start testing these changes via `sudo emerge dev-embedded/ti50-sdk`.
-
-Once tests are successful, upload the remaining artifacts to gs:
-
-```
-gsutil cp -n -a public-read /var/cache/chromeos-cache/distfiles/rust-${sha}-cargo-beta-x86_64-unknown-linux-gnu.tar.xz \
-    gs://chromeos-localmirror/distfiles/rust-${sha}-cargo-beta-x86_64-unknown-linux-gnu.tar.xz
-
-gsutil cp -n -a public-read /var/cache/chromeos-cache/distfiles/rust-${sha}-rustc-beta-x86_64-unknown-linux-gnu.tar.xz \
-    gs://chromeos-localmirror/distfiles/rust-${sha}-rustc-beta-x86_64-unknown-linux-gnu.tar.xz
-
-gsutil cp -n -a public-read /var/cache/chromeos-cache/distfiles/rust-${sha}-rustfmt-beta-x86_64-unknown-linux-gnu.tar.xz \
-    gs://chromeos-localmirror/distfiles/rust-${sha}-rustfmt-beta-x86_64-unknown-linux-gnu.tar.xz
-
-gsutil cp -n -a public-read /var/cache/chromeos-cache/distfiles/rust-${sha}-rust-std-beta-x86_64-unknown-linux-gnu.tar.xz \
-    gs://chromeos-localmirror/distfiles/rust-${sha}-rust-std-beta-x86_64-unknown-linux-gnu.tar.xz
-```
 
 Test out the emerge again by first clearing the cache:
 ```
 rm -f /var/cache/chromeos-cache/distfiles/rust-${sha}-*
 sudo emerge dev-embedded/ti50-sdk
 ```
+
+Once this is complete, you can submit a CL with these changes to update
+the CQ builder. Unfortunately, this update is not atomic: once your CL
+lands, a builder must pick up the change, which then causes the CQ builder's
+chroots to be updated. This means that in order to update the rust toolchain,
+you must first get the ti50 build into a state where builds pass for both the
+old and new compiler version. Then, once the new compiler version has been
+made available to the CQ builders, you can submit followup changes that require
+the new compiler. Getting the ti50 code into a state where builds pass with
+multiple compiler versions can be challenging. One option for achieveing this
+is to use https://github.com/dtolnay/rustversion, which allows conditional compilation
+based on the specific compiler version in use. Another option is temporarily allowing
+warnings during the transition period, though this risks other breakages during the
+transition due to code producing warnings being allowed into main.
+The final option is to merge the original CL, thereby breaking the CQ
+for all other outstanding ti50 CLs, and then quickly attempting to merge
+the actual updates to use the new toolchain, thereby fixing the build
+for other outstanding CLs.
 
 ## Iterative development
 

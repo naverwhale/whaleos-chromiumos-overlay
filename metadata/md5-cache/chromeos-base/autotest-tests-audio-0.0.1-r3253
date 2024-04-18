@@ -1,0 +1,14 @@
+BDEPEND=dev-python/dbus-python dev-python/numpy dev-python/pygobject dev-python/requests dev-vcs/git app-misc/jq dev-python/chardet
+DEFINED_PHASES=compile info install postinst prepare setup unpack
+DEPEND=!<chromeos-base/autotest-tests-0.0.3 chromeos-base/audiotest !chromeless_tty? ( chromeos-base/telemetry ) autotest? ( chromeos-base/autotest )
+DESCRIPTION=Audio autotests
+EAPI=7
+HOMEPAGE=https://chromium.googlesource.com/chromiumos/third_party/autotest/
+IUSE=+autotest -chromeless_tty +tests_audio_Aconnect +tests_audio_Aplay !chromeless_tty? ( +tests_audio_AudioInputGain +tests_audio_CrasGetNodes ) +tests_audio_CRASFormatConversion +tests_audio_CrasDevSwitchStress +tests_audio_CrasPinnedStream +tests_audio_CrasStress +tests_audio_CrasAec cros_host cros_workon_tree_8e1cb2349e29478d41b51c396fea7684ad7017c5 +buildcheck autotest opengles
+KEYWORDS=*
+LICENSE=GPL-2
+PROPERTIES=live
+RDEPEND=!<chromeos-base/autotest-tests-0.0.3 chromeos-base/audiotest !chromeless_tty? ( chromeos-base/telemetry ) autotest? ( chromeos-base/autotest )
+SLOT=0
+_eclasses_=autotest	8421fa03ce96ac0b8d34f5c5020ab8d3	cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	python-any-r1	54a3178500786b0a7ede4a23b7f2a6ad	python-utils-r1	76252008070e69454f51fa80c07638c9	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=c0c9fd45d0c4ac4756fdc36c6808e0d9

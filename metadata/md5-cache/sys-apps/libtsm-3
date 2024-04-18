@@ -1,0 +1,11 @@
+DEFINED_PHASES=configure
+DEPEND=!!=sys-apps/kmscon-7
+DESCRIPTION=Terminal Emulator State Machine
+EAPI=7
+HOMEPAGE=https://cgit.freedesktop.org/~dvdhrm/libtsm
+KEYWORDS=*
+LICENSE=LGPL-2.1 MIT
+RDEPEND=!!=sys-apps/kmscon-7
+SLOT=0
+SRC_URI=https://www.freedesktop.org/software/kmscon/releases/libtsm-3.tar.xz
+_md5_=19a7c057196d06701adea7166c196560

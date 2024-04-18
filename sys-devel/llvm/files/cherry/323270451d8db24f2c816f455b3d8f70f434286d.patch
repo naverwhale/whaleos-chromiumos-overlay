@@ -1,0 +1,2337 @@
+commit 323270451d8db24f2c816f455b3d8f70f434286d
+Author: Stephen Tozer <Stephen.Tozer@Sony.com>
+Date:   Fri Aug 25 10:56:42 2023 +0100
+
+    Reapply "[Dexter] Remove builder from Dexter"
+    
+    Fixes a test which was broken on the green dragon buildbot, and further
+    failures on the SIE buildbot.
+    
+    This reverts commit 8df9eff90ff8c79e3e508cce7fec1cd897487069.
+
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/aggregate-indirect-arg.cpp b/cross-project-tests/debuginfo-tests/dexter-tests/aggregate-indirect-arg.cpp
+index f59777b3c721..fb80a76f0915 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/aggregate-indirect-arg.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/aggregate-indirect-arg.cpp
+@@ -1,9 +1,9 @@
+ // REQUIRES: lldb
+ // UNSUPPORTED: system-windows
+ //
++// RUN: %clang -O0 -g -lstdc++ %s -o %t
+ // RUN: %dexter --fail-lt 1.0 -w \
+-// RUN:     --builder 'clang' --debugger 'lldb' --cflags "-O0 -g" \
+-// RUN:     --ldflags="-lstdc++" -- %s
++// RUN:     --binary %t --debugger 'lldb' -- %s
+ // Radar 8945514
+ 
+ class SVal {
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/asan-deque.cpp b/cross-project-tests/debuginfo-tests/dexter-tests/asan-deque.cpp
+index 60f505ae582b..0059e57894f5 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/asan-deque.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/asan-deque.cpp
+@@ -8,10 +8,9 @@
+ // lldb-8, even outside of dexter, will sometimes trigger an asan fault in
+ // the debugged process and generally freak out.
+ 
++// RUN: %clang -O1 -glldb -fsanitize=address -arch x86_64 %s -o %t
+ // RUN: %dexter --fail-lt 1.0 -w \
+-// RUN:     --builder 'clang' --debugger 'lldb' \
+-// RUN:     --cflags "-O1 -glldb -fsanitize=address -arch x86_64" \
+-// RUN:     --ldflags="-fsanitize=address" -- %s
++// RUN:     --binary %t --debugger 'lldb' -- %s
+ #include <deque>
+ 
+ struct A {
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/asan.c b/cross-project-tests/debuginfo-tests/dexter-tests/asan.c
+index 52253503729a..6eb1736170ea 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/asan.c
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/asan.c
+@@ -3,10 +3,10 @@
+ //           Zorg configures the ASAN stage2 bots to not build the asan
+ //           compiler-rt. Only run this test on non-asanified configurations.
+ //
++// RUN: %clang --driver-mode=gcc -O0 -glldb -fblocks -arch x86_64 \
++// RUN:     -fsanitize=address %s -o %t
+ // RUN: %dexter --fail-lt 1.0 -w \
+-// RUN:     --builder 'clang-c' --debugger 'lldb' \
+-// RUN:     --cflags "--driver-mode=gcc -O0 -glldb -fblocks -arch x86_64 \
+-// RUN:     -fsanitize=address" --ldflags="-fsanitize=address" -- %s
++// RUN:     --binary %t --debugger 'lldb' -- %s
+ 
+ struct S {
+   int a[8];
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/ctor.cpp b/cross-project-tests/debuginfo-tests/dexter-tests/ctor.cpp
+index 219e902e8cca..16133c61907f 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/ctor.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/ctor.cpp
+@@ -1,8 +1,9 @@
+ // REQUIRES: lldb
+ // UNSUPPORTED: system-windows
+ //
++// RUN: %clang -O0 -glldb %s -o %t
+ // RUN: %dexter --fail-lt 1.0 -w \
+-// RUN:     --builder 'clang' --debugger 'lldb' --cflags "-O0 -glldb" -- %s
++// RUN:     --binary %t --debugger 'lldb' -- %s
+ 
+ class A {
+ public:
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/dbg-arg.c b/cross-project-tests/debuginfo-tests/dexter-tests/dbg-arg.c
+index e4f4c3448e78..20e867cf8a7c 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/dbg-arg.c
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/dbg-arg.c
+@@ -2,9 +2,9 @@
+ // UNSUPPORTED: system-windows
+ //
+ // This test case checks debug info during register moves for an argument.
++// RUN: %clang -m64 -mllvm -fast-isel=false -g %s -o %t
+ // RUN: %dexter --fail-lt 1.0 -w \
+-// RUN:     --builder clang-c --debugger 'lldb' \
+-// RUN:     --cflags "-m64 -mllvm -fast-isel=false -g" -- %s
++// RUN:     --binary %t --debugger 'lldb' -- %s
+ //
+ // Radar 8412415
+ 
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/deferred_globals.cpp b/cross-project-tests/debuginfo-tests/dexter-tests/deferred_globals.cpp
+index dfc632e0d917..591a5e3bf343 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/deferred_globals.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/deferred_globals.cpp
+@@ -4,10 +4,9 @@
+ 
+ // REQUIRES: lldb
+ // UNSUPPORTED: system-windows
+-
++// RUN: %clang -O0 -g %s -o %t
+ // RUN: %dexter --fail-lt 1.0 -w \
+-// RUN:     --builder 'clang' --debugger 'lldb' \
+-// RUN:     --cflags "-g -O0" -v -- %s
++// RUN:     --binary  %t --debugger 'lldb' -v -- %s
+ 
+ const int d = 100;
+ 
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/global-constant.cpp b/cross-project-tests/debuginfo-tests/dexter-tests/global-constant.cpp
+index 4d35633bf852..7274506b9ae4 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/global-constant.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/global-constant.cpp
+@@ -1,7 +1,7 @@
+ // REQUIRES: system-windows
+ //
+-// RUN: %dexter --fail-lt 1.0 -w --builder 'clang-cl_vs2015' \
+-// RUN:      --debugger 'dbgeng' --cflags '/Z7 /Zi' --ldflags '/Z7 /Zi' -- %s
++// RUN: %clang_cl /Z7 /Zi %s -o %t
++// RUN: %dexter --fail-lt 1.0 -w --binary %t --debugger 'dbgeng' -- %s
+ 
+ // Check that global constants have debug info.
+ 
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/hello.c b/cross-project-tests/debuginfo-tests/dexter-tests/hello.c
+index 89b2a9f3904a..1e7b050cf08f 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/hello.c
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/hello.c
+@@ -1,7 +1,7 @@
+ // REQUIRES: system-windows
+ //
+-// RUN: %dexter --fail-lt 1.0 -w --builder 'clang-cl_vs2015' \
+-// RUN:      --debugger 'dbgeng' --cflags '/Z7 /Zi' --ldflags '/Z7 /Zi' -- %s
++// RUN: %clang_cl /Z7 /Zi %s -o %t
++// RUN: %dexter --fail-lt 1.0 -w --binary %t --debugger 'dbgeng' -- %s
+ 
+ #include <stdio.h>
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/inline-line-gap.cpp b/cross-project-tests/debuginfo-tests/dexter-tests/inline-line-gap.cpp
+index 75e3b639ecc8..e24d3a48656e 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/inline-line-gap.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/inline-line-gap.cpp
+@@ -1,12 +1,11 @@
+ // REQUIRES: system-windows
+ //
+-// RUN: %dexter --fail-lt 1.0 -w --builder 'clang-cl_vs2015' \
+-// RUN:      --debugger 'dbgeng' --cflags '/Od /Z7 /Zi' \
+-// RUN:      --ldflags '/Od /Z7 /Zi' -- %s
++// RUN: %clang_cl /Od /Z7 /Zi %s -o %t
++// RUN: %dexter --fail-lt 1.0 -w --binary %t --debugger 'dbgeng' -- %s
+ //
+-// RUN: %dexter --fail-lt 1.0 -w --builder 'clang-cl_vs2015' \
+-// RUN:      --debugger 'dbgeng' --cflags '/O2 /Z7 /Zi' \
+-// RUN:      --ldflags '/O2 /Z7 /Zi' -- %s
++// RUN: %clang_cl /O2 /Z7 /Zi %s -o %t
++// RUN: %dexter --fail-lt 1.0 -w --binary %t \
++// RUN:      --debugger 'dbgeng' -- %s
+ 
+ // This code is structured to have an early exit with an epilogue in the middle
+ // of the function, which creates a gap between the beginning of the inlined
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/memvars/bitcast.c b/cross-project-tests/debuginfo-tests/dexter-tests/memvars/bitcast.c
+index 70047c9e02f9..4a1f1d354519 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/memvars/bitcast.c
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/memvars/bitcast.c
+@@ -3,8 +3,8 @@
+ 
+ // REQUIRES: lldb
+ // UNSUPPORTED: system-windows
+-// RUN: %dexter --fail-lt 1.0 -w --debugger lldb \
+-// RUN:     --builder 'clang-c' --cflags "-O3 -glldb" -- %s
++// RUN: %clang -O3 -glldb %s -o %t
++// RUN: %dexter --fail-lt 1.0 -w --debugger lldb --binary %t -- %s
+ 
+ //// Adapted from https://bugs.llvm.org/show_bug.cgi?id=34136#c1
+ //// LowerDbgDeclare has since been updated to look through bitcasts. We still
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/memvars/const-branch.c b/cross-project-tests/debuginfo-tests/dexter-tests/memvars/const-branch.c
+index 595e82be1590..97bd5e8acd01 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/memvars/const-branch.c
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/memvars/const-branch.c
+@@ -3,8 +3,8 @@
+ 
+ // REQUIRES: lldb
+ // UNSUPPORTED: system-windows
+-// RUN: %dexter --fail-lt 1.0 -w --debugger lldb \
+-// RUN:     --builder 'clang-c' --cflags "-O3 -glldb" -- %s
++// RUN: %clang -O3 -glldb %s -o %t
++// RUN: %dexter --fail-lt 1.0 -w --debugger lldb --binary %t -- %s
+ 
+ //// Adapted from https://bugs.llvm.org/show_bug.cgi?id=34136#c4
+ 
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/memvars/ctrl-flow.c b/cross-project-tests/debuginfo-tests/dexter-tests/memvars/ctrl-flow.c
+index 4dbb3ffc3c85..5ff3e25ae92c 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/memvars/ctrl-flow.c
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/memvars/ctrl-flow.c
+@@ -1,7 +1,7 @@
+ // REQUIRES: lldb
+ // UNSUPPORTED: system-windows
+-// RUN: %dexter --fail-lt 1.0 -w --debugger lldb \
+-// RUN:     --builder clang-c  --cflags "-O2 -glldb" -- %s
++// RUN: %clang -O2 -glldb %s -o %t
++// RUN: %dexter --fail-lt 1.0 -w --debugger lldb --binary %t -- %s
+ 
+ //// Check that we give good locations to a variable ('local') which is escaped
+ //// down some control paths and not others. This example is handled well currently.
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/memvars/implicit-ptr.c b/cross-project-tests/debuginfo-tests/dexter-tests/memvars/implicit-ptr.c
+index 7b59afb0d131..c4dced510e52 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/memvars/implicit-ptr.c
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/memvars/implicit-ptr.c
+@@ -3,8 +3,8 @@
+ 
+ // REQUIRES: lldb
+ // UNSUPPORTED: system-windows
+-// RUN: %dexter --fail-lt 1.0 -w --debugger lldb \
+-// RUN:     --builder 'clang-c'  --cflags "-O3 -glldb" -- %s
++// RUN: %clang -O3 -glldb %s -o %t
++// RUN: %dexter --fail-lt 1.0 -w --debugger lldb --binary %t -- %s
+ 
+ //// Check that 'param' in 'fun' can be read throughout, and that 'pa' and 'pb'
+ //// can be dereferenced in the debugger even if we can't provide the pointer
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/memvars/inline-escaping-function.c b/cross-project-tests/debuginfo-tests/dexter-tests/memvars/inline-escaping-function.c
+index 1da3106bfe6d..855c8374bc77 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/memvars/inline-escaping-function.c
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/memvars/inline-escaping-function.c
+@@ -3,8 +3,8 @@
+ 
+ // REQUIRES: lldb
+ // UNSUPPORTED: system-windows
+-// RUN: %dexter --fail-lt 1.0 -w --debugger lldb \
+-// RUN:     --builder 'clang-c'  --cflags "-O3 -glldb" -- %s
++// RUN: %clang -O3 -glldb %s -o %t
++// RUN: %dexter --fail-lt 1.0 -w --debugger lldb --binary %t -- %s
+ 
+ // 1. param is escaped by inlineme(&param) so it is not promoted by
+ //    SROA/mem2reg.
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/memvars/inlining-dse.c b/cross-project-tests/debuginfo-tests/dexter-tests/memvars/inlining-dse.c
+index 59a0a4a61d5f..73e90fc053cc 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/memvars/inlining-dse.c
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/memvars/inlining-dse.c
+@@ -3,8 +3,8 @@
+ 
+ // REQUIRES: lldb
+ // UNSUPPORTED: system-windows
+-// RUN: %dexter --fail-lt 1.0 -w --debugger lldb \
+-// RUN:     --builder clang-c  --cflags "-O2 -glldb" -- %s
++// RUN: %clang -O2 -glldb %s -o %t
++// RUN: %dexter --fail-lt 1.0 -w --debugger lldb --binary %t -- %s
+ //
+ //// Check that once-escaped variable 'param' can still be read after we
+ //// perform inlining + mem2reg, and that we see the DSE'd value 255.
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/memvars/inlining.c b/cross-project-tests/debuginfo-tests/dexter-tests/memvars/inlining.c
+index b8468fbc8d86..e1bb535a187e 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/memvars/inlining.c
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/memvars/inlining.c
+@@ -1,7 +1,7 @@
+ // REQUIRES: lldb
+ // UNSUPPORTED: system-windows
+-// RUN: %dexter --fail-lt 1.0 -w --debugger lldb \
+-// RUN:     --builder clang-c  --cflags "-O2 -glldb" -- %s
++// RUN: %clang -O2 -glldb %s -o %t
++// RUN: %dexter --fail-lt 1.0 -w --debugger lldb --binary %t -- %s
+ //
+ //// Check that the once-escaped variable 'param' can still be read after
+ //// we perform inlining + mem2reg. See D89810 and D85555.
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/memvars/loop.c b/cross-project-tests/debuginfo-tests/dexter-tests/memvars/loop.c
+index 97aba1797308..ea2b6d1cb7f2 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/memvars/loop.c
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/memvars/loop.c
+@@ -3,8 +3,8 @@
+ 
+ // REQUIRES: lldb
+ // UNSUPPORTED: system-windows
+-// RUN: %dexter --fail-lt 1.0 -w --debugger lldb \
+-// RUN:     --builder 'clang-c'  --cflags "-O3 -glldb" -- %s
++// RUN: %clang -O3 -glldb %s -o %t
++// RUN: %dexter --fail-lt 1.0 -w --debugger lldb --binary %t -- %s
+ 
+ //// Check that escaped local 'param' in function 'fun' has sensible debug info
+ //// after the escaping function 'use' gets arg promotion (int* -> int). Currently
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/memvars/merged-store.c b/cross-project-tests/debuginfo-tests/dexter-tests/memvars/merged-store.c
+index 3cf96ece1aab..1c37a9cd3f15 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/memvars/merged-store.c
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/memvars/merged-store.c
+@@ -3,8 +3,8 @@
+ 
+ // REQUIRES: lldb
+ // UNSUPPORTED: system-windows
+-// RUN: %dexter --fail-lt 1.0 -w --debugger lldb \
+-// RUN:     --builder 'clang-c'  --cflags "-O3 -glldb" -- %s
++// RUN: %clang -O3 -glldb %s -o %t
++// RUN: %dexter --fail-lt 1.0 -w --debugger lldb --binary %t -- %s
+ 
+ // 1. parama is escaped by esc(&parama) so it is not promoted by
+ //    SROA/mem2reg.
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/memvars/ptr-to.c b/cross-project-tests/debuginfo-tests/dexter-tests/memvars/ptr-to.c
+index 4f0a9af053fb..d2dfaa44d2f0 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/memvars/ptr-to.c
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/memvars/ptr-to.c
+@@ -4,8 +4,8 @@
+ 
+ // REQUIRES: lldb
+ // UNSUPPORTED: system-windows
+-// RUN: %dexter --fail-lt 1.0 -w --debugger lldb \
+-// RUN:     --builder clang-c --cflags "-O2 -glldb" -- %s
++// RUN: %clang -O2 -glldb %s -o %t
++// RUN: %dexter --fail-lt 1.0 -w --debugger lldb --binary %t -- %s
+ //
+ //// Check that a pointer to a variable living on the stack dereferences to the
+ //// variable value.
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/memvars/struct-dse.c b/cross-project-tests/debuginfo-tests/dexter-tests/memvars/struct-dse.c
+index de2e2196dbd2..0baaac87081e 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/memvars/struct-dse.c
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/memvars/struct-dse.c
+@@ -4,8 +4,8 @@
+ 
+ // REQUIRES: lldb
+ // UNSUPPORTED: system-windows
+-// RUN: %dexter --fail-lt 1.0 -w --debugger lldb \
+-// RUN:     --builder clang-c --cflags "-O2 -glldb" -- %s
++// RUN: %clang -O2 -glldb %s -o %t
++// RUN: %dexter --fail-lt 1.0 -w --debugger lldb --binary %t -- %s
+ //
+ //// Check debug-info for the escaped struct variable num is reasonable.
+ 
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/memvars/unused-merged-value.c b/cross-project-tests/debuginfo-tests/dexter-tests/memvars/unused-merged-value.c
+index f689aaeb9ada..9a44dbf21b98 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/memvars/unused-merged-value.c
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/memvars/unused-merged-value.c
+@@ -5,8 +5,8 @@
+ 
+ // REQUIRES: lldb
+ // UNSUPPORTED: system-windows
+-// RUN: %dexter --fail-lt 0.1 -w --debugger lldb \
+-// RUN:     --builder 'clang-c'  --cflags "-O3 -glldb" -- %s
++// RUN: %clang -O3 -glldb %s -o %t
++// RUN: %dexter --fail-lt 0.1 -w --debugger lldb --binary %t -- %s
+ // See NOTE at end for more info about the RUN command.
+ 
+ // 1. SROA/mem2reg fully promotes parama.
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/namespace.cpp b/cross-project-tests/debuginfo-tests/dexter-tests/namespace.cpp
+index fa8942183ada..c94939157ff7 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/namespace.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/namespace.cpp
+@@ -5,9 +5,9 @@
+ // REQUIRES: lldb
+ // UNSUPPORTED: system-windows
+ 
++// RUN: %clang -g -O0 %s -o %t
+ // RUN: %dexter --fail-lt 1.0 -w \
+-// RUN:     --builder 'clang' --debugger 'lldb' \
+-// RUN:     --cflags "-g -O0" -v -- %s
++// RUN:     --binary %t --debugger 'lldb' -v -- %s
+ 
+ #include <stdio.h>
+ 
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/nrvo-string.cpp b/cross-project-tests/debuginfo-tests/dexter-tests/nrvo-string.cpp
+index f618fbad1873..4b807a717ecf 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/nrvo-string.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/nrvo-string.cpp
+@@ -7,13 +7,13 @@
+ //           Zorg configures the ASAN stage2 bots to not build the asan
+ //           compiler-rt. Only run this test on non-asanified configurations.
+ //
++// RUN: %clang -O0 -glldb -fno-exceptions %s -o %t
+ // RUN: %dexter --fail-lt 1.0 -w \
+-// RUN:     --builder 'clang' --debugger 'lldb' \
+-// RUN:     --cflags "-O0 -glldb -fno-exceptions" -- %s
++// RUN:     --binary %t --debugger 'lldb' -- %s
+ //
++// RUN: %clang -O1 -glldb -fno-exceptions %s -o %t
+ // RUN: %dexter --fail-lt 1.0 -w \
+-// RUN:     --builder 'clang' --debugger 'lldb' \
+-// RUN:     --cflags "-O1 -glldb -fno-exceptions" -- %s
++// RUN:     --binary %t --debugger 'lldb' -- %s
+ //
+ // PR34513
+ volatile int sideeffect = 0;
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/nrvo.cpp b/cross-project-tests/debuginfo-tests/dexter-tests/nrvo.cpp
+index b94bc7204910..e9b14da3f5b7 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/nrvo.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/nrvo.cpp
+@@ -3,8 +3,8 @@
+ //
+ // REQUIRES: system-windows
+ //
+-// RUN: %dexter --fail-lt 1.0 -w --builder 'clang-cl_vs2015' \
+-// RUN:      --debugger 'dbgeng' --cflags '/Z7 /Zi' --ldflags '/Z7 /Zi' -- %s
++// RUN: %clang_cl /Z7 /Zi %s -o %t
++// RUN: %dexter --fail-lt 1.0 -w --binary %t --debugger 'dbgeng' -- %s
+ 
+ struct string {
+   string() {}
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/optnone-fastmath.cpp b/cross-project-tests/debuginfo-tests/dexter-tests/optnone-fastmath.cpp
+index 8de3fd7519f4..de778ea22fa1 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/optnone-fastmath.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/optnone-fastmath.cpp
+@@ -1,9 +1,9 @@
++// RUN: %clang -O2 -ffast-math -g %s -o %t
+ // RUN: %dexter --fail-lt 1.0 -w \
+-// RUN:     --builder 'clang' --debugger 'lldb' \
+-// RUN:     --cflags "-ffast-math -O2 -g" -- %s
++// RUN:     --binary %t --debugger 'lldb' -- %s
++// RUN: %clang -O0 -ffast-math -g %s -o %t
+ // RUN: %dexter --fail-lt 1.0 -w \
+-// RUN:     --builder 'clang' --debugger 'lldb' \
+-// RUN:     --cflags "-ffast-math -O0 -g" -- %s
++// RUN:     --binary %t --debugger 'lldb' -- %s
+ 
+ // REQUIRES: lldb
+ // UNSUPPORTED: system-windows
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/optnone-loops.cpp b/cross-project-tests/debuginfo-tests/dexter-tests/optnone-loops.cpp
+index acccd473bbce..54fa9a9dc831 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/optnone-loops.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/optnone-loops.cpp
+@@ -5,9 +5,9 @@
+ // UNSUPPORTED: system-windows
+ // UNSUPPORTED: system-darwin
+ 
++// RUN: %clang -O2 -g %s -o %t
+ // RUN: %dexter --fail-lt 1.0 -w \
+-// RUN:     --builder 'clang' --debugger 'lldb' \
+-// RUN:     --cflags "-O2 -g" -- %s
++// RUN:     --binary %t --debugger 'lldb' -- %s
+ 
+ // A simple loop of assignments.
+ // With optimization level > 0 the compiler reorders basic blocks
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/optnone-simple-functions.cpp b/cross-project-tests/debuginfo-tests/dexter-tests/optnone-simple-functions.cpp
+index 83a655b36e2b..976a4be0491b 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/optnone-simple-functions.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/optnone-simple-functions.cpp
+@@ -1,9 +1,9 @@
++// RUN: %clang -O2 -g %s -o %t
+ // RUN: %dexter --fail-lt 1.0 -w \
+-// RUN:     --builder 'clang' --debugger 'lldb' \
+-// RUN:     --cflags "-O2 -g" -- %s
++// RUN:     --binary %t --debugger 'lldb' -- %s
++// RUN: %clang -O0 -g %s -o %t
+ // RUN: %dexter --fail-lt 1.0 -w \
+-// RUN:     --builder 'clang' --debugger 'lldb' \
+-// RUN:     --cflags "-O0 -g" -- %s
++// RUN:     --binary %t --debugger 'lldb' -- %s
+ 
+ // REQUIRES: lldb, D136396
+ // UNSUPPORTED: system-windows
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/optnone-struct-and-methods.cpp b/cross-project-tests/debuginfo-tests/dexter-tests/optnone-struct-and-methods.cpp
+index 3542a9c00113..84fde3c9268f 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/optnone-struct-and-methods.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/optnone-struct-and-methods.cpp
+@@ -1,9 +1,9 @@
++// RUN: %clang++ -O2 -g %s -o %t
+ // RUN: %dexter --fail-lt 1.0 -w \
+-// RUN:     --builder 'clang' --debugger 'lldb' \
+-// RUN:     --cflags "-g -O2" -v -- %s
++// RUN:     --binary %t --debugger 'lldb' -v -- %s
++// RUN: %clang++ -O0 -g %s -o %t
+ // RUN: %dexter --fail-lt 1.0 -w \
+-// RUN:     --builder 'clang' --debugger 'lldb' \
+-// RUN:     --cflags "-g -O0" -- %s
++// RUN:     --binary %t --debugger 'lldb' -- %s
+ 
+ // REQUIRES: lldb
+ // UNSUPPORTED: system-windows
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/optnone-vectors-and-functions.cpp b/cross-project-tests/debuginfo-tests/dexter-tests/optnone-vectors-and-functions.cpp
+index 8957c5a684ab..46af7298530e 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/optnone-vectors-and-functions.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/optnone-vectors-and-functions.cpp
+@@ -1,9 +1,9 @@
++// RUN: %clang++ -O2 -g %s -o %t
+ // RUN: %dexter --fail-lt 1.0 -w \
+-// RUN:     --builder 'clang' --debugger 'lldb' \
+-// RUN:     --cflags "-g -O2" -v -- %s
++// RUN:     --binary %t --debugger 'lldb' -v -- %s
++// RUN: %clang++ -O0 -g %s -o %t
+ // RUN: %dexter --fail-lt 1.0 -w \
+-// RUN:     --builder 'clang' --debugger 'lldb' \
+-// RUN:     --cflags "-g -O0" -- %s
++// RUN:     --binary %t --debugger 'lldb' -- %s
+ 
+ // REQUIRES: lldb
+ // UNSUPPORTED: system-windows
+@@ -77,12 +77,11 @@ T test2(T x, T y) {
+ //   DexExpectWatchValue('tmp[1]', 8, on_line=ref('break_2'))
+ //   DexExpectWatchValue('tmp[2]', 10, on_line=ref('break_2'))
+ //   DexExpectWatchValue('tmp[3]', 12, on_line=ref('break_2'))
+-// DexLimitSteps('i', 3, on_line=ref('break_3'))
++// DexLimitSteps('i', 3, from_line=ref('break_3'), to_line=ref('break_5'))
+ //   DexExpectWatchValue('tmp[0]', 63, on_line=ref('break_3'))
+ //   DexExpectWatchValue('tmp[1]', 94, on_line=ref('break_3'))
+ //   DexExpectWatchValue('tmp[2]', 95, on_line=ref('break_3'))
+ //   DexExpectWatchValue('tmp[3]', 120, on_line=ref('break_3'))
+-// DexLimitSteps('i', 3, on_line=ref('break_5'))
+ //   DexExpectWatchValue('tmp[0]', 15, on_line=ref('break_5'))
+ 
+ template<typename T>
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/realigned-frame.cpp b/cross-project-tests/debuginfo-tests/dexter-tests/realigned-frame.cpp
+index 36d50efc3da0..24583cc968b6 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/realigned-frame.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/realigned-frame.cpp
+@@ -1,7 +1,7 @@
+ // REQUIRES: system-windows
+ //
+-// RUN: %dexter --fail-lt 1.0 -w --builder 'clang-cl_vs2015' \
+-// RUN:      --debugger 'dbgeng' --cflags '/Z7 /Zi' --ldflags '/Z7 /Zi' -- %s
++// RUN: %clang_cl /Z7 /Zi %s -o %t
++// RUN: %dexter --fail-lt 1.0 -w --binary %t --debugger 'dbgeng' -- %s
+ 
+ // From https://llvm.org/pr38857, where we had issues with stack realignment.
+ 
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/stack-var.c b/cross-project-tests/debuginfo-tests/dexter-tests/stack-var.c
+index 2c70ec290efe..3595bc23ca7c 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/stack-var.c
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/stack-var.c
+@@ -1,8 +1,8 @@
+ // REQUIRES: lldb
+ // UNSUPPORTED: system-windows
+ //
+-// RUN: %dexter --fail-lt 1.0 -w \
+-// RUN:     --builder clang-c --debugger 'lldb' --cflags "-O -glldb" -- %s
++// RUN: %clang -O -glldb %s -o %t
++// RUN: %dexter --fail-lt 1.0 -w --binary %t --debugger 'lldb' -- %s
+ 
+ void __attribute__((noinline, optnone)) bar(int *test) {}
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter-tests/vla.c b/cross-project-tests/debuginfo-tests/dexter-tests/vla.c
+index f0b400fe4550..e76970cebab9 100644
+--- a/cross-project-tests/debuginfo-tests/dexter-tests/vla.c
++++ b/cross-project-tests/debuginfo-tests/dexter-tests/vla.c
+@@ -2,8 +2,8 @@
+ // REQUIRES: lldb
+ // UNSUPPORTED: system-windows
+ //
+-// RUN: %dexter --fail-lt 1.0 -w \
+-// RUN:     --builder clang-c --debugger 'lldb' --cflags "-O0 -glldb" -- %s
++// RUN: %clang -O0 -glldb %s -o %t
++// RUN: %dexter --fail-lt 1.0 -w --binary %t --debugger 'lldb' -- %s
+ 
+ void init_vla(int size) {
+   int i;
+diff --git a/cross-project-tests/debuginfo-tests/dexter/README.md b/cross-project-tests/debuginfo-tests/dexter/README.md
+index 1da6fa160273..44c43435b20d 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/README.md
++++ b/cross-project-tests/debuginfo-tests/dexter/README.md
+@@ -33,13 +33,15 @@ DExTer is current compatible with 'clang' and 'clang-cl' compiler drivers.  The
+ 
+ ## Running a test case
+ 
+-The following DExTer commands build the test.cpp from the tests/nostdlib/fibonacci directory and quietly runs it on the Visual Studio debugger, reporting the debug experience heuristic.  The first command builds with no optimizations (/Od) and scores 1.0000.  The second command builds with optimizations (/Ox) and scores 0.2832 which suggests a worse debugging experience.
++The following commands build fibonacci.cpp from the tests/nostdlib directory and run it in LLDB, reporting the debug experience heuristic. The first pair of commands build with no optimizations (-O0) and score 1.0000.  The second pair of commands build with optimizations (-O2) and score 0.2832 which suggests a worse debugging experience.
+ 
+-    dexter.py test --builder clang-cl_vs2015 --debugger vs2017 --cflags="/Od /Zi" --ldflags="/Zi" -- tests/nostdlib/fibonacci
+-    fibonacci = (1.0000)
++    clang -O0 -g tests/nostdlib/fibonacci.cpp -o tests/nostdlib/fibonacci/test
++    dexter.py test --binary tests/nostdlib/fibonacci/test --debugger lldb -- tests/nostdlib/fibonacci/test.cpp
++    test.cpp = (1.0000)
+ 
+-    dexter.py test --builder clang-cl_vs2015 --debugger vs2017 --cflags="/Ox /Zi" --ldflags="/Zi" -- tests/nostdlib/fibonacci
+-    fibonacci = (0.2832)
++    clang -O2 -g tests/nostdlib/fibonacci/test.cpp -o tests/nostdlib/fibonacci/test
++    dexter.py test --binary tests/nostdlib/fibonacci/test --debugger lldb -- tests/nostdlib/fibonacci/test.cpp
++    test.cpp = (0.2832)
+ 
+ ## An example test case
+ 
+@@ -107,9 +109,9 @@ to step into a file outside of the test directory.
+ 
+ ## Detailed DExTer reports
+ 
+-Running the command below launches the tests/nostdlib/fibonacci test case in DExTer, using clang-cl as the compiler, Visual Studio 2017 as the debugger, and producing a detailed report:
++Running the command below launches the tests/nostdlib/fibonacci test case in DExTer, using LLDB as the debugger and producing a detailed report:
+ 
+-    $ dexter.py test --builder clang-cl_vs2015 --debugger vs2017 --cflags="/Ox /Zi" --ldflags="/Zi" -v -- tests/nostdlib/fibonacci
++    $ dexter.py test --vs-solution clang-cl_vs2015 --debugger vs2017 --cflags="/Ox /Zi" --ldflags="/Zi" -v -- tests/nostdlib/fibonacci
+ 
+ The detailed report is enabled by `-v` and shows a breakdown of the information from each debugger step. For example:
+ 
+@@ -255,50 +257,4 @@ shows that for `first` the expected values 0, 1, 2 and 3 were seen, 5 was not.
+ 
+ ## Writing new test cases
+ 
+-Each test requires a `test.cfg` file.  Currently the contents of this file are not read, but its presence is used to determine the root directory of a test. In the future, configuration variables for the test such as supported language modes may be stored in this file. Use the various [commands](Commands.md) to encode debugging expectations.
+-
+-## Additional tools
+-
+-For clang-based compilers, the `clang-opt-bisect` tool can be used to get a breakdown of which LLVM passes may be contributing to debugging experience issues.  For example:
+-
+-    $ dexter.py clang-opt-bisect tests/nostdlib/fibonacci --builder clang-cl --debugger vs2017 --cflags="/Ox /Zi" --ldflags="/Zi"
+-
+-    pass 1/211 =  (1.0000)  (0.0000) [Simplify the CFG on function (?Fibonacci@@YAXHAEAH@Z)]
+-    pass 2/211 =  (0.7611) (-0.2389) [SROA on function (?Fibonacci@@YAXHAEAH@Z)]
+-    pass 3/211 =  (0.7611)  (0.0000) [Early CSE on function (?Fibonacci@@YAXHAEAH@Z)]
+-    pass 4/211 =  (0.7611)  (0.0000) [Simplify the CFG on function (main)]
+-    pass 5/211 =  (0.7611)  (0.0000) [SROA on function (main)]
+-    pass 6/211 =  (0.7611)  (0.0000) [Early CSE on function (main)]
+-    pass 7/211 =  (0.7611)  (0.0000) [Infer set function attributes on module (c:\dexter\tests\fibonacci\test.cpp)]
+-    pass 8/211 =  (0.7611)  (0.0000) [Interprocedural Sparse Conditional Constant Propagation on module (c:\dexter\tests\fibonacci\test.cpp)]
+-    pass 9/211 =  (0.7611)  (0.0000) [Called Value Propagation on module (c:\dexter\tests\fibonacci\test.cpp)]
+-    pass 10/211 =  (0.7611)  (0.0000) [Global Variable Optimizer on module (c:\dexter\tests\fibonacci\test.cpp)]
+-    pass 11/211 =  (0.7611)  (0.0000) [Promote Memory to Register on function (?Fibonacci@@YAXHAEAH@Z)]
+-    pass 12/211 =  (0.7611)  (0.0000) [Promote Memory to Register on function (main)]
+-    pass 13/211 =  (0.7611)  (0.0000) [Dead Argument Elimination on module (c:\dexter\tests\fibonacci\test.cpp)]
+-    pass 14/211 =  (0.7611)  (0.0000) [Combine redundant instructions on function (?Fibonacci@@YAXHAEAH@Z)]
+-    pass 15/211 =  (0.7611)  (0.0000) [Simplify the CFG on function (?Fibonacci@@YAXHAEAH@Z)]a
+-    pass 16/211 =  (0.7345) (-0.0265) [Combine redundant instructions on function (main)]
+-    pass 17/211 =  (0.7345)  (0.0000) [Simplify the CFG on function (main)]
+-    pass 18/211 =  (0.7345)  (0.0000) [Remove unused exception handling info on SCC (?Fibonacci@@YAXHAEAH@Z)]
+-    pass 19/211 =  (0.7345)  (0.0000) [Function Integration/Inlining on SCC (?Fibonacci@@YAXHAEAH@Z)]
+-    pass 20/211 =  (0.7345)  (0.0000) [Deduce function attributes on SCC (?Fibonacci@@YAXHAEAH@Z)]
+-    pass 21/211 =  (0.7345)  (0.0000) [SROA on function (?Fibonacci@@YAXHAEAH@Z)]
+-    pass 22/211 =  (0.7345)  (0.0000) [Early CSE w/ MemorySSA on function (?Fibonacci@@YAXHAEAH@Z)]
+-    pass 23/211 =  (0.7345)  (0.0000) [Speculatively execute instructions if target has divergent branches on function (?Fibonacci@@YAXHAEAH@Z)]
+-    pass 24/211 =  (0.7345)  (0.0000) [Jump Threading on function (?Fibonacci@@YAXHAEAH@Z)]
+-    pass 25/211 =  (0.7345)  (0.0000) [Value Propagation on function (?Fibonacci@@YAXHAEAH@Z)]
+-    pass 26/211 =  (0.7345)  (0.0000) [Simplify the CFG on function (?Fibonacci@@YAXHAEAH@Z)]
+-    pass 27/211 =  (0.7345)  (0.0000) [Combine redundant instructions on function (?Fibonacci@@YAXHAEAH@Z)]
+-    pass 28/211 =  (0.7345)  (0.0000) [Tail Call Elimination on function (?Fibonacci@@YAXHAEAH@Z)]
+-    pass 29/211 =  (0.7345)  (0.0000) [Simplify the CFG on function (?Fibonacci@@YAXHAEAH@Z)]
+-    pass 30/211 =  (0.7345)  (0.0000) [Reassociate expressions on function (?Fibonacci@@YAXHAEAH@Z)]
+-    pass 31/211 =  (0.8673)  (0.1327) [Rotate Loops on loop]
+-    pass 32/211 =  (0.5575) (-0.3097) [Loop Invariant Code Motion on loop]
+-    pass 33/211 =  (0.5575)  (0.0000) [Unswitch loops on loop]
+-    pass 34/211 =  (0.5575)  (0.0000) [Simplify the CFG on function (?Fibonacci@@YAXHAEAH@Z)]
+-    pass 35/211 =  (0.5575)  (0.0000) [Combine redundant instructions on function (?Fibonacci@@YAXHAEAH@Z)]
+-    pass 36/211 =  (0.5575)  (0.0000) [Induction Variable Simplification on loop]
+-    pass 37/211 =  (0.5575)  (0.0000) [Recognize loop idioms on loop]
+-    <output-snipped>
+-
++Each test can be either embedded within the source file using comments or included as a separate file with the .dex extension. Dexter does not include support for building test cases, although if a Visual Studio Solution (.sln) is used as the test file, VS will build the program as part of launching a debugger session if it has not already been built.
+diff --git a/cross-project-tests/debuginfo-tests/dexter/dex/builder/Builder.py b/cross-project-tests/debuginfo-tests/dexter/dex/builder/Builder.py
+index 1d6487696423..8986029b1ef3 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/dex/builder/Builder.py
++++ b/cross-project-tests/debuginfo-tests/dexter/dex/builder/Builder.py
+@@ -24,7 +24,6 @@ def _quotify(text):
+ def _get_script_environment(
+     source_files, compiler_options, linker_options, executable_file
+ ):
+-
+     source_files = [_quotify(f) for f in source_files]
+     object_files = [_quotify("{}.o".format(os.path.basename(f))) for f in source_files]
+     source_indexes = ["{:02d}".format(i + 1) for i in range(len(source_files))]
+diff --git a/cross-project-tests/debuginfo-tests/dexter/dex/builder/__init__.py b/cross-project-tests/debuginfo-tests/dexter/dex/builder/__init__.py
+deleted file mode 100644
+index 3bf0ca40f5c2..000000000000
+--- a/cross-project-tests/debuginfo-tests/dexter/dex/builder/__init__.py
++++ /dev/null
+@@ -1,10 +0,0 @@
+-# DExTer : Debugging Experience Tester
+-# ~~~~~~   ~         ~~         ~   ~~
+-#
+-# Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+-# See https://llvm.org/LICENSE.txt for license information.
+-# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+-
+-from dex.builder.Builder import run_external_build_script
+-from dex.builder.ParserOptions import add_builder_tool_arguments
+-from dex.builder.ParserOptions import handle_builder_tool_options
+diff --git a/cross-project-tests/debuginfo-tests/dexter/dex/builder/scripts/posix/clang-c.sh b/cross-project-tests/debuginfo-tests/dexter/dex/builder/scripts/posix/clang-c.sh
+deleted file mode 100755
+index f69f51cd86ac..000000000000
+--- a/cross-project-tests/debuginfo-tests/dexter/dex/builder/scripts/posix/clang-c.sh
++++ /dev/null
+@@ -1,16 +0,0 @@
+-#!/usr/bin/env bash
+-set -e
+-
+-if test -z "$PATHTOCLANG"; then
+-  PATHTOCLANG=clang
+-fi
+-
+-for INDEX in $SOURCE_INDEXES
+-do
+-  CFLAGS=$(eval echo "\$COMPILER_OPTIONS_$INDEX")
+-  SRCFILE=$(eval echo "\$SOURCE_FILE_$INDEX")
+-  OBJFILE=$(eval echo "\$OBJECT_FILE_$INDEX")
+-  $PATHTOCLANG -std=gnu11 -c $CFLAGS $SRCFILE -o $OBJFILE
+-done
+-
+-$PATHTOCLANG $LINKER_OPTIONS $OBJECT_FILES -o $EXECUTABLE_FILE
+diff --git a/cross-project-tests/debuginfo-tests/dexter/dex/builder/scripts/posix/clang.sh b/cross-project-tests/debuginfo-tests/dexter/dex/builder/scripts/posix/clang.sh
+deleted file mode 100755
+index 9cf4cdd65f7c..000000000000
+--- a/cross-project-tests/debuginfo-tests/dexter/dex/builder/scripts/posix/clang.sh
++++ /dev/null
+@@ -1,16 +0,0 @@
+-#!/usr/bin/env bash
+-set -e
+-
+-if test -z "$PATHTOCLANGPP"; then
+-  PATHTOCLANGPP=clang++
+-fi
+-
+-for INDEX in $SOURCE_INDEXES
+-do
+-  CFLAGS=$(eval echo "\$COMPILER_OPTIONS_$INDEX")
+-  SRCFILE=$(eval echo "\$SOURCE_FILE_$INDEX")
+-  OBJFILE=$(eval echo "\$OBJECT_FILE_$INDEX")
+-  $PATHTOCLANGPP -std=gnu++11 -c $CFLAGS $SRCFILE -o $OBJFILE
+-done
+-
+-$PATHTOCLANGPP $LINKER_OPTIONS $OBJECT_FILES -o $EXECUTABLE_FILE
+diff --git a/cross-project-tests/debuginfo-tests/dexter/dex/builder/scripts/posix/gcc.sh b/cross-project-tests/debuginfo-tests/dexter/dex/builder/scripts/posix/gcc.sh
+deleted file mode 100755
+index c18e333127e0..000000000000
+--- a/cross-project-tests/debuginfo-tests/dexter/dex/builder/scripts/posix/gcc.sh
++++ /dev/null
+@@ -1,16 +0,0 @@
+-#!/usr/bin/env bash
+-set -e
+-
+-if test -z "$PATHTOGCC"; then
+-  PATHTOGCC=gcc
+-fi
+-
+-for INDEX in $SOURCE_INDEXES
+-do
+-  CFLAGS=$(eval echo "\$COMPILER_OPTIONS_$INDEX")
+-  SRCFILE=$(eval echo "\$SOURCE_FILE_$INDEX")
+-  OBJFILE=$(eval echo "\$OBJECT_FILE_$INDEX")
+-  $PATHTOGCC -std=gnu++11 -c $CFLAGS $SRCFILE -o $OBJFILE
+-done
+-
+-$PATHTOGCC $LINKER_OPTIONS $OBJECT_FILES -o $EXECUTABLE_FILE
+diff --git a/cross-project-tests/debuginfo-tests/dexter/dex/builder/scripts/windows/clang-cl_vs2015.bat b/cross-project-tests/debuginfo-tests/dexter/dex/builder/scripts/windows/clang-cl_vs2015.bat
+deleted file mode 100644
+index ea0d4414d264..000000000000
+--- a/cross-project-tests/debuginfo-tests/dexter/dex/builder/scripts/windows/clang-cl_vs2015.bat
++++ /dev/null
+@@ -1,23 +0,0 @@
+-@echo OFF
+-setlocal EnableDelayedExpansion
+-
+-call "%VS140COMNTOOLS%..\..\VC\bin\amd64\vcvars64.bat"
+-
+-@echo OFF
+-setlocal EnableDelayedExpansion
+-
+-for %%I in (%SOURCE_INDEXES%) do (
+-  %PATHTOCLANGCL% /c !COMPILER_OPTIONS_%%I! !SOURCE_FILE_%%I! /Fo!OBJECT_FILE_%%I!
+-  if errorlevel 1 goto :FAIL
+-)
+-
+-%PATHTOCLANGCL% %LINKER_OPTIONS% %OBJECT_FILES% /Fe%EXECUTABLE_FILE%
+-if errorlevel 1 goto :FAIL
+-goto :END
+-
+-:FAIL
+-echo FAILED
+-exit /B 1
+-
+-:END
+-exit /B 0
+diff --git a/cross-project-tests/debuginfo-tests/dexter/dex/builder/scripts/windows/clang.bat b/cross-project-tests/debuginfo-tests/dexter/dex/builder/scripts/windows/clang.bat
+deleted file mode 100644
+index 4aa9e28a6016..000000000000
+--- a/cross-project-tests/debuginfo-tests/dexter/dex/builder/scripts/windows/clang.bat
++++ /dev/null
+@@ -1,17 +0,0 @@
+-@setlocal EnableDelayedExpansion
+-
+-for %%I in (%SOURCE_INDEXES%) do (
+-  %PATHTOCLANGPP% -fuse-ld=lld -c !COMPILER_OPTIONS_%%I! !SOURCE_FILE_%%I! -o !OBJECT_FILE_%%I!
+-  if errorlevel 1 goto :FAIL
+-)
+-
+-%PATHTOCLANGPP% -fuse-ld=lld %LINKER_OPTIONS% %OBJECT_FILES% -o %EXECUTABLE_FILE%
+-if errorlevel 1 goto :FAIL
+-goto :END
+-
+-:FAIL
+-echo FAILED
+-exit /B 1
+-
+-:END
+-exit /B 0
+diff --git a/cross-project-tests/debuginfo-tests/dexter/dex/command/commands/DexDeclareAddress.py b/cross-project-tests/debuginfo-tests/dexter/dex/command/commands/DexDeclareAddress.py
+index dcf5aea4b157..a98401b9f8d6 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/dex/command/commands/DexDeclareAddress.py
++++ b/cross-project-tests/debuginfo-tests/dexter/dex/command/commands/DexDeclareAddress.py
+@@ -15,7 +15,6 @@ from dex.command.CommandBase import CommandBase, StepExpectInfo
+ 
+ class DexDeclareAddress(CommandBase):
+     def __init__(self, addr_name, expression, **kwargs):
+-
+         if not isinstance(addr_name, str):
+             raise TypeError("invalid argument type")
+ 
+diff --git a/cross-project-tests/debuginfo-tests/dexter/dex/command/commands/DexDeclareFile.py b/cross-project-tests/debuginfo-tests/dexter/dex/command/commands/DexDeclareFile.py
+index 1377408c1809..44784191b6f8 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/dex/command/commands/DexDeclareFile.py
++++ b/cross-project-tests/debuginfo-tests/dexter/dex/command/commands/DexDeclareFile.py
+@@ -14,7 +14,6 @@ from dex.command.CommandBase import CommandBase
+ 
+ class DexDeclareFile(CommandBase):
+     def __init__(self, declared_file):
+-
+         if not isinstance(declared_file, str):
+             raise TypeError("invalid argument type")
+ 
+diff --git a/cross-project-tests/debuginfo-tests/dexter/dex/command/commands/DexLabel.py b/cross-project-tests/debuginfo-tests/dexter/dex/command/commands/DexLabel.py
+index 575e5ea9c66d..1dd0e5454e24 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/dex/command/commands/DexLabel.py
++++ b/cross-project-tests/debuginfo-tests/dexter/dex/command/commands/DexLabel.py
+@@ -13,7 +13,6 @@ from dex.command.CommandBase import CommandBase
+ 
+ class DexLabel(CommandBase):
+     def __init__(self, label, **kwargs):
+-
+         if not isinstance(label, str):
+             raise TypeError("invalid argument type")
+ 
+diff --git a/cross-project-tests/debuginfo-tests/dexter/dex/debugger/DebuggerControllers/ConditionalController.py b/cross-project-tests/debuginfo-tests/dexter/dex/debugger/DebuggerControllers/ConditionalController.py
+index fb5536d6a14d..a7d6b570b55e 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/dex/debugger/DebuggerControllers/ConditionalController.py
++++ b/cross-project-tests/debuginfo-tests/dexter/dex/debugger/DebuggerControllers/ConditionalController.py
+@@ -164,7 +164,6 @@ class ConditionalController(DebuggerControllerBase):
+         total_timeout = Timeout(self.context.options.timeout_total)
+ 
+         while not self.debugger.is_finished:
+-
+             breakpoint_timeout = Timeout(self.context.options.timeout_breakpoint)
+             while self.debugger.is_running and not timed_out:
+                 # Check to see whether we've timed out while we're waiting.
+diff --git a/cross-project-tests/debuginfo-tests/dexter/dex/debugger/DebuggerControllers/DefaultController.py b/cross-project-tests/debuginfo-tests/dexter/dex/debugger/DebuggerControllers/DefaultController.py
+index 9b0a6ac96eb2..a193a43a790e 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/dex/debugger/DebuggerControllers/DefaultController.py
++++ b/cross-project-tests/debuginfo-tests/dexter/dex/debugger/DebuggerControllers/DefaultController.py
+@@ -96,7 +96,6 @@ class DefaultController(DebuggerControllerBase):
+         total_timeout = Timeout(self.context.options.timeout_total)
+         max_steps = self.context.options.max_steps
+         for _ in range(max_steps):
+-
+             breakpoint_timeout = Timeout(self.context.options.timeout_breakpoint)
+             while self.debugger.is_running and not timed_out:
+                 # Check to see whether we've timed out while we're waiting.
+diff --git a/cross-project-tests/debuginfo-tests/dexter/dex/debugger/visualstudio/VisualStudio.py b/cross-project-tests/debuginfo-tests/dexter/dex/debugger/visualstudio/VisualStudio.py
+index ca71d8b64c4d..50a97e2b77d1 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/dex/debugger/visualstudio/VisualStudio.py
++++ b/cross-project-tests/debuginfo-tests/dexter/dex/debugger/visualstudio/VisualStudio.py
+@@ -40,7 +40,6 @@ VSBreakpoint = namedtuple("VSBreakpoint", "path, line, col, cond")
+ class VisualStudio(
+     DebuggerBase, metaclass=abc.ABCMeta
+ ):  # pylint: disable=abstract-method
+-
+     # Constants for results of Debugger.CurrentMode
+     # (https://msdn.microsoft.com/en-us/library/envdte.debugger.currentmode.aspx)
+     dbgDesignMode = 1
+diff --git a/cross-project-tests/debuginfo-tests/dexter/dex/dextIR/DextIR.py b/cross-project-tests/debuginfo-tests/dexter/dex/dextIR/DextIR.py
+index be3299c33326..42500c4b9681 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/dex/dextIR/DextIR.py
++++ b/cross-project-tests/debuginfo-tests/dexter/dex/dextIR/DextIR.py
+@@ -8,7 +8,6 @@ from collections import OrderedDict
+ import os
+ from typing import List
+ 
+-from dex.dextIR.BuilderIR import BuilderIR
+ from dex.dextIR.DebuggerIR import DebuggerIR
+ from dex.dextIR.StepIR import StepIR, StepKind
+ 
+@@ -47,14 +46,12 @@ class DextIR:
+         dexter_version: str,
+         executable_path: str,
+         source_paths: List[str],
+-        builder: BuilderIR = None,
+         debugger: DebuggerIR = None,
+         commands: OrderedDict = None,
+     ):
+         self.dexter_version = dexter_version
+         self.executable_path = executable_path
+         self.source_paths = source_paths
+-        self.builder = builder
+         self.debugger = debugger
+         self.commands = commands
+         self.steps: List[StepIR] = []
+diff --git a/cross-project-tests/debuginfo-tests/dexter/dex/dextIR/__init__.py b/cross-project-tests/debuginfo-tests/dexter/dex/dextIR/__init__.py
+index 463a2c137160..1c4098651992 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/dex/dextIR/__init__.py
++++ b/cross-project-tests/debuginfo-tests/dexter/dex/dextIR/__init__.py
+@@ -7,7 +7,6 @@
+ """dextIR: DExTer Intermediate Representation of DExTer's debugger trace output.
+ """
+ 
+-from dex.dextIR.BuilderIR import BuilderIR
+ from dex.dextIR.DextIR import DextIR
+ from dex.dextIR.DebuggerIR import DebuggerIR
+ from dex.dextIR.FrameIR import FrameIR
+diff --git a/cross-project-tests/debuginfo-tests/dexter/dex/tools/Main.py b/cross-project-tests/debuginfo-tests/dexter/dex/tools/Main.py
+index d9efe32cc2c5..037ae42e5e41 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/dex/tools/Main.py
++++ b/cross-project-tests/debuginfo-tests/dexter/dex/tools/Main.py
+@@ -66,7 +66,6 @@ def get_tools_directory():
+ def get_tool_names():
+     """Returns a list of expected DExTer Tools"""
+     return [
+-        "clang-opt-bisect",
+         "help",
+         "list-debuggers",
+         "no-tool-",
+@@ -193,7 +192,6 @@ class Context(object):
+ 
+ 
+ def main() -> ReturnCode:
+-
+     context = Context()
+ 
+     with PrettyOutput() as context.o:
+diff --git a/cross-project-tests/debuginfo-tests/dexter/dex/tools/TestToolBase.py b/cross-project-tests/debuginfo-tests/dexter/dex/tools/TestToolBase.py
+index dba245fed635..acbff53b8ed3 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/dex/tools/TestToolBase.py
++++ b/cross-project-tests/debuginfo-tests/dexter/dex/tools/TestToolBase.py
+@@ -4,15 +4,13 @@
+ # Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+ # See https://llvm.org/LICENSE.txt for license information.
+ # SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+-"""Base class for subtools that do build/run tests."""
++"""Base class for subtools that run tests."""
+ 
+ import abc
+ from datetime import datetime
+ import os
+ import sys
+ 
+-from dex.builder import add_builder_tool_arguments
+-from dex.builder import handle_builder_tool_options
+ from dex.debugger.Debuggers import add_debugger_tool_arguments
+ from dex.debugger.Debuggers import handle_debugger_tool_options
+ from dex.heuristic.Heuristic import add_heuristic_tool_arguments
+@@ -22,15 +20,26 @@ from dex.utils.Exceptions import Error, ToolArgumentError
+ from dex.utils.ReturnCode import ReturnCode
+ 
+ 
++def add_executable_arguments(parser):
++    executable_group = parser.add_mutually_exclusive_group(required=True)
++    executable_group.add_argument(
++        "--binary", metavar="<file>", help="provide binary file to debug"
++    )
++    executable_group.add_argument(
++        "--vs-solution",
++        metavar="<file>",
++        help="provide a path to an already existing visual studio solution.",
++    )
++
++
+ class TestToolBase(ToolBase):
+     def __init__(self, *args, **kwargs):
+         super(TestToolBase, self).__init__(*args, **kwargs)
+-        self.build_script: str = None
+ 
+     def add_tool_arguments(self, parser, defaults):
+         parser.description = self.__doc__
+-        add_builder_tool_arguments(parser)
+         add_debugger_tool_arguments(parser, self.context, defaults)
++        add_executable_arguments(parser)
+         add_heuristic_tool_arguments(parser)
+ 
+         parser.add_argument(
+@@ -53,12 +62,6 @@ class TestToolBase(ToolBase):
+     def handle_options(self, defaults):
+         options = self.context.options
+ 
+-        if not options.builder and (options.cflags or options.ldflags):
+-            self.context.logger.warning(
+-                "--cflags and --ldflags will be ignored when not using --builder",
+-                enable_prefix=True,
+-            )
+-
+         if options.vs_solution:
+             options.vs_solution = os.path.abspath(options.vs_solution)
+             if not os.path.isfile(options.vs_solution):
+@@ -73,11 +76,6 @@ class TestToolBase(ToolBase):
+                 raise Error(
+                     '<d>could not find binary file</> <r>"{}"</>'.format(options.binary)
+                 )
+-        else:
+-            try:
+-                self.build_script = handle_builder_tool_options(self.context)
+-            except ToolArgumentError as e:
+-                raise Error(e)
+ 
+         try:
+             handle_debugger_tool_options(self.context, defaults)
+@@ -113,37 +111,14 @@ class TestToolBase(ToolBase):
+         )
+ 
+         # Test files contain dexter commands.
+-        options.test_files = []
+-        # Source files are to be compiled by the builder script and may also
+-        # contains dexter commands.
++        options.test_files = [options.test_path]
++        # Source files are the files that the program was built from, and are
++        # used to determine whether a breakpoint is external to the program
++        # (e.g. into a system header) or not.
+         options.source_files = []
+-        if os.path.isdir(options.test_path):
+-            subdirs = sorted(
+-                [r for r, _, f in os.walk(options.test_path) if "test.cfg" in f]
+-            )
+-
+-            for subdir in subdirs:
+-                for f in os.listdir(subdir):
+-                    # TODO: read file extensions from the test.cfg file instead so
+-                    # that this isn't just limited to C and C++.
+-                    file_path = os.path.normcase(os.path.join(subdir, f))
+-                    if f.endswith(".cpp"):
+-                        options.source_files.append(file_path)
+-                    elif f.endswith(".c"):
+-                        options.source_files.append(file_path)
+-                    elif f.endswith(".dex"):
+-                        options.test_files.append(file_path)
+-                # Source files can contain dexter commands too.
+-                options.test_files = options.test_files + options.source_files
+-
+-                self._run_test(self._get_test_name(subdir))
+-        else:
+-            # We're dealing with a direct file path to a test file. If the file is non
+-            # .dex, then it must be a source file.
+-            if not options.test_path.endswith(".dex"):
+-                options.source_files = [options.test_path]
+-            options.test_files = [options.test_path]
+-            self._run_test(self._get_test_name(options.test_path))
++        if not options.test_path.endswith(".dex"):
++            options.source_files = [options.test_path]
++        self._run_test(self._get_test_name(options.test_path))
+ 
+         return self._handle_results()
+ 
+diff --git a/cross-project-tests/debuginfo-tests/dexter/dex/tools/clang_opt_bisect/__init__.py b/cross-project-tests/debuginfo-tests/dexter/dex/tools/clang_opt_bisect/__init__.py
+deleted file mode 100644
+index b933e690b236..000000000000
+--- a/cross-project-tests/debuginfo-tests/dexter/dex/tools/clang_opt_bisect/__init__.py
++++ /dev/null
+@@ -1,8 +0,0 @@
+-# DExTer : Debugging Experience Tester
+-# ~~~~~~   ~         ~~         ~   ~~
+-#
+-# Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+-# See https://llvm.org/LICENSE.txt for license information.
+-# SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+-
+-from dex.tools.clang_opt_bisect.Tool import Tool
+diff --git a/cross-project-tests/debuginfo-tests/dexter/dex/tools/test/Tool.py b/cross-project-tests/debuginfo-tests/dexter/dex/tools/test/Tool.py
+index 9c73b56502ab..a4881fd78872 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/dex/tools/test/Tool.py
++++ b/cross-project-tests/debuginfo-tests/dexter/dex/tools/test/Tool.py
+@@ -12,7 +12,6 @@ import csv
+ import pickle
+ import shutil
+ 
+-from dex.builder import run_external_build_script
+ from dex.command.ParseCommand import get_command_infos
+ from dex.debugger.Debuggers import run_debugger_subprocess
+ from dex.debugger.DebuggerControllers.DefaultController import DefaultController
+@@ -24,7 +23,6 @@ from dex.utils.Exceptions import DebuggerException
+ from dex.utils.Exceptions import BuildScriptException, HeuristicException
+ from dex.utils.PrettyOutputBase import Stream
+ from dex.utils.ReturnCode import ReturnCode
+-from dex.dextIR import BuilderIR
+ 
+ 
+ class TestCase(object):
+@@ -109,36 +107,6 @@ class Tool(TestToolBase):
+         )
+         super(Tool, self).add_tool_arguments(parser, defaults)
+ 
+-    def _build_test_case(self):
+-        """Build an executable from the test source with the given --builder
+-        script and flags (--cflags, --ldflags) in the working directory.
+-        Or, if the --binary option has been given, copy the executable provided
+-        into the working directory and rename it to match the --builder output
+-        or skip if --vs-solution was passed on the command line.
+-        """
+-
+-        if self.context.options.vs_solution:
+-            return
+-
+-        options = self.context.options
+-        if options.binary:
+-            # Copy user's binary into the tmp working directory
+-            shutil.copy(options.binary, options.executable)
+-            builderIR = BuilderIR(name="binary", cflags=[options.binary], ldflags="")
+-        else:
+-            options = self.context.options
+-            compiler_options = [options.cflags for _ in options.source_files]
+-            linker_options = options.ldflags
+-            _, _, builderIR = run_external_build_script(
+-                self.context,
+-                script_path=self.build_script,
+-                source_files=options.source_files,
+-                compiler_options=compiler_options,
+-                linker_options=linker_options,
+-                executable_file=options.executable,
+-            )
+-        return builderIR
+-
+     def _init_debugger_controller(self):
+         step_collection = DextIR(
+             executable_path=self.context.options.executable,
+@@ -159,14 +127,13 @@ class Tool(TestToolBase):
+ 
+         return debugger_controller
+ 
+-    def _get_steps(self, builderIR):
++    def _get_steps(self):
+         """Generate a list of debugger steps from a test case."""
+         debugger_controller = self._init_debugger_controller()
+         debugger_controller = run_debugger_subprocess(
+             debugger_controller, self.context.working_directory.path
+         )
+         steps = debugger_controller.step_collection
+-        steps.builder = builderIR
+         return steps
+ 
+     def _get_results_basename(self, test_name):
+@@ -249,8 +216,12 @@ class Tool(TestToolBase):
+         result internally in self._test_cases.
+         """
+         try:
+-            builderIR = self._build_test_case()
+-            steps = self._get_steps(builderIR)
++            if self.context.options.binary:
++                # Copy user's binary into the tmp working directory.
++                shutil.copy(
++                    self.context.options.binary, self.context.options.executable
++                )
++            steps = self._get_steps()
+             self._record_steps(test_name, steps)
+             heuristic_score = Heuristic(self.context, steps)
+             self._record_score(test_name, heuristic_score)
+diff --git a/cross-project-tests/debuginfo-tests/dexter/dex/utils/windows/PrettyOutput.py b/cross-project-tests/debuginfo-tests/dexter/dex/utils/windows/PrettyOutput.py
+index bb82e2415578..7f9522d5a8e7 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/dex/utils/windows/PrettyOutput.py
++++ b/cross-project-tests/debuginfo-tests/dexter/dex/utils/windows/PrettyOutput.py
+@@ -27,7 +27,6 @@ class _CONSOLE_SCREEN_BUFFER_INFO(ctypes.Structure):
+ 
+ 
+ class PrettyOutput(PrettyOutputBase):
+-
+     stdout = Stream(sys.stdout, ctypes.windll.kernel32.GetStdHandle(-11))
+     stderr = Stream(sys.stderr, ctypes.windll.kernel32.GetStdHandle(-12))
+ 
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/dex_declare_file.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/dex_declare_file.cpp
+index 7860ffd5dda4..adad78040947 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/dex_declare_file.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/dex_declare_file.cpp
+@@ -5,7 +5,8 @@
+ // UNSUPPORTED: system-darwin
+ //
+ //
+-// RUN: not %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: not %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: dex_declare_file.cpp
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/expect_program_state.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/expect_program_state.cpp
+index 2493fd07b078..db81de2e9853 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/expect_program_state.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/expect_program_state.cpp
+@@ -4,7 +4,8 @@
+ //
+ // UNSUPPORTED: system-darwin
+ //
+-// RUN: not %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: not %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: expect_program_state.cpp:
+ 
+ int GCD(int lhs, int rhs)
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/expect_step_kinds.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/expect_step_kinds.cpp
+index 2075cd22fa67..bab2de642a1c 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/expect_step_kinds.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/expect_step_kinds.cpp
+@@ -4,7 +4,8 @@
+ //
+ // UNSUPPORTED: system-darwin
+ //
+-// RUN: not %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: not %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: expect_step_kinds.cpp:
+ 
+ int abs(int i){
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/expect_step_order.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/expect_step_order.cpp
+index dc5f8c6b0c92..76296caf13ec 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/expect_step_order.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/expect_step_order.cpp
+@@ -4,7 +4,8 @@
+ //
+ // UNSUPPORTED: system-darwin
+ //
+-// RUN: not %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: not %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: expect_step_order.cpp:
+ 
+ int main()
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/expect_watch_type.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/expect_watch_type.cpp
+index d758a0fb0bc6..9aef64c81342 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/expect_watch_type.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/expect_watch_type.cpp
+@@ -9,7 +9,8 @@
+ // TODO: Reduce this test's coverage and be more specific about
+ // expected behaviour.
+ //
+-// RUN: not %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: not %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: expect_watch_type.cpp:
+ 
+ template<class T>
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/expect_watch_value.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/expect_watch_value.cpp
+index b7fe38522aa8..ca8f862a5eda 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/expect_watch_value.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/expect_watch_value.cpp
+@@ -5,7 +5,8 @@
+ // UNSUPPORTED: system-darwin
+ //
+ //
+-// RUN: not %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: not %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: expect_watch_value.cpp:
+ 
+ int main()
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/float_range_out_range.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/float_range_out_range.cpp
+index 519a99a05d0d..ee9b7b5669c8 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/float_range_out_range.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/float_range_out_range.cpp
+@@ -4,7 +4,8 @@
+ //
+ // UNSUPPORTED: system-darwin
+ //
+-// RUN: not %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: not %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: float_range_out_range.cpp:
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/float_range_zero_nonmatch.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/float_range_zero_nonmatch.cpp
+index e7e04c9f98e6..89108789bdb9 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/float_range_zero_nonmatch.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/float_range_zero_nonmatch.cpp
+@@ -4,7 +4,8 @@
+ //
+ // UNSUPPORTED: system-darwin
+ //
+-// RUN: not %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: not %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: float_range_zero_nonmatch.cpp:
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/missing_dex_address.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/missing_dex_address.cpp
+index 07a7557e87c8..f07a43b91cbc 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/missing_dex_address.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/missing_dex_address.cpp
+@@ -5,7 +5,8 @@
+ // The dbgeng driver doesn't support \DexDeclareAddress yet.
+ // UNSUPPORTED: system-windows
+ //
+-// RUN: not %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: not %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: missing_dex_address.cpp
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/unreachable.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/unreachable.cpp
+index 48f56b7d0452..ea98e431dced 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/unreachable.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/unreachable.cpp
+@@ -5,7 +5,8 @@
+ // UNSUPPORTED: system-darwin
+ //
+ //
+-// RUN: not %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: not %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: unreachable.cpp:
+ 
+ int
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/unreachable_line_range.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/unreachable_line_range.cpp
+index a6fd64fcbbee..3038277d26e3 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/unreachable_line_range.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/unreachable_line_range.cpp
+@@ -5,7 +5,8 @@
+ // UNSUPPORTED: system-darwin
+ //
+ //
+-// RUN: not %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: not %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: unreachable_line_range.cpp:
+ 
+ int
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/unreachable_on_line.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/unreachable_on_line.cpp
+index 91467af0e28b..f91a2611ceca 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/unreachable_on_line.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/penalty/unreachable_on_line.cpp
+@@ -5,7 +5,8 @@
+ // UNSUPPORTED: system-darwin
+ //
+ //
+-// RUN: not %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: not %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: unreachable_on_line.cpp:
+ 
+ int
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/command_line.c b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/command_line.c
+index 7ec1050e9baa..d4fae47fdd6c 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/command_line.c
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/command_line.c
+@@ -1,7 +1,8 @@
+ // The dbgeng driver doesn't support \DexCommandLine yet.
+ // UNSUPPORTED: system-windows
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: command_line.c:
+ 
+ int main(int argc, const char **argv) {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/address_after_ref.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/address_after_ref.cpp
+index a91bed42960e..6b461686f393 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/address_after_ref.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/address_after_ref.cpp
+@@ -2,7 +2,8 @@
+ //      Test that a \DexDeclareAddress value can have its value defined after
+ //      the first reference to that value.
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: address_after_ref.cpp
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/address_hit_count.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/address_hit_count.cpp
+index 453888035294..1bb995c94220 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/address_hit_count.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/address_hit_count.cpp
+@@ -4,7 +4,8 @@
+ //      expression after the target line has been stepped on a given number of
+ //      times.
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: address_hit_count.cpp
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/expression_address.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/expression_address.cpp
+index 9cea93eb06d3..52a0f8891bc2 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/expression_address.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/expression_address.cpp
+@@ -2,7 +2,8 @@
+ //      Test that a \DexDeclareAddress value can be used to compare the
+ //      addresses of two local variables that refer to the same address.
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: expression_address.cpp
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/identical_address.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/identical_address.cpp
+index 4ce590dd7ad1..71d8f9944be3 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/identical_address.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/identical_address.cpp
+@@ -2,7 +2,8 @@
+ //      Test that a \DexDeclareAddress value can be used to compare two equal
+ //      pointer variables.
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: identical_address.cpp
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/multiple_address.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/multiple_address.cpp
+index b0ec7958e970..487d95399dcf 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/multiple_address.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/multiple_address.cpp
+@@ -2,7 +2,8 @@
+ //      Test that multiple \DexDeclareAddress references that point to different
+ //      addresses can be used within a single \DexExpectWatchValue.
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: multiple_address.cpp
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/offset_address.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/offset_address.cpp
+index 6d4f928786e4..ab60c254462c 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/offset_address.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/offset_address.cpp
+@@ -2,7 +2,8 @@
+ //      Test that a \DexDeclareAddress value can be used to compare two pointer
+ //      variables that have a fixed offset between them.
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: offset_address.cpp
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/self_comparison.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/self_comparison.cpp
+index 93d9787b5976..5c5472344643 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/self_comparison.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_address/self_comparison.cpp
+@@ -2,7 +2,8 @@
+ //      Test that a \DexDeclareAddress value can be used to check the change in
+ //      value of a variable over time, relative to its initial value.
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: self_comparison.cpp
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_file/dex_and_source/test.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_file/dex_and_source/test.cpp
+index 5f1d50efe8d0..71df65215a34 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_file/dex_and_source/test.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_file/dex_and_source/test.cpp
+@@ -6,7 +6,8 @@
+ // UNSUPPORTED: system-darwin
+ //
+ //
+-// RUN: %dexter_regression_test -- %S | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: dex_and_source
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_file/precompiled_binary/commands.dex b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_file/precompiled_binary/commands.dex
+index 924f55f249f6..99b0a50d31b3 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_file/precompiled_binary/commands.dex
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_file/precompiled_binary/commands.dex
+@@ -4,7 +4,7 @@
+ #
+ # UNSUPPORTED: system-darwin
+ #
+-# RUN: %clang %S/test.cpp -O0 -g -o %t
++# RUN: %dexter_regression_test_build %S/test.cpp -o %t
+ # RUN: %dexter_regression_base --binary %t %s | FileCheck %s
+ # CHECK: commands.dex
+ #
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_file/windows_noncanonical_path/test.dex b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_file/windows_noncanonical_path/test.dex
+index 1ad9a4ec24a9..ec48bc365441 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_file/windows_noncanonical_path/test.dex
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_declare_file/windows_noncanonical_path/test.dex
+@@ -3,7 +3,7 @@
+ #
+ # REQUIRES: system-windows
+ #
+-# RUN: %clang "%S/source/test file.cpp" -O0 -g -o %t
++# RUN: %dexter_regression_test_build "%S/source/test file.cpp" -o %t
+ # RUN: %dexter_regression_base --binary %t %s | FileCheck %s
+ # CHECK: test.dex
+ #
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/default_conditional.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/default_conditional.cpp
+index 4dacdbd4f4e9..8138b894af3a 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/default_conditional.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/default_conditional.cpp
+@@ -6,7 +6,8 @@
+ //      condition (x == 5) is satisfied.
+ //      Tests using the default controller (no \DexLimitSteps).
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: default_conditional.cpp
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/default_conditional_hit_count.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/default_conditional_hit_count.cpp
+index 680dbd0ca1a6..bbf6fcfd2625 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/default_conditional_hit_count.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/default_conditional_hit_count.cpp
+@@ -7,7 +7,8 @@
+ //      given number of times.
+ //      Tests using the default controller (no \DexLimitSteps).
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: default_conditional_hit_count.cpp
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/default_hit_count.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/default_hit_count.cpp
+index 1d700d74ba01..efcfcff8db90 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/default_hit_count.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/default_hit_count.cpp
+@@ -4,7 +4,8 @@
+ //      specific number of times.
+ //      Tests using the default controller (no \DexLimitSteps).
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: default_hit_count.cpp
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/default_simple.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/default_simple.cpp
+index 953ba394d874..3e3edbf66ff2 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/default_simple.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/default_simple.cpp
+@@ -4,7 +4,8 @@
+ //      is stepped on.
+ //      Tests using the default controller (no \DexLimitSteps).
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: default_simple.cpp
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/limit_steps_conditional.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/limit_steps_conditional.cpp
+index f7a03c1f23e6..0473edee1dcd 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/limit_steps_conditional.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/limit_steps_conditional.cpp
+@@ -7,7 +7,8 @@
+ // The dbgeng driver doesn't support \DexLimitSteps yet.
+ // UNSUPPORTED: system-windows
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: limit_steps_conditional.cpp
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/limit_steps_conditional_hit_count.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/limit_steps_conditional_hit_count.cpp
+index 766ae531d44a..2869b70c46c1 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/limit_steps_conditional_hit_count.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/limit_steps_conditional_hit_count.cpp
+@@ -8,7 +8,8 @@
+ // The dbgeng driver doesn't support \DexLimitSteps yet.
+ // UNSUPPORTED: system-windows
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: limit_steps_conditional_hit_count.cpp
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/limit_steps_hit_count.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/limit_steps_hit_count.cpp
+index 7c57b1726111..5928d43a9b25 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/limit_steps_hit_count.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/limit_steps_hit_count.cpp
+@@ -7,7 +7,8 @@
+ // The dbgeng driver doesn't support \DexLimitSteps yet.
+ // UNSUPPORTED: system-windows
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: limit_steps_hit_count.cpp
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/limit_steps_simple.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/limit_steps_simple.cpp
+index 7668958bd4c4..b3d61c500156 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/limit_steps_simple.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/dex_finish_test/limit_steps_simple.cpp
+@@ -7,7 +7,8 @@
+ // The dbgeng driver doesn't support \DexLimitSteps yet.
+ // UNSUPPORTED: system-windows, system-darwin
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: limit_steps_simple.cpp
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_program_state.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_program_state.cpp
+index 7aa8b1a8c5b3..6f822f7451eb 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_program_state.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_program_state.cpp
+@@ -5,7 +5,8 @@
+ // UNSUPPORTED: system-darwin
+ //
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: expect_program_state.cpp:
+ 
+ int GCD(int lhs, int rhs)
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_step_kind/direction.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_step_kind/direction.cpp
+index 1f7a96bafffa..5d8f45eb66ea 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_step_kind/direction.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_step_kind/direction.cpp
+@@ -10,7 +10,8 @@
+ // TODO: The dbgeng debugger does not support column step reporting at present.
+ // XFAIL: system-windows
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: direction.cpp:
+ 
+ int func(int i) {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_step_kind/func.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_step_kind/func.cpp
+index b386dc4aa48c..2126bd8776dd 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_step_kind/func.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_step_kind/func.cpp
+@@ -5,7 +5,8 @@
+ //
+ // UNSUPPORTED: system-darwin
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: func.cpp:
+ 
+ int func(int i) {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_step_kind/func_external.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_step_kind/func_external.cpp
+index cbefcb969082..41e7695cbdff 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_step_kind/func_external.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_step_kind/func_external.cpp
+@@ -8,7 +8,8 @@
+ // This fails right now on my linux and windows machine, needs examining as to
+ // why.
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: func_external.cpp:
+ 
+ #include <cstdlib>
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_step_kind/recursive.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_step_kind/recursive.cpp
+index 0264420a46be..432b35181d89 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_step_kind/recursive.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_step_kind/recursive.cpp
+@@ -5,7 +5,8 @@
+ //
+ // UNSUPPORTED: system-darwin
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: recursive.cpp:
+ 
+ int func(int i) {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_step_kind/small_loop.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_step_kind/small_loop.cpp
+index fb19869f9182..d47058e67584 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_step_kind/small_loop.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_step_kind/small_loop.cpp
+@@ -5,7 +5,8 @@
+ //
+ // UNSUPPORTED: system-darwin
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: small_loop.cpp:
+ 
+ int func(int i){
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_step_order.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_step_order.cpp
+index c6e992df7ad9..48735911d92d 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_step_order.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_step_order.cpp
+@@ -4,10 +4,11 @@
+ //
+ // UNSUPPORTED: system-darwin
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: expect_step_order.cpp:
+ 
+-int main()
++int main() // DexLabel('main')
+ {
+   volatile int a = 1; // DexExpectStepOrder(1)
+   volatile int b = 1; // DexExpectStepOrder(2)
+@@ -19,6 +20,6 @@ int main()
+   return 0;
+ }
+ 
+-// DexExpectStepOrder(4, on_line=16);
+-// DexExpectStepOrder(5, on_line=17);
+-// DexExpectStepOrder(6, on_line=18);
++// DexExpectStepOrder(4, on_line=ref('main')+6);
++// DexExpectStepOrder(5, on_line=ref('main')+7);
++// DexExpectStepOrder(6, on_line=ref('main')+8);
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_watch_type.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_watch_type.cpp
+index 6719406ad39d..d59f7206cc9b 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_watch_type.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_watch_type.cpp
+@@ -8,7 +8,8 @@
+ // in the same manner as LLDB.
+ // XFAIL: system-windows
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: expect_watch_type.cpp:
+ 
+ template<class T>
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_watch_value.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_watch_value.cpp
+index a4877dd44c94..9286a2c704d5 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_watch_value.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/expect_watch_value.cpp
+@@ -4,7 +4,8 @@
+ //
+ // UNSUPPORTED: system-darwin
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: expect_watch_value.cpp:
+ 
+ unsigned long Factorial(int n) {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/float_range_watch/float_range_multiple.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/float_range_watch/float_range_multiple.cpp
+index 0d7e1f69a3c1..46610b2cab6d 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/float_range_watch/float_range_multiple.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/float_range_watch/float_range_multiple.cpp
+@@ -4,7 +4,8 @@
+ //
+ // UNSUPPORTED: system-darwin
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: float_range_multiple.cpp:
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/float_range_watch/float_range_no_arg.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/float_range_watch/float_range_no_arg.cpp
+index c23fe09244d5..320a400d9264 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/float_range_watch/float_range_no_arg.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/float_range_watch/float_range_no_arg.cpp
+@@ -7,7 +7,8 @@
+ // work for both dbgeng and lldb, which output floats differently.
+ // UNSUPPORTED: system-darwin, system-windows
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: float_range_no_arg.cpp:
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/float_range_watch/float_range_small.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/float_range_watch/float_range_small.cpp
+index 6a844e7da2cd..8034a3702636 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/float_range_watch/float_range_small.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/float_range_watch/float_range_small.cpp
+@@ -4,7 +4,8 @@
+ //
+ // UNSUPPORTED: system-darwin
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: float_range_small.cpp:
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/float_range_watch/float_range_zero_match.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/float_range_watch/float_range_zero_match.cpp
+index 7dbd515e717b..0d55ab4405b6 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/float_range_watch/float_range_zero_match.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/float_range_watch/float_range_zero_match.cpp
+@@ -3,7 +3,8 @@
+ //
+ // UNSUPPORTED: system-darwin
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: float_range_zero_match.cpp:
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/hit_count.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/hit_count.cpp
+index 059d501a394f..50cc3e21a85b 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/hit_count.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/hit_count.cpp
+@@ -2,7 +2,8 @@
+ //      Test that \DexLimitSteps keyword argument hit_count correctly limits
+ //      the number of times the command can trigger.
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: hit_count.cpp
+ 
+ int a;
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/limit_steps_check_json_step_count.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/limit_steps_check_json_step_count.cpp
+index ac5d2e91a66c..a89d31674478 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/limit_steps_check_json_step_count.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/limit_steps_check_json_step_count.cpp
+@@ -1,7 +1,8 @@
+ // Purpose:
+ //      Check number of step lines are correctly reported in json output.
+ //
+-// RUN: %dexter_regression_test --verbose -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t --verbose -- %s | FileCheck %s
+ // CHECK: limit_steps_check_json_step_count.cpp
+ // CHECK: ## BEGIN ##
+ // CHECK-COUNT-3: json_step_count.cpp",
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/limit_steps_expect_loop.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/limit_steps_expect_loop.cpp
+index f2ec58352355..b60c5cafb8fb 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/limit_steps_expect_loop.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/limit_steps_expect_loop.cpp
+@@ -2,7 +2,8 @@
+ //      Check the DexLimit steps only gathers step info for 2 iterations of a
+ //      for loop.
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: limit_steps_expect_loop.cpp:
+ 
+ int main(const int argc, const char * argv[]) {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/limit_steps_expect_value.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/limit_steps_expect_value.cpp
+index 8808df640da8..76c6be665aaa 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/limit_steps_expect_value.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/limit_steps_expect_value.cpp
+@@ -1,7 +1,8 @@
+ // Purpose:
+ //      Ensure that limited stepping breaks for all expected values.
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: limit_steps_expect_value.cpp
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/limit_steps_line_mismatch.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/limit_steps_line_mismatch.cpp
+index e56d4e42e2cc..863782a5948b 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/limit_steps_line_mismatch.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/limit_steps_line_mismatch.cpp
+@@ -3,7 +3,8 @@
+ //      doesn't exist. This can happen due to optimisations or label is on an
+ //      empty line.
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: limit_steps_line_mismatch.cpp
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/limit_steps_overlapping_ranges.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/limit_steps_overlapping_ranges.cpp
+index 6801b249d759..a250e5377f3c 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/limit_steps_overlapping_ranges.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/limit_steps_overlapping_ranges.cpp
+@@ -1,7 +1,8 @@
+ // Purpose:
+ //      Ensure that multiple overlapping \DexLimitSteps ranges do not interfere.
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: limit_steps_overlapping_ranges.cpp
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/limit_steps_same_line_conditional.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/limit_steps_same_line_conditional.cpp
+index 71c13b76c399..bc1a690111c0 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/limit_steps_same_line_conditional.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/limit_steps_same_line_conditional.cpp
+@@ -1,7 +1,8 @@
+ // Purpose:
+ //      Test that LimitStep commands can exist on the same from line.
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: limit_steps_same_line_conditional.cpp
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/unconditional.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/unconditional.cpp
+index d97d51190b9f..d7bf8ca4097f 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/unconditional.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/limit_steps/unconditional.cpp
+@@ -2,7 +2,8 @@
+ //      Test that \DexLimitSteps can be used without a condition (i.e. the
+ //      breakpoint range is set any time from_line is stepped on).
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: unconditional.cpp
+ 
+ int glob;
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/unreachable.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/unreachable.cpp
+index bcc1b835a648..5e754c0cf5ca 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/unreachable.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/unreachable.cpp
+@@ -4,7 +4,8 @@
+ //
+ // UNSUPPORTED: system-darwin
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: unreachable.cpp:
+ 
+ int main()
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/unreachable_not_cmd_lineno.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/unreachable_not_cmd_lineno.cpp
+index b63fa3169513..cd98561d2a63 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/unreachable_not_cmd_lineno.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/unreachable_not_cmd_lineno.cpp
+@@ -4,7 +4,8 @@
+ //
+ // UNSUPPORTED: system-darwin
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: unreachable_not_cmd_lineno.cpp:
+ 
+ int main(int argc, char **argv)
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/unreachable_on_line.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/unreachable_on_line.cpp
+index 21c40c797026..a59b8b2802f6 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/unreachable_on_line.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/commands/perfect/unreachable_on_line.cpp
+@@ -4,7 +4,8 @@
+ //
+ // UNSUPPORTED: system-darwin
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: unreachable_on_line.cpp:
+ 
+ int main()
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/clang-opt-bisect/clang-opt-bisect-results.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/clang-opt-bisect/clang-opt-bisect-results.cpp
+deleted file mode 100644
+index 3d3881088631..000000000000
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/clang-opt-bisect/clang-opt-bisect-results.cpp
++++ /dev/null
+@@ -1,27 +0,0 @@
+-// Purpose:
+-//     Check the `clang-opt-bisect` tool runs with --results-directory.
+-//
+-// RUN: true
+-// RUN: %dexter_base clang-opt-bisect \
+-// RUN:     --debugger %dexter_regression_test_debugger \
+-// RUN:     --builder %dexter_regression_test_builder \
+-// RUN:     --cflags "%dexter_regression_test_cflags" \
+-// RUN:     --ldflags "%dexter_regression_test_ldflags" \
+-// RUN:     --results-directory=%t \
+-// RUN:     -- %s \
+-// RUN: | FileCheck %s
+-//// Clean up those results files.
+-// RUN: rm %t/clang-opt-bisect-results.cpp-pass-summary.csv
+-// RUN: rm %t/clang-opt-bisect-results.cpp-per_pass_score.csv
+-// RUN: rm %t/overall-pass-summary.csv
+-// RUN: rm %t/*.dextIR
+-// RUN: rm %t/*.txt
+-// RUN: rmdir %t
+-// CHECK: running pass 0
+-// CHECK: wrote{{.*}}per_pass_score
+-// CHECK: wrote{{.*}}pass-summary
+-// CHECK: wrote{{.*}}overall-pass-summary
+-
+-int main() {
+-    return 0;
+-}
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/clang-opt-bisect/clang-opt-bisect.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/clang-opt-bisect/clang-opt-bisect.cpp
+deleted file mode 100644
+index d480da8ac0ba..000000000000
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/clang-opt-bisect/clang-opt-bisect.cpp
++++ /dev/null
+@@ -1,16 +0,0 @@
+-// Purpose:
+-//     Check the `clang-opt-bisect` tool runs with typical input.
+-//
+-// RUN: true
+-// RUN: %dexter_base clang-opt-bisect \
+-// RUN:     --debugger %dexter_regression_test_debugger \
+-// RUN:     --builder %dexter_regression_test_builder \
+-// RUN:     --cflags "%dexter_regression_test_cflags" \
+-// RUN:     --ldflags "%dexter_regression_test_ldflags" \
+-// RUN:     -- %s \
+-// RUN: | FileCheck %s
+-// CHECK: running pass 0
+-
+-int main() {
+-    return 0;
+-}
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/help/help.test b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/help/help.test
+index fc3f45539236..90119a1d74db 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/help/help.test
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/help/help.test
+@@ -3,7 +3,6 @@ Purpose:
+ 
+ RUN: %dexter_base help | FileCheck %s
+ CHECK: The following subtools are available:
+-CHECK: clang-opt-bisect
+ CHECK: help
+ CHECK: list-debuggers
+ CHECK: test
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/address_printing.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/address_printing.cpp
+index 5d4e39e38fda..cdde32851119 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/address_printing.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/address_printing.cpp
+@@ -11,7 +11,8 @@
+ // The dbgeng driver doesn't support \DexLimitSteps yet.
+ // UNSUPPORTED: system-windows
+ //
+-// RUN: not %dexter_regression_test -v -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: not %dexter_regression_test_run --binary %t -v -- %s | FileCheck %s
+ 
+ // CHECK: Resolved Addresses:
+ // CHECK-NEXT: 'x_2': 0x[[X2_VAL:[0-9a-f]+]]
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_bad_label_ref.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_bad_label_ref.cpp
+index 424edaa121a9..e1a2791e50c1 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_bad_label_ref.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_bad_label_ref.cpp
+@@ -1,9 +1,10 @@
+ // Purpose:
+ //      Check that referencing an undefined label gives a useful error message.
+ //
+-// RUN: not %dexter_regression_test -v -- %s | FileCheck %s --match-full-lines
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: not %dexter_regression_test_run --binary %t -v -- %s | FileCheck %s --match-full-lines
+ //
+-// CHECK: parser error:{{.*}}err_bad_label_ref.cpp(14): Unresolved label: 'label_does_not_exist'
++// CHECK: parser error:{{.*}}err_bad_label_ref.cpp(15): Unresolved label: 'label_does_not_exist'
+ // CHECK-NEXT: {{Dex}}ExpectWatchValue('result', '0', on_line=ref('label_does_not_exist'))
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_duplicate_address.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_duplicate_address.cpp
+index 23bc1a5fa6cb..2120550bb81f 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_duplicate_address.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_duplicate_address.cpp
+@@ -1,7 +1,8 @@
+ // Purpose:
+ //      Check that declaring duplicate addresses gives a useful error message.
+ //
+-// RUN: not %dexter_regression_test -v -- %s | FileCheck %s --match-full-lines
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: not %dexter_regression_test_run --binary %t -v -- %s | FileCheck %s --match-full-lines
+ 
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_duplicate_label.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_duplicate_label.cpp
+index 7da69203ea38..d8cef2be3322 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_duplicate_label.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_duplicate_label.cpp
+@@ -1,9 +1,10 @@
+ // Purpose:
+ //      Check that defining duplicate labels gives a useful error message.
+ //
+-// RUN: not %dexter_regression_test -v -- %s | FileCheck %s --match-full-lines
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: not %dexter_regression_test_run --binary %t -v -- %s | FileCheck %s --match-full-lines
+ //
+-// CHECK: parser error:{{.*}}err_duplicate_label.cpp(11): Found duplicate line label: 'oops'
++// CHECK: parser error:{{.*}}err_duplicate_label.cpp(12): Found duplicate line label: 'oops'
+ // CHECK-NEXT: {{Dex}}Label('oops')
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_paren.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_paren.cpp
+index feb26a737870..bac1baec259d 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_paren.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_paren.cpp
+@@ -7,9 +7,9 @@
+ // Note: Despite using 'lldb' as the debugger, lldb is not actually required
+ //       as the test should finish before lldb would be invoked.
+ //
+-// RUN: not %dexter_base test --builder 'clang' --debugger 'lldb' \
+-// RUN:     --cflags "-O0 -g" -v -- %s \
+-// RUN:     | FileCheck %s --match-full-lines --strict-whitespace
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: not %dexter_base test --binary %t --debugger 'lldb' \
++// RUN:     -v -- %s | FileCheck %s --match-full-lines --strict-whitespace
+ //
+ // CHECK:parser error:{{.*}}err_paren.cpp(22): Unbalanced parenthesis starting here
+ // CHECK:// {{Dex}}ExpectWatchValue(
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_paren_mline.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_paren_mline.cpp
+index 7cbce8de74a3..d48d0a0fcc3b 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_paren_mline.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_paren_mline.cpp
+@@ -7,9 +7,9 @@
+ // Note: Despite using 'lldb' as the debugger, lldb is not actually required
+ //       as the test should finish before lldb would be invoked.
+ //
+-// RUN: not %dexter_base test --builder 'clang' --debugger "lldb" \
+-// RUN:     --cflags "-O0 -g" -v -- %s \
+-// RUN:     | FileCheck %s --match-full-lines --strict-whitespace
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: not %dexter_base test --binary %t --debugger "lldb" \
++// RUN:     -v -- %s | FileCheck %s --match-full-lines --strict-whitespace
+ //
+ // CHECK:parser error:{{.*}}err_paren_mline.cpp(23): Unbalanced parenthesis starting here
+ // CHECK:{{Dex}}ExpectWatchValue(
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_syntax.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_syntax.cpp
+index a0b8ab71fe6d..732baef66701 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_syntax.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_syntax.cpp
+@@ -7,9 +7,9 @@
+ // Note: Despite using 'lldb' as the debugger, lldb is not actually required
+ //       as the test should finish before lldb would be invoked.
+ //
+-// RUN: not %dexter_base test --builder 'clang' --debugger "lldb" \
+-// RUN:     --cflags "-O0 -g" -v -- %s \
+-// RUN:     | FileCheck %s --match-full-lines --strict-whitespace
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: not %dexter_base test --binary %t --debugger "lldb" \
++// RUN:     -v -- %s | FileCheck %s --match-full-lines --strict-whitespace
+ //
+ // CHECK:parser error:{{.*}}err_syntax.cpp(21): invalid syntax
+ // CHECK:// {{Dex}}ExpectWatchValue(,'a', 3, 3, 3, 3, on_line=0)
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_syntax_mline.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_syntax_mline.cpp
+index f47ddf86f58b..3ede5e90caaf 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_syntax_mline.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_syntax_mline.cpp
+@@ -7,9 +7,9 @@
+ // Note: Despite using 'lldb' as the debugger, lldb is not actually required
+ //       as the test should finish before lldb would be invoked.
+ //
+-// RUN: not %dexter_base test --builder 'clang' --debugger "lldb" \
+-// RUN:     --cflags "-O0 -g" -v -- %s \
+-// RUN:     | FileCheck %s --match-full-lines --strict-whitespace
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: not %dexter_base test --binary %t --debugger "lldb" \
++// RUN:     -v -- %s | FileCheck %s --match-full-lines --strict-whitespace
+ //
+ // CHECK:parser error:{{.*}}err_syntax_mline.cpp(24): invalid syntax
+ // CHECK:    ,'a', 3, 3, 3, 3, on_line=0)
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_type.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_type.cpp
+index d42c5a006f70..01c19330a4f5 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_type.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_type.cpp
+@@ -7,9 +7,9 @@
+ // Note: Despite using 'lldb' as the debugger, lldb is not actually required
+ //       as the test should finish before lldb would be invoked.
+ //
+-// RUN: not %dexter_base test --builder 'clang' --debugger "lldb" \
+-// RUN:     --cflags "-O0 -g" -v -- %s \
+-// RUN:     | FileCheck %s --match-full-lines --strict-whitespace
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: not %dexter_base test --binary %t --debugger "lldb" \
++// RUN:     -v -- %s | FileCheck %s --match-full-lines --strict-whitespace
+ //
+ // CHECK:parser error:{{.*}}err_type.cpp(21): expected at least two args
+ // CHECK:// {{Dex}}ExpectWatchValue()
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_type_mline.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_type_mline.cpp
+index 733c0d44ce05..38a163152007 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_type_mline.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_type_mline.cpp
+@@ -7,9 +7,9 @@
+ // Note: Despite using 'lldb' as the debugger, lldb is not actually required
+ //       as the test should finish before lldb would be invoked.
+ //
+-// RUN: not %dexter_base test --builder 'clang' --debugger "lldb" \
+-// RUN:     --cflags "-O0 -g" -v -- %s \
+-// RUN:     | FileCheck %s --match-full-lines --strict-whitespace
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: not %dexter_base test --binary %t --debugger "lldb" \
++// RUN:     -v -- %s | FileCheck %s --match-full-lines --strict-whitespace
+ //
+ // CHECK:parser error:{{.*}}err_type_mline.cpp(22): expected at least two args
+ // CHECK:{{Dex}}ExpectWatchValue(
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_undeclared_addr.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_undeclared_addr.cpp
+index baae1acabeb7..7939c9ac98a3 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_undeclared_addr.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/err_undeclared_addr.cpp
+@@ -1,7 +1,8 @@
+ // Purpose:
+ //      Check that using an undeclared address gives a useful error message.
+ //
+-// RUN: not %dexter_regression_test -v -- %s | FileCheck %s --match-full-lines
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: not %dexter_regression_test_run --binary %t -v -- %s | FileCheck %s --match-full-lines
+ 
+ 
+ int main() {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/label_another_line.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/label_another_line.cpp
+index 0a9533647515..0d2fc0b8821e 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/label_another_line.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/label_another_line.cpp
+@@ -2,7 +2,8 @@
+ //    Check that the optional keyword argument 'on_line' makes a \DexLabel label
+ //    that line instead of the line the command is found on.
+ //
+-// RUN: %dexter_regression_test -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -- %s | FileCheck %s
+ // CHECK: label_another_line.cpp: (1.0000)
+ 
+ int main() {
+@@ -10,5 +11,5 @@ int main() {
+   return result;
+ }
+ 
+-// DexLabel('test', on_line=10)
++// DexLabel('test', on_line=11)
+ // DexExpectWatchValue('result', '0', on_line=ref('test'))
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/label_offset.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/label_offset.cpp
+index 81d4ca47b114..138979269c39 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/label_offset.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/label_offset.cpp
+@@ -1,7 +1,8 @@
+ // Purpose:
+ //      Check that we can use label-relative line numbers.
+ //
+-// RUN: %dexter_regression_test -v -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t -v -- %s | FileCheck %s
+ //
+ // CHECK: label_offset.cpp: (1.0000)
+ 
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/source-root-dir.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/source-root-dir.cpp
+index 77273912d1b2..36db3eb3b275 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/source-root-dir.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/source-root-dir.cpp
+@@ -1,10 +1,10 @@
+ // This test started failing recently for unknown reasons.
+ // XFAIL:*
++// RUN: %dexter_regression_test_build \
++// RUN:     -fdebug-prefix-map=%S=/changed %s -o %t
+ // RUN: %dexter --fail-lt 1.0 -w \
+-// RUN:     --builder %dexter_regression_test_builder \
++// RUN:     --binary %t \
+ // RUN:     --debugger %dexter_regression_test_debugger \
+-// RUN:     --cflags "%dexter_regression_test_cflags -fdebug-prefix-map=%S=/changed" \
+-// RUN:     --ldflags "%dexter_regression_test_ldflags" \
+ // RUN:     --source-root-dir=%S --debugger-use-relative-paths -- %s
+ 
+ #include <stdio.h>
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/target_run_args.c b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/target_run_args.c
+index 11004adce912..7efd3c08c623 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/target_run_args.c
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/target_run_args.c
+@@ -1,7 +1,8 @@
+ // The dbgeng driver doesn't support --target-run-args yet.
+ // UNSUPPORTED: system-windows
+ //
+-// RUN: %dexter_regression_test --target-run-args "a b 'c d'" -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t --target-run-args "a b 'c d'" -- %s | FileCheck %s
+ // CHECK: target_run_args.c:
+ 
+ int main(int argc, const char **argv) {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/target_run_args_with_command.c b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/target_run_args_with_command.c
+index f329cb9d71c5..34ce63fa033e 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/target_run_args_with_command.c
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/test/target_run_args_with_command.c
+@@ -1,7 +1,8 @@
+ // The dbgeng driver doesn't support --target-run-args yet.
+ // UNSUPPORTED: system-windows
+ //
+-// RUN: %dexter_regression_test --target-run-args "a b 'c d'" -- %s | FileCheck %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t --target-run-args "a b 'c d'" -- %s | FileCheck %s
+ // CHECK: target_run_args_with_command.c:
+ 
+ int main(int argc, const char **argv) {
+diff --git a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/view.cpp b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/view.cpp
+index d5b04b3fe8ef..9373c0447ac7 100644
+--- a/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/view.cpp
++++ b/cross-project-tests/debuginfo-tests/dexter/feature_tests/subtools/view.cpp
+@@ -1,9 +1,10 @@
+ // Purpose:
+ //      Check the `view` subtool works with typical inputs.
+ //
+-// RUN: %dexter_regression_test --results %t -- %s
++// RUN: %dexter_regression_test_build %s -o %t
++// RUN: %dexter_regression_test_run --binary %t --results %t.results -- %s
+ //
+-// RUN: %dexter_base view %t/view.cpp.dextIR | FileCheck %s
++// RUN: %dexter_base view %t.results/view.cpp.dextIR | FileCheck %s
+ // CHECK: ## BEGIN
+ // CHECK: ## END
+ //
+diff --git a/cross-project-tests/lit.cfg.py b/cross-project-tests/lit.cfg.py
+index 350dd45dfd9f..a9d2a7b13130 100644
+--- a/cross-project-tests/lit.cfg.py
++++ b/cross-project-tests/lit.cfg.py
+@@ -123,17 +123,15 @@ def configure_dexter_substitutions():
+     if platform.system() == "Windows":
+         # The Windows builder script uses lld.
+         dependencies = ["clang", "lld-link"]
+-        dexter_regression_test_builder = "clang-cl_vs2015"
++        dexter_regression_test_builder = "clang-cl"
+         dexter_regression_test_debugger = "dbgeng"
+-        dexter_regression_test_cflags = "/Zi /Od"
+-        dexter_regression_test_ldflags = "/Zi"
++        dexter_regression_test_flags = "/Zi /Od"
+     else:
+         # Use lldb as the debugger on non-Windows platforms.
+         dependencies = ["clang", "lldb"]
+-        dexter_regression_test_builder = "clang"
++        dexter_regression_test_builder = "clang++"
+         dexter_regression_test_debugger = "lldb"
+-        dexter_regression_test_cflags = "-O0 -glldb"
+-        dexter_regression_test_ldflags = ""
++        dexter_regression_test_flags = "-O0 -glldb"
+ 
+     tools.append(
+         ToolSubst("%dexter_regression_test_builder", dexter_regression_test_builder)
+@@ -141,17 +139,16 @@ def configure_dexter_substitutions():
+     tools.append(
+         ToolSubst("%dexter_regression_test_debugger", dexter_regression_test_debugger)
+     )
++    # We don't need to distinguish cflags and ldflags because for Dexter
++    # regression tests we use clang to drive the linker, and so all flags will be
++    # passed in a single command.
+     tools.append(
+-        ToolSubst("%dexter_regression_test_cflags", dexter_regression_test_cflags)
+-    )
+-    tools.append(
+-        ToolSubst("%dexter_regression_test_ldflags", dexter_regression_test_cflags)
++        ToolSubst("%dexter_regression_test_flags", dexter_regression_test_flags)
+     )
+ 
+     # Typical command would take the form:
+-    # ./path_to_py/python.exe ./path_to_dex/dexter.py test --fail-lt 1.0 -w --builder clang --debugger lldb --cflags '-O0 -g'
+-    # Exclude build flags for %dexter_regression_base.
+-    dexter_regression_test_base = " ".join(
++    # ./path_to_py/python.exe ./path_to_dex/dexter.py test --fail-lt 1.0 -w --binary %t --debugger lldb --cflags '-O0 -g'
++    dexter_regression_test_run = " ".join(
+         # "python", "dexter.py", test, fail_mode, builder, debugger, cflags, ldflags
+         [
+             '"{}"'.format(sys.executable),
+@@ -162,21 +159,16 @@ def configure_dexter_substitutions():
+             dexter_regression_test_debugger,
+         ]
+     )
+-    tools.append(ToolSubst("%dexter_regression_base", dexter_regression_test_base))
++    tools.append(ToolSubst("%dexter_regression_test_run", dexter_regression_test_run))
+ 
+     # Include build flags for %dexter_regression_test.
+     dexter_regression_test_build = " ".join(
+         [
+-            dexter_regression_test_base,
+-            "--builder",
+             dexter_regression_test_builder,
+-            '--cflags "',
+-            dexter_regression_test_cflags + '"',
+-            '--ldflags "',
+-            dexter_regression_test_ldflags + '"',
++            dexter_regression_test_flags,
+         ]
+     )
+-    tools.append(ToolSubst("%dexter_regression_test", dexter_regression_test_build))
++    tools.append(ToolSubst("%dexter_regression_test_build", dexter_regression_test_build))
+     return dependencies
+ 
+ 

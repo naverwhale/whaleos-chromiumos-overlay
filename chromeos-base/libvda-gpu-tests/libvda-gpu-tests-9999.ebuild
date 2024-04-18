@@ -1,7 +1,7 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="6"
+EAPI="7"
 
 CROS_WORKON_INCREMENTAL_BUILD="1"
 CROS_WORKON_LOCALNAME="platform2"
@@ -14,7 +14,7 @@ PLATFORM_SUBDIR="arc/vm/libvda"
 inherit cros-workon platform
 
 DESCRIPTION="libvda Chrome GPU tests"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/arc/vm/libvda"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/arc/vm/libvda"
 
 LICENSE="BSD-Google"
 SLOT="0"
@@ -22,7 +22,6 @@ KEYWORDS="~*"
 IUSE=""
 
 RDEPEND="
-	chromeos-base/libbrillo:=
 	media-libs/minigbm:=
 "
 
@@ -36,6 +35,8 @@ src_compile() {
 }
 
 src_install() {
+	platform_src_install
+
 	exeinto /usr/libexec/libvda-gpu-tests
 	doexe "${OUT}/libvda_gpu_unittest"
 }

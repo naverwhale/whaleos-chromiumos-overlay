@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -26,13 +26,6 @@ DEPEND="
 	${RDEPEND}
 	chromeos-base/system_api
 "
-
-src_install() {
-	dobin "${OUT}"/arc-host-clock-service
-
-	insinto /etc/init
-	doins arc-host-clock-service.conf
-}
 
 pkg_preinst() {
 	enewuser "arc-host-clock"

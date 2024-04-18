@@ -25,6 +25,6 @@
 </use>
 <upstream>
 	<remote-id type="sourceforge">dejavu</remote-id>
-	<remote-id type="cpe">cpe:/a:gnu:grub</remote-id>
+	<remote-id type="cpe">cpe:/a:gnu:grub2</remote-id>
 </upstream>
 </pkgmetadata>

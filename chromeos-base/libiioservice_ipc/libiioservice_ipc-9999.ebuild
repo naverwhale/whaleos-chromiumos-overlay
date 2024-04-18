@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -21,10 +21,6 @@ KEYWORDS="~*"
 RDEPEND=""
 
 DEPEND="${RDEPEND}
+	chromeos-base/system_api:=
 	virtual/pkgconfig
 "
-
-src_install() {
-	dolib.so "${OUT}/lib/libiioservice_ipc.so"
-	dolib.a "${OUT}/libiioservice_ipc_mojom.a"
-}

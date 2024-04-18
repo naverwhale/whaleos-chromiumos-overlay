@@ -1,4 +1,5 @@
-# chromiumos-sdk build bot service account, so it
-# can make upgrades automatically without OWNERS approval.
-# See: b/192581987
-per-file sdk_version.conf = 3su6n15k.default@developer.gserviceaccount.com
+# SDK version updates.
+per-file sdk_version.conf = file:/OWNERS.sdk_version
+# Allow the toolchain team to make changes to this file, since we sometimes need
+# to do manual updates for e.g., Rust rolls.
+per-file sdk_version.conf = file:/chromiumos/third_party/toolchain-utils:/OWNERS.toolchain

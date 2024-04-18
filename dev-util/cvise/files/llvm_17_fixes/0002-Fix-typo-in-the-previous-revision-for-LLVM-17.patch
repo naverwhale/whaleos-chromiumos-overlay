@@ -1,0 +1,25 @@
+From 47b20cd98513e686145e52aa7f8dc081204ad6ea Mon Sep 17 00:00:00 2001
+From: Martin Liska <mliska@suse.cz>
+Date: Sat, 20 May 2023 11:43:13 +0200
+Subject: [PATCH 2/6] Fix typo in the previous revision for LLVM 17.
+
+---
+ clang_delta/RemoveUnusedStructField.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/clang_delta/RemoveUnusedStructField.cpp b/clang_delta/RemoveUnusedStructField.cpp
+index e9043df..9ee2796 100644
+--- a/clang_delta/RemoveUnusedStructField.cpp
++++ b/clang_delta/RemoveUnusedStructField.cpp
+@@ -248,7 +248,7 @@ const Expr *RemoveUnusedStructField::getInitExprFromDesignatedInitExpr(
+       else {
+         const DesignatedInitExpr::Designator *DS = DIE->getDesignator(0);
+ #if LLVM_VERSION_MAJOR >= 17
+-        const FieldDecl *CurrFD = DS->getFieldDesc();
++        const FieldDecl *CurrFD = DS->getFieldDecl();
+ #else
+         const FieldDecl *CurrFD = DS->getField();
+ #endif
+-- 
+2.41.0.255.g8b1d071c50-goog
+

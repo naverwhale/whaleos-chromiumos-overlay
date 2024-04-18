@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -18,6 +18,9 @@ KEYWORDS="*"
 IUSE=""
 
 DEPEND="
+	dev-embedded/coreboot-sdk
+	dev-embedded/hps-sdk
+	dev-embedded/ti50-sdk
 	dev-lang/go
 	dev-lang/rust
 	dev-libs/elfutils
@@ -28,7 +31,7 @@ DEPEND="
 	sys-libs/compiler-rt
 	sys-libs/glibc
 	sys-libs/libcxx
-	sys-libs/libcxxabi
+	sys-libs/libxcrypt
 	sys-libs/llvm-libunwind
 "
 

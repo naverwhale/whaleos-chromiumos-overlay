@@ -16,7 +16,7 @@ SRC_URI="https://archive.mozilla.org/pub/security/nss/releases/${RTM_NAME}/src/$
 LICENSE="|| ( MPL-2.0 GPL-2 LGPL-2.1 )"
 SLOT="0"
 KEYWORDS="*"
-IUSE="cacert utils cpu_flags_ppc_altivec cpu_flags_ppc_vsx"
+IUSE="cacert cros_host utils cpu_flags_ppc_altivec cpu_flags_ppc_vsx"
 # pkg-config called by nss-config -> virtual/pkgconfig in RDEPEND
 RDEPEND="
 	>=dev-libs/nspr-${NSPR_VER}[${MULTILIB_USEDEP}]
@@ -254,7 +254,7 @@ multilib_src_install() {
 		vfyserv
 	)
 	pushd dist/*/bin >/dev/null || die
-	into /usr/local
+	! use cros_host && into /usr/local
 	for f in "${nssutils[@]}"; do
 		dobin "${f}"
 	done

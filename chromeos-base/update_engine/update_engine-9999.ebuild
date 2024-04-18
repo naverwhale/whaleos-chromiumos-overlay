@@ -1,4 +1,4 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2012 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -9,9 +9,15 @@ CROS_WORKON_EGIT_BRANCH=("main" "master")
 CROS_WORKON_DESTDIR=("${S}/platform2" "${S}/platform2/update_engine")
 CROS_WORKON_USE_VCSID=1
 CROS_WORKON_INCREMENTAL_BUILD=1
-CROS_WORKON_SUBTREE=("common-mk diagnostics .gn" "")
+CROS_WORKON_SUBTREE=("dlcservice common-mk .gn" "")
 
 PLATFORM_SUBDIR="update_engine"
+# Tests use /dev/loop*.
+PLATFORM_HOST_DEV_TEST="yes"
+
+# Do not run test parallelly until unit tests are fixed.
+# shellcheck disable=SC2034
+PLATFORM_PARALLEL_GTEST_TEST="no"
 
 inherit cros-debug cros-workon platform systemd
 
@@ -21,49 +27,82 @@ SRC_URI=""
 
 LICENSE="Apache-2.0"
 KEYWORDS="~*"
-IUSE="cfm cros_host cros_p2p dlc fuzzer hw_details -hwid_override minios +power_management systemd"
+IUSE="cfm cros_host cros_p2p dlc fuzzer hibernate hw_details -hwid_override lvm_stateful_partition minios +power_management report_requisition systemd test"
 
 COMMON_DEPEND="
+	app-arch/brotli:=
 	app-arch/bzip2:=
 	chromeos-base/chromeos-ca-certificates:=
-	hw_details? ( chromeos-base/diagnostics:= )
+	dlc? ( chromeos-base/dlcservice:= )
+	hw_details? (
+		chromeos-base/diagnostics:=
+		chromeos-base/mojo_service_manager:=
+	)
+	chromeos-base/imageloader:=
 	>=chromeos-base/metrics-0.0.1-r3152:=
+	chromeos-base/libcrossystem:=[test?]
+	chromeos-base/oobe_config:=[test?]
 	chromeos-base/vboot_reference:=
 	cros_p2p? ( chromeos-base/p2p:= )
 	dev-libs/expat:=
+	dev-libs/libdivsufsort:=
 	dev-libs/openssl:=
 	dev-libs/protobuf:=
+	dev-libs/re2:=
 	dev-libs/xz-embedded:=
 	dev-util/bsdiff:=
 	dev-util/puffin:=
 	net-misc/curl:=
-	sys-apps/rootdev:="
+	sys-apps/rootdev:=
+	sys-fs/e2fsprogs:=
+"
 
-DEPEND="
-	app-arch/xz-utils:=
+CLIENT_DEPEND="
 	chromeos-base/debugd-client:=
 	dlc? ( chromeos-base/dlcservice-client:= )
+	chromeos-base/imageloader-client:=
 	chromeos-base/power_manager-client:=
 	chromeos-base/session_manager-client:=
 	chromeos-base/shill-client:=
-	chromeos-base/system_api:=[fuzzer?]
 	chromeos-base/update_engine-client:=
+	hibernate? ( chromeos-base/hiberman-client:= )
+"
+
+DEPEND="
+	app-arch/xz-utils:=
+	chromeos-base/system_api:=[fuzzer?]
 	test? ( sys-fs/squashfs-tools )
-	${COMMON_DEPEND}"
+	${CLIENT_DEPEND}
+	${COMMON_DEPEND}
+"
 
 DELTA_GENERATOR_RDEPEND="
 	app-arch/unzip:=
 	app-arch/xz-utils:=
-	sys-libs/e2fsprogs-libs:=
+	|| (
+		>=sys-fs/e2fsprogs-1.46.4-r5:=
+		sys-libs/e2fsprogs-libs:=
+	)
 	sys-fs/squashfs-tools
 "
 
 RDEPEND="
-	!cros_host? ( chromeos-base/chromeos-installer )
+	!cros_host? (
+		chromeos-base/chromeos-installer
+		virtual/update-policy:=
+	)
+	${CLIENT_DEPEND}
 	${COMMON_DEPEND}
-	cros_host? ( ${DELTA_GENERATOR_RDEPEND} )
+	cros_host? (
+		${DEPEND}
+		${DELTA_GENERATOR_RDEPEND}
+	)
 	power_management? ( chromeos-base/power_manager:= )
-	virtual/update-policy:=
+"
+
+BDEPEND="
+	chromeos-base/chromeos-dbus-bindings
+	dev-libs/protobuf
 "
 
 platform_pkg_test() {
@@ -71,7 +110,7 @@ platform_pkg_test() {
 
 	# The unittests will try to exec `./helpers`, so make sure we're in
 	# the right dir to execute things.
-	cd "${OUT}"
+	cd "${OUT}" || die
 	# The tests also want keys to be in the current dir.
 	# .pub.pem files are generated on the "gen" directory.
 	cp "${S}"/unittest_key*.pem ./ || die
@@ -96,19 +135,10 @@ platform_pkg_test() {
 	else
 		platform_test "run" "${unittests_binary}" 1 "${GTEST_FILTER}"
 	fi
-
-	for f in "omaha_request_action" "delta_performer"; do
-		platform_fuzzer_test "${OUT}/update_engine_${f}_fuzzer"
-	done
 }
 
 src_install() {
-	dosbin "${OUT}"/update_engine
-	dobin "${OUT}"/update_engine_client
-
-	if use cros_host; then
-		dobin "${OUT}"/delta_generator
-	fi
+	platform_src_install
 
 	# Update payload should be verified with this public key in WhaleOS
 	insinto /usr/share/update_engine
@@ -134,7 +164,9 @@ src_install() {
 	# Add the public key only when signing for MiniOs.
 	if use minios; then
 		insinto "/build/initramfs"
-		doins scripts/update_payload/update-payload-key.pub.pem
+		if [ -f "${FILESDIR}"/update-payload-key.pub.pem ]; then
+			doins "${FILESDIR}"/update-payload-key.pub.pem
+		fi
 	fi
 
 	local fuzzer_component_id="908319"

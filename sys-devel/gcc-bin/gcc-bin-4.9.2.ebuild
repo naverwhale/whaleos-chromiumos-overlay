@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 #
 # This package provides 4.9.2 GCC toolchains for Chrome OS
@@ -53,7 +53,7 @@ src_prepare() {
 	for abi in "${CROS_ABIS[@]}"; do
 		cd "${WORKDIR}/${abi}" || die
 		rm -f bin/*gcov* bin/*gdb* bin/*clang* bin/*lld* bin/*llvm* || die
-		rm -f lib/*clang* lib/*rust* lib/*libstd-* lib/*libc++* || die
+		rm -f lib/*clang* lib/*rust* lib/*libstd-* lib/libtest-* lib/*libc++* || die
 		rm -rf usr/"${abi}"*/usr/lib*/gconv || die
 		rm -rf usr/bin || die
 		rm -rf usr/include/c++ usr/include/llvm* usr/include/clang* usr/share/clang* || die
@@ -78,7 +78,7 @@ src_prepare() {
 		# Rebuild the compiler wrapper with a workaround to avoid 512 errors.
 		cd "${WORKDIR}/${abi}/usr/x86_64-pc-linux-gnu/${abi}/gcc-bin/4.9.x" || die
 		rm -f sysroot_wrapper.hardened* || die
-		"${FILESDIR}/compiler_wrapper/build.py" --config=cros.hardened \
+		GO111MODULE=off "${FILESDIR}/compiler_wrapper/build.py" --config=cros.hardened \
 			--use_ccache=false \
 			--use_llvm_next=false \
 			--output_file=sysroot_wrapper.hardened.ccache || die

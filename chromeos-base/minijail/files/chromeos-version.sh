@@ -1,10 +1,7 @@
 #!/bin/sh
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2023 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Look at the set of minijail tags (ignore Android ones) and grab the latest.
-git --git-dir="$1/.git" tag --list 'linux-v*' | \
-  sed 's:^linux-v::' | \
-  sort -V | \
-  tail -n1
+# Manually kept in sync with current git tags.
+echo 18

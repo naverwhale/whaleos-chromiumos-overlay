@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # A DLC package for distributing termina.
@@ -22,13 +22,13 @@ if [[ ${PV} == 9999 ]]; then
 	SRC_URI=""
 else
 	SRC_URI="
-		amd64? ( gs://termina-component-testing/uprev-test/amd64/${PV}/guest-vm-base.tbz -> termina_amd64.tbz )
-		arm? ( gs://termina-component-testing/uprev-test/arm/${PV}/guest-vm-base.tbz -> termina_arm.tbz )
-		arm64? ( gs://termina-component-testing/uprev-test/arm/${PV}/guest-vm-base.tbz -> termina_arm.tbz )
+		amd64? ( gs://termina-component-testing/uprev-test/amd64/${PV}/guest-vm-base.tar.xz -> termina_amd64_${PV}.tar.xz )
+		arm? ( gs://termina-component-testing/uprev-test/arm/${PV}/guest-vm-base.tar.xz -> termina_arm_${PV}.tar.xz )
+		arm64? ( gs://termina-component-testing/uprev-test/arm/${PV}/guest-vm-base.tar.xz -> termina_arm_${PV}.tar.xz )
 	"
 fi
 
-RESTRICT="nomirror"
+RESTRICT="mirror"
 
 LICENSE="BSD-Google"
 SLOT="0"
@@ -43,16 +43,16 @@ REQUIRED_USE="
 "
 
 # Termina now contains 2 copies of LXD, pulling the image size up to
-# ~135 MiB. Test builds need extra space for test utilities.
+# ~185 MiB. Test builds need extra space for test utilities.
 #
 # To check the current size, run "file" on a deployed DLC image. The
 # output will tell you the size of the squashfs filesystem.
 #
 # 1MiB = 256 x 4KiB blocks
 if [[ ${PV} == 9999 ]]; then
-	DLC_PREALLOC_BLOCKS="$((200 * 256))"
+	DLC_PREALLOC_BLOCKS="$((250 * 256))"
 else
-	DLC_PREALLOC_BLOCKS="$((150 * 256))"
+	DLC_PREALLOC_BLOCKS="$((200 * 256))"
 fi
 
 DLC_PRELOAD=true

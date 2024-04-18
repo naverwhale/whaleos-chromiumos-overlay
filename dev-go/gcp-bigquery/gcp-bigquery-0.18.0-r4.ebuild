@@ -1,1 +1,0 @@
-gcp-bigquery-0.18.0.ebuild

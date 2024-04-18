@@ -1,8 +1,13 @@
-// Copyright 2019 The Chromium OS Authors. All rights reserved.
+// Copyright 2019 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package main
+
+func isInConfigureStage(env env) bool {
+	val, present := env.getenv("EBUILD_PHASE")
+	return present && val == "configure"
+}
 
 func processCCacheFlag(builder *commandBuilder) {
 	// We should be able to share the objects across compilers as
@@ -18,6 +23,13 @@ func processCCacheFlag(builder *commandBuilder) {
 		}
 		return arg.value
 	})
+
+	// Disable ccache during portage's src_configure phase. Using ccache here is generally a
+	// waste of time, since these files are very small. Experimentally, this speeds up
+	// configuring by ~13%.
+	if isInConfigureStage(builder.env) {
+		useCCache = false
+	}
 
 	if builder.cfg.useCCache && useCCache {
 		// Note: we used to also set CCACHE_BASEDIR but don't do it

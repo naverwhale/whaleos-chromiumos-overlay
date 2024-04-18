@@ -1,20 +1,24 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
+
+# NOTE: If you make changes to this file that require Rust code to
+# be rebuilt, you can change the revision on virtual/rust-binaries
+# to make that rebuild happen on the next build_packages run.
 
 # @ECLASS: cros-rust.eclass
 # @MAINTAINER:
-# The Chromium OS Authors <chromium-os-dev@chromium.org>
+# The ChromiumOS Authors <chromium-os-dev@chromium.org>
 # @BUGREPORTS:
 # Please report bugs via https://crbug.com/new (with component "Tools>ChromeOS-Toolchain")
-# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/master/eclass/@ECLASS@
+# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/eclass/@ECLASS@
 # @BLURB: Eclass for fetching, building, and installing Rust packages.
 
 if [[ -z ${_ECLASS_CROS_RUST} ]]; then
 _ECLASS_CROS_RUST="1"
 
-# Check for EAPI 6+.
+# Check for EAPI 7+.
 case "${EAPI:-0}" in
-[012345]) die "unsupported EAPI (${EAPI}) in eclass (${ECLASS})" ;;
+[0123456]) die "unsupported EAPI (${EAPI}) in eclass (${ECLASS})" ;;
 esac
 
 # @ECLASS-VARIABLE: CROS_RUST_CRATE_NAME
@@ -101,25 +105,104 @@ fi
 # If set to yes, run the test only for amd64 and x86 (i.e. no emulation).
 : "${CROS_RUST_TEST_DIRECT_EXEC_ONLY:="no"}"
 
+# @ECLASS-VARIABLE: CROS_RUST_TEST_MULTIPROCESS
+# @PRE_INHERIT
+# @DESCRIPTION:
+# If set to yes, run test binaries in parallel but without affecting
+# `--test-threads`` on individual test binaries.
+# TODO(b/293327433): Temporarily disabled due to flaky tests
+: "${CROS_RUST_TEST_MULTIPROCESS:="no"}"
+
+# @ECLASS-VARIABLE: CROS_RUST_PACKAGE_IS_HOT
+# @DESCRIPTION:
+# If set to a nonempty value, we will consider the binaries we compile to be
+# hot, and optimize them more aggressively for speed. Please use the
+# `cros_optimize_package_for_speed` function to set this, as that also applies
+# the same settings for C and C++ code.
+: "${CROS_RUST_PACKAGE_IS_HOT:=}"
+
+# @ECLASS-VARIABLE: CROS_RUST_PREINSTALLED_REGISTRY_CRATE
+# @DESCRIPTION:
+# If set to a nonempty value, `cros-rust_src_unpack` will also copy sources from
+# `${CROS_RUST_REGISTRY_DIR}` into `${S}`, and suppress any automatic publishing
+# of Rust sources.
+#
+# TODO(gbiv): This should ideally `ln` from the registry, rather than `cp`.
+# There's quite a bit that wants to write to the crate root though, and the
+# registry should be immutable, so a cleanup is needed.
+: "${CROS_RUST_PREINSTALLED_REGISTRY_CRATE:=}"
+
+# @ECLASS-VARIABLE: CROS_RUST_NO_COVERAGE
+# @DESCRIPTION:
+# If set to a nonempty value, code coverage flags will be disabled regardless of
+# the value of the `rust-coverage` setting. This is generally only useful if
+# you're using a nonstandard Rust toolchain.
+: "${CROS_RUST_COVERAGE_DISABLED:=}"
+
+# @ECLASS-VARIABLE: CROS_RUST_EXTRA_ALLOWED_FEATURES
+# @DESCRIPTION:
+# Array of extra allowed Rust unstable features used during build. Please get
+# approval from the toolchain team before setting it, as unstable features
+# might be easily broken by toolchain updates.
+if [[ ! -v CROS_RUST_EXTRA_ALLOWED_FEATURES ]]; then
+	CROS_RUST_EXTRA_ALLOWED_FEATURES=()
+fi
+
 inherit multiprocessing toolchain-funcs cros-constants cros-debug cros-sanitizers
 
-IUSE="amd64 asan cros_host fuzzer lsan +lto msan sccache test tsan ubsan x86"
+IUSE="asan rust-coverage cros_host fuzzer lsan +lto msan +panic-abort sccache test tsan ubsan"
 REQUIRED_USE="?? ( asan lsan msan tsan )"
 
 EXPORT_FUNCTIONS pkg_setup src_unpack src_prepare src_configure src_compile src_test src_install pkg_preinst pkg_postinst pkg_prerm
 
+# virtual/rust-binaries is listed in both DEPEND and RDEPEND. Changing the
+# version of virtual/rust-binaries forces a rebuild of everything that
+# depends on it (that is, all Rust code in ChromeOS).
 DEPEND="
-	>=virtual/rust-1.39.0:=
+	>=virtual/rust-1.60.0:=
+	virtual/rust-binaries:=
 "
 
-ECARGO_HOME="${WORKDIR}/cargo_home"
+RDEPEND="
+	virtual/rust-binaries:=
+"
+
+BDEPEND="
+	!cros_host? ( dev-lang/rust:= )
+	dev-lang/rust-host:=
+"
+
 CROS_RUST_REGISTRY_BASE="/usr/lib/cros_rust_registry"
+ECARGO_HOME="${WORKDIR}/cargo_home"
 CROS_RUST_REGISTRY_DIR="${CROS_RUST_REGISTRY_BASE}/store"
 CROS_RUST_REGISTRY_INST_DIR="${CROS_RUST_REGISTRY_BASE}/registry"
+# Crate owners directory. This has one file per crate in
+# CROS_RUST_REGISTRY_INST_DIR that describes the package which installed the
+# crate's link in CROS_RUST_REGISTRY_INST_DIR. This is needed to support our
+# current preinst/postinst/prerm functions without introducing race conditions:
+# - prerm will delete a symlink if the symlink is owned by the current package
+# - preinst will delete a symlink regardless of ownership
+# - postinst installs a new symlink and declares ownership of it
+CROS_RUST_REGISTRY_OWNER_DIR="${CROS_RUST_REGISTRY_BASE}/owners"
 
 # Ignore odr violations in unit tests in asan builds
 # (https://github.com/rust-lang/rust/issues/41807).
 export ASAN_OPTIONS="detect_odr_violation=0"
+
+_cros-rust_flock_registry_with_diags() {
+	local args=( "$@" )
+	# 15 seconds of timeout is arbitrary, but should be large enough that
+	# folks don't see this message in error too many times.
+	flock --timeout=15 --conflict-exit-code=200 "${args[@]}"
+	local status=$?
+	if [[ "${status}" -ne 200 ]]; then
+		return "${status}"
+	fi
+
+	einfo "Acquiring the registry lock is taking a while. Full flock command: flock ${args[*]}"
+	einfo "If this command hangs indefinitely, you might have old processes hanging onto the lock."
+	flock "${args[@]}"
+}
 
 # @FUNCTION: cros-rust_get_reg_lock
 # @DESCRIPTION:
@@ -176,6 +259,12 @@ cros-rust_src_unpack() {
 		S+="/${CROS_RUST_SUBDIR}"
 	fi
 
+	if [[ -n "${CROS_RUST_PREINSTALLED_REGISTRY_CRATE}" ]]; then
+		local registry_dir="${ROOT}${CROS_RUST_REGISTRY_DIR}/${CROS_RUST_CRATE_NAME}-${CROS_RUST_CRATE_VERSION}"
+		[[ -d "${registry_dir}" ]] || die "Registry directory ${registry_dir} doesn't exist."
+		cp -r "${registry_dir}" "${S}" || die
+	fi
+
 	local archive
 	for archive in ${A}; do
 		case "${archive}" in
@@ -195,13 +284,17 @@ cros-rust_src_unpack() {
 	done
 
 	if [[ "${CROS_RUST_EMPTY_CRATE}" == "1" ]]; then
+		if [[ "${LICENSE}" != "metapackage" ]]; then
+			die "Set LICENSE=\"metapackage\" in empty crate ebuilds"
+		fi
+
 		# Generate an empty Cargo.toml and src/lib.rs for this crate.
 		mkdir -p "${S}/src"
 		cat <<- EOF >> "${S}/Cargo.toml"
 		[package]
 		name = "${CROS_RUST_CRATE_NAME}"
 		version = "${CROS_RUST_CRATE_VERSION}"
-		authors = ["The Chromium OS Authors"]
+		authors = ["The ChromiumOS Authors"]
 
 		[features]
 		EOF
@@ -217,6 +310,13 @@ cros-rust_src_unpack() {
 		done
 
 		touch "${S}/src/lib.rs"
+	else
+		if [[ -z "${LICENSE}" ]]; then
+			die "Missing LICENSE= setting in ebuild"
+		fi
+		if [[ "${LICENSE}" == "metapackage" ]]; then
+			die "LICENSE=metapackage is only allowed in empty crate ebuilds"
+		fi
 	fi
 
 	# Set up the cargo config.
@@ -248,6 +348,8 @@ cros-rust_src_unpack() {
 	fi
 
 	# Tell cargo not to use terminal colors if NOCOLOR is set.
+	# Shellcheck thinks NOCOLOR is never defined.
+	# shellcheck disable=SC2154
 	if [[ "${NOCOLOR}" == true || "${NOCOLOR}" == yes ]]; then
 		cat <<- EOF >> "${ECARGO_HOME}/config"
 
@@ -255,6 +357,65 @@ cros-rust_src_unpack() {
 		color = "never"
 		EOF
 	fi
+}
+
+# @FUNCTION: cros-rust-patch-cargo-toml
+# @USAGE: <path to Cargo.toml file>
+# @DESCRIPTION:
+# Patches the Cargo.toml at "${1}". This function supports
+# "# provided by ebuild" macro and "# ignored by ebuild" macro for replacing
+# and removing path dependencies.
+#
+# NOTE: the Cargo.toml will be modified in place. This is not compatible with
+# CROS_WORKON_OUTOFTREE_BUILD.
+cros-rust-patch-cargo-toml() {
+	local cargo_toml_path="${1}"
+	[[ -e "${cargo_toml_path}" ]] || die "Provided path doesn't exist"
+
+	# shellcheck disable=SC2154
+	if [[ "${CROS_WORKON_OUTOFTREE_BUILD}" == 1 ]]; then
+		die "CROS_WORKON_OUTOFTREE_BUILD=1 must not be set when using" \
+			"\`provided by ebuild\`"
+	fi
+
+	# '# provided by ebuild'
+	# Replace path dependencies with ones provided by their ebuild.
+	#
+	# For local developer builds, we want Cargo.toml to contain path
+	# dependencies on sibling crates within the same repository or elsewhere
+	# in the Chrome OS source tree. This enables developers to run `cargo
+	# build` and have dependencies resolve correctly to their locally
+	# checked out code.
+	#
+	# At the same time, some crates contained within the crosvm repository
+	# have their own ebuild independent of the crosvm ebuild so that they
+	# are usable from outside of crosvm. Ebuilds of downstream crates won't
+	# be able to depend on these crates by path dependency because that
+	# violates the build sandbox. We perform a sed replacement to eliminate
+	# the path dependency during ebuild of the downstream crates.
+	#
+	# The sed command says: in any line containing `# provided by ebuild`,
+	# please replace `path = "..."` with `version = "*"`. The intended usage
+	# is like this:
+	#
+	#     [dependencies]
+	#     data_model = { path = "../data_model" }  # provided by ebuild
+	#
+	# This also works with `git` attributes:
+	#     [dependencies]
+	#     bar = { git = "https://www.foo.com", branch = "a" }  # provided by ebuild
+	#     foo = { git = "https://www.foo.com", rev = "1234567" }  # provided by ebuild
+	#     foo = { git = "https://www.foo.com" }  # provided by ebuild
+	#
+	# '# ignored by ebuild'
+	# Emerge ignores "out-of-sandbox" [patch.crates-io] lines in Cargo.toml.
+	sed -i \
+		-e '/# ignored by ebuild/d' \
+		-e '/# provided by ebuild$/ {
+			s/\(path\|git\) = "[^"]*"/version = "*"/
+			s/,\? *\(branch\|rev\) = "[^"]*"//
+		}' \
+		"${cargo_toml_path}" || die
 }
 
 # @FUNCTION: cros-rust_src_prepare
@@ -266,53 +427,8 @@ cros-rust_src_unpack() {
 # ${S}/Cargo.toml, CROS_WORKON_OUTOFTREE_BUILD can't be set to 1 in its ebuild.
 cros-rust_src_prepare() {
 	debug-print-function "${FUNCNAME[0]}" "$@"
-	if grep -q "# provided by ebuild" "${S}/Cargo.toml"; then
-		# This triggers a linter error SC2154 which says:
-		#   "CROS_WORKON_OUTOFTREE_BUILD is used but not defined inside this file"
-		# Since CROS_WORKON_OUTOFTREE_BUILD comes from outside the file, that's ok
-		# shellcheck disable=SC2154
-		if [[ "${CROS_WORKON_OUTOFTREE_BUILD}" == 1 ]]; then
-			die "CROS_WORKON_OUTOFTREE_BUILD=1 must not be set when using" \
-				"\`provided by ebuild\`"
-		fi
-
-		# Replace path dependencies with ones provided by their ebuild.
-		#
-		# For local developer builds, we want Cargo.toml to contain path
-		# dependencies on sibling crates within the same repository or elsewhere
-		# in the Chrome OS source tree. This enables developers to run `cargo
-		# build` and have dependencies resolve correctly to their locally
-		# checked out code.
-		#
-		# At the same time, some crates contained within the crosvm repository
-		# have their own ebuild independent of the crosvm ebuild so that they
-		# are usable from outside of crosvm. Ebuilds of downstream crates won't
-		# be able to depend on these crates by path dependency because that
-		# violates the build sandbox. We perform a sed replacement to eliminate
-		# the path dependency during ebuild of the downstream crates.
-		#
-		# The sed command says: in any line containing `# provided by ebuild`,
-		# please replace `path = "..."` with `version = "*"`. The intended usage
-		# is like this:
-		#
-		#     [dependencies]
-		#     data_model = { path = "../data_model" }  # provided by ebuild
-		#
-		sed -i \
-			'/# provided by ebuild$/ s/path = "[^"]*"/version = "*"/' \
-			"${S}/Cargo.toml" || die
-	fi
-
-	if grep -q "# ignored by ebuild" "${S}/Cargo.toml"; then
-		if [[ "${CROS_WORKON_OUTOFTREE_BUILD}" == 1 ]]; then
-			die "CROS_WORKON_OUTOFTREE_BUILD=1 must not be set when using" \
-				"\`ignored by ebuild\`"
-		fi
-		# Emerge ignores "out-of-sandbox" [patch.crates-io] lines in
-		# Cargo.toml.
-		sed -i \
-			'/# ignored by ebuild/d' \
-			"${S}/Cargo.toml" || die
+	if grep -q "# provided by ebuild\|# ignored by ebuild" "${S}/Cargo.toml"; then
+		cros-rust-patch-cargo-toml "${S}/Cargo.toml"
 	fi
 
 	# Remove dev-dependencies and target.cfg sections within the Cargo.toml file
@@ -413,27 +529,42 @@ cros-rust_configure_cargo() {
 	# https://github.com/rust-lang/rust/issues/59125
 	cros-rust_use_sanitizers || export RUST_BACKTRACE=1
 
-	# We want debug info even in release builds.
+	local unstable_features="sanitizer"
+	[[ "${#CROS_RUST_EXTRA_ALLOWED_FEATURES[@]}" -ne 0 ]] && \
+		unstable_features+=$(printf ",%s" "${CROS_RUST_EXTRA_ALLOWED_FEATURES[@]}")
+	# We want to split the flags since it's a command line as a scalar.
+	# shellcheck disable=SC2206
 	local rustflags=(
-		"${CROS_BASE_RUSTFLAGS}"
-		-Cdebuginfo=2
-		-Copt-level=3
+		${CROS_BASE_RUSTFLAGS}
+		# We want debug info even in release builds.
+		"-Cdebuginfo=2"
+		# Please get approval from the toolchain team before setting
+		# CROS_RUST_EXTRA_ALLOWED_FEATURES in your package, as unstable features
+		# might be easily broken by toolchain updates.
+		"-Zallow-features=${unstable_features}"
 	)
 
-	if use lto
-	then
-		rustflags+=( -Clto=thin )
-		# rustc versions >= 1.45 support -Cembed-bitcode, which Cargo sets to
-		# no because it does not know that we want to use LTO.
-		# Because -Clto requires -Cembed-bitcode=yes, set it explicitly.
-		if [[ $(rustc --version | awk '{ gsub(/\./, ""); print $2 }') -ge 1450 ]]
-		then
-			rustflags+=( -Cembed-bitcode=yes )
-		fi
+	if [[ -n "${CROS_RUST_PACKAGE_IS_HOT}" ]]; then
+		rustflags+=( "-Copt-level=3" )
+	else
+		rustflags+=( "-Copt-level=s" )
 	fi
 
-	# We don't want to abort during tests.
-	use test || rustflags+=( -Cpanic=abort )
+	if use lto; then
+		rustflags+=(
+			"-Clto=thin"
+			"-Cllvm-args=--import-instr-limit=30"
+			# Cargo sets -Cembed-bitcode to no because it does not know that we want to
+			# use LTO. Because -Clto requires -Cembed-bitcode=yes, set it explicitly.
+			"-Cembed-bitcode=yes"
+		)
+	fi
+
+	# Set the panic=abort flag if it is turned on for the package.
+	if use panic-abort; then
+		# But never abort during tests.
+		use test || rustflags+=( -Cpanic=abort )
+	fi
 
 	if use cros-debug || [[ "${CROS_RUST_OVERFLOW_CHECKS}" == "1" ]]; then
 		rustflags+=( -Coverflow-checks=on )
@@ -441,19 +572,44 @@ cros-rust_configure_cargo() {
 
 	use cros-debug && rustflags+=( -Cdebug-assertions=on )
 
+	if use rust-coverage && [[ -z "${CROS_RUST_COVERAGE_DISABLED}" ]]; then
+		# TODO(b/215596245) Use rust-coverage use flag for rust packages.
+		rustflags+=( -Cinstrument-coverage )
+	else
+		# Remap source directories because of the following:
+		# * crashes from panics are grouped across different boards
+		# * the remapped strings are shorter resulting in smaller binaries
+		# NOTE: this is disabled with code coverage enabled since it is
+		#   incompatible.
+		rustflags+=(
+			# This shouldn't be needed because cargo includes local sources
+			# with relative paths, but just-in-case remap the source directory.
+			"--remap-path-prefix=${S}=[${PN}]"
+			# Remap the cros_rust_registry/registry directory.
+			"--remap-path-prefix=${SYSROOT}${CROS_RUST_REGISTRY_INST_DIR}=[REGISTRY]"
+			# Remap the target directory for generated sources.
+			"--remap-path-prefix=${CARGO_TARGET_DIR}=[TARGET]"
+		)
+	fi
+
 	# Rust compiler is not exporting the __asan_* symbols needed in
 	# asan builds. Force export-dynamic linker flag to export __asan_* symbols
 	# https://crbug.com/1085546
-	use asan && rustflags+=( -Csanitizer=address -Clink-arg="-Wl,-export-dynamic" )
-	use lsan && rustflags+=( -Csanitizer=leak )
-	use msan && rustflags+=( -Csanitizer=memory -Clink-arg="-Wl,--allow-shlib-undefined")
-	use tsan && rustflags+=( -Csanitizer=thread )
+	use asan && rustflags+=( -Zsanitizer=address -Clink-arg="-Wl,-export-dynamic" )
+	use lsan && rustflags+=( -Zsanitizer=leak )
+	use msan && rustflags+=( -Zsanitizer=memory -Clink-arg="-Wl,--allow-shlib-undefined")
+	use tsan && rustflags+=( -Zsanitizer=thread )
 	use ubsan && rustflags+=( -Clink-arg=-fsanitize=undefined )
 
 	if use fuzzer; then
 		rustflags+=(
+			# We can get segfaults unless we turn this off; see
+			# https://github.com/rust-lang/rust/issues/99886
+			# Presumably we can remove this once that bug is
+			# resolved.
+			-Cllvm-args=-experimental-debug-variable-locations=0
 			--cfg fuzzing
-			-Cpasses=sancov
+			-Cpasses=sancov-module
 			-Cllvm-args=-sanitizer-coverage-level=4
 			-Cllvm-args=-sanitizer-coverage-inline-8bit-counters
 			-Cllvm-args=-sanitizer-coverage-trace-compares
@@ -474,7 +630,9 @@ cros-rust_configure_cargo() {
 	# Add EXTRA_RUSTFLAGS to the current rustflags. This lets us emerge rust
 	# packages with locally exported flags for testing purposes as:
 	# `EXTRA_RUSTFLAGS="<flags>" emerge-$BOARD <package>`
-	rustflags+=( "${EXTRA_RUSTFLAGS:=}" )
+	# We want to split the flags since it's a command line as a scalar.
+	# shellcheck disable=SC2206
+	rustflags+=( ${EXTRA_RUSTFLAGS:=} )
 
 	# Ensure RUSTFLAGS is *not* set in the environment.
 	# If it is, it will override the flags we configure below. See:
@@ -487,34 +645,44 @@ cros-rust_configure_cargo() {
 	# This [target] section will apply to *all* targets, CHOST and CBUILD.
 	# TODO(dcallagh): some flags above are not applicable to all targets,
 	# they should be configured into suitable [target] sections.
-	# TODO(dcallagh): escape TOML values correctly instead of assuming
-	# that no rustflags contain spaces or quotes.
+	local rustflags_list=$(printf "    %s,\n" "${rustflags[@]@Q}")
 	cat <<- EOF >> "${ECARGO_HOME}/config"
 
 	[target.'cfg(all())']
-	rustflags = "${rustflags[*]}"
+	rustflags = [
+	${rustflags_list}
+	]
 	EOF
 }
 
 # @FUNCTION: cros-rust_update_cargo_lock
 # @DESCRIPTION:
 # Regenerates/removes the Cargo.lock file to ensure cargo uses the dependency
-# versions from our local registry.
+# versions from our local registry, and checks the rustc version to make sure
+# intermediates aren't mixed across rustc versions.
 cros-rust_update_cargo_lock() {
 	debug-print-function "${FUNCNAME[0]}"
 
 	if [[ -n "${CROS_WORKON_PROJECT}" ]]; then
 		# Force an update the Cargo.lock file.
 		ecargo generate-lockfile
+		# Shellcheck thinks CROS_WORKON_INCREMENTAL_BUILD is never
+		# defined.
+		# shellcheck disable=SC2154
 		if [[ "${CROS_WORKON_INCREMENTAL_BUILD}" == "1" ]]; then
 			local previous_lockfile="${CARGO_TARGET_DIR}/Cargo.lock.prev"
+			local previous_rustc="${CARGO_TARGET_DIR}/rustc.ver"
+			local rustc_ver="$(rust-toolchain-version)"
 			# If any of the dependencies have changed, clear the incremental results.
 			if [[ ! -f "${previous_lockfile}" ]] ||
+					[[ ! -f "${previous_rustc}" ]] ||
+					[[ "$(< "${previous_rustc}")" != "${rustc_ver}" ]] ||
 					! cmp Cargo.lock "${previous_lockfile}" ; then
 				# This will print errors for the .crate files, but that is OK.
 				rm -rf "${CARGO_TARGET_DIR}"
 				mkdir -p "${CARGO_TARGET_DIR}"
 				cp Cargo.lock "${previous_lockfile}" || die
+				echo "${rustc_ver}" > "${previous_rustc}" || die
 			fi
 		fi
 	else
@@ -551,7 +719,7 @@ ecargo() {
 	addwrite Cargo.lock
 
 	# Acquire a shared (read only) lock since this does not modify the registry.
-	flock --shared "$(cros-rust_get_reg_lock)" cargo -v "$@"
+	_cros-rust_flock_registry_with_diags --shared "$(cros-rust_get_reg_lock)" cargo -v "$@"
 	local status="$?"
 
 	# This needs to be executed on both success and failure.
@@ -578,7 +746,7 @@ _ecargo_write_clippy() {
 	local sysroot_old="${SYSROOT}"
 	SYSROOT=$(rustc --print sysroot)
 	echo "{\"package_path\":\"${S}\"}" > "${clippy_output_base}/${PF}.json"
-	ecargo clippy ---message-format json --target="${CHOST}" --release \
+	ecargo clippy --message-format json --target="${CHOST}" --release \
 		--manifest-path="${S}/Cargo.toml" >> "${clippy_output_base}/${PF}.json"
 	export SYSROOT="${sysroot_old}"
 }
@@ -619,11 +787,11 @@ ecargo_build_fuzzer() {
 	ecargo rustc --target="${CHOST}" --release "$@" -- "${link_args[@]}"
 }
 
-# @FUNCTION: cros_rust_platform_test
+# @FUNCTION: cros_rust_platform_test_command
 # @USAGE: <action> <bin> [-- [<test-args> ...]]
 # @DESCRIPTION:
-# Invokes platform2_test.py
-cros_rust_platform_test() {
+# Prints the platform2_test.py command line to execute the specified test binary
+cros_rust_platform_test_command() {
 	local platform2_test_py="${CHROOT_SOURCE_ROOT}/src/platform2/common-mk/platform2_test.py"
 
 	local action="$1"
@@ -635,13 +803,15 @@ cros_rust_platform_test() {
 	local cmd=(
 		"${platform2_test_py}"
 		--action="${action}"
+		--strategy=unprivileged
+		--user=root
 	)
 
 	if use cros_host || has "${bin}" "${CROS_RUST_HOST_TESTS[@]}"; then
-		cmd+=( "--host" )
-		if [[ "${EAPI}" == "7" ]]; then
-			cmd+=( --sysroot="${BROOT}" )
-		fi
+		cmd+=(
+			"--host"
+			--sysroot="${BROOT}"
+		)
 	else
 		cmd+=( --sysroot="${SYSROOT}" )
 	fi
@@ -656,8 +826,7 @@ cros_rust_platform_test() {
 			"${@:4}"
 		)
 	fi
-	debug-print-function "${cmd[@]}"
-	"${cmd[@]}" || die
+	printf "%q " "${cmd[@]}"
 }
 
 # @FUNCTION: ecargo_test
@@ -666,10 +835,15 @@ cros_rust_platform_test() {
 # Call `cargo test` with the specified command line options.
 ecargo_test() {
 	local test_dir="${CARGO_TARGET_DIR}/ecargo-test"
+	local profile_flag=""
+	if ! has "--profile" "$@"; then
+		profile_flag="--release"
+	fi
 	if has "--no-run" "$@"; then
 		debug-print-function ecargo test --target="${CHOST}" --target-dir \
-			"${test_dir}" --release "$@"
-		ecargo test --target="${CHOST}" --target-dir "${test_dir}" --release "$@"
+			"${test_dir}" "${profile_flag}" "$@"
+		ecargo test --target="${CHOST}" --target-dir \
+			"${test_dir}" "${profile_flag}" "$@"
 	else
 		cros-rust_get_test_executables "$@"
 
@@ -691,10 +865,17 @@ ecargo_test() {
 			test_args+=( "--test-threads=$(makeopts_jobs)" )
 		fi
 
+		local jobs=1
+		if [[ "${CROS_RUST_TEST_MULTIPROCESS}" == "yes" ]]; then
+			jobs="$(makeopts_jobs)"
+		fi
+
 		local testfile
 		for testfile in "${CROS_RUST_TESTS[@]}"; do
-			cros_rust_platform_test run "${testfile}" "${test_args[@]}"
-		done
+			cros_rust_platform_test_command run "${testfile}" "${test_args[@]}"
+			# Print a NUL delimiter to separate each command.
+			printf "\0"
+		done | xargs -0 -P "${jobs}" --verbose -I '{}' bash -x -c "{}" || die
 	fi
 }
 
@@ -704,6 +885,10 @@ ecargo_test() {
 # Call `ecargo_test` with '--no-run' and '--message-format=json' arguments.
 # Then, use jq to parse and store all the test executables in a global array.
 cros-rust_get_test_executables() {
+	# Make sure all the targets are built before generating the json. This ensures
+	# any error messages will not be hidden.
+	ecargo_test --no-run "$@" || die
+
 	mapfile -t CROS_RUST_TESTS < \
 		<(ecargo_test --no-run --message-format=json "$@" | \
 		jq -r 'select(.profile.test == true) | .filenames[]')
@@ -743,6 +928,9 @@ cros-rust_get_host_test_executables() {
 cros-rust_publish() {
 	debug-print-function "${FUNCNAME[0]}" "$@"
 
+	[[ -n "${CROS_RUST_PREINSTALLED_REGISTRY_CRATE}" ]] && \
+		die "cros-rust_publish should not be called for preinstalled registry crates"
+
 	if [[ "${EBUILD_PHASE_FUNC}" != "src_install" ]]; then
 		die "${FUNCNAME[0]}() should only be used in src_install() phase"
 	fi
@@ -760,8 +948,20 @@ cros-rust_publish() {
 	local name="${1:-${CROS_RUST_CRATE_NAME}}"
 	local version="${2:-${default_version}}"
 
+	# Cargo.toml.orig is now reserved by `cargo package`.
+	if [[ -e Cargo.toml.orig ]]; then
+		# Don't try to delete it if it isn't present, because that can
+		# be a permission error in the Portage sandbox.
+		rm -f Cargo.toml.orig || die
+	fi
+
+	if [[ -n "${CROS_WORKON_PROJECT}" ]]; then
+		[[ -e "${FILESDIR}/chromeos-version.sh" ]] || die \
+			"Missing chromeos-version.sh. Please add one for installation to work properly."
+	fi
+
 	# Create the .crate file.
-	ecargo package --allow-dirty --no-metadata --no-verify || die
+	ecargo package --allow-dirty --no-metadata --no-verify --offline || die
 
 	# Unpack the crate we just created into the directory registry.
 	local crate="${CARGO_TARGET_DIR}/package/${name}-${version}.crate"
@@ -792,7 +992,7 @@ cros-rust_publish() {
 	local f
 	for f in "${files[@]}"; do
 		shasum="$(sha256sum "${f}" | cut -d ' ' -f 1)"
-		printf '\t\t"%s": "%s"' "${f#${dir}/}" "${shasum}" >> "${checksum}"
+		printf '\t\t"%s": "%s"' "${f#"${dir}"/}" "${shasum}" >> "${checksum}"
 
 		# The json parser is unnecessarily strict about not allowing
 		# commas on the last line so we have to track this ourselves.
@@ -838,7 +1038,6 @@ cros-rust_src_compile() {
 	[[ -z "${CROS_WORKON_PROJECT}" ]] && return 0
 
 	ecargo_build "$@"
-	use test && ecargo_test --no-run "$@"
 }
 
 cros-rust_src_test() {
@@ -848,9 +1047,8 @@ cros-rust_src_test() {
 		return 0
 	fi
 
-	cros_rust_platform_test "pre_test"
+	eval "$(cros_rust_platform_test_command "pre_test")"
 	ecargo_test "$@"
-	cros_rust_platform_test "post_test"
 }
 
 cros-rust_src_install() {
@@ -883,13 +1081,15 @@ _cros-rust_prepare_lock() {
 
 # @FUNCTION: _cleanup_registry_link
 # @INTERNAL
-# @USAGE: [crate name] [crate version]
+# @USAGE: force [crate name] [crate version]
 # @DESCRIPTION:
 # Unlink a library crate from the local registry. This is repeated in the prerm
-# and preinst stages.
+# and preinst stages. If force is nonempty, the link will be cleaned up
+# regardless of declared ownership. Otherwise, ownership will be respected.
 _cleanup_registry_link() {
-	local name="${1:-${CROS_RUST_CRATE_NAME}}"
-	local version="${2:-${CROS_RUST_CRATE_VERSION}}"
+	local force="$1"
+	local name="${2:-${CROS_RUST_CRATE_NAME}}"
+	local version="${3:-${CROS_RUST_CRATE_VERSION}}"
 	local crate="${name}-${version}"
 
 	local crate_dir="${ROOT}${CROS_RUST_REGISTRY_DIR}/${crate}"
@@ -901,44 +1101,35 @@ _cleanup_registry_link() {
 	local link="${registry_dir}/${crate}"
 	# Add a check to avoid spamming when it doesn't exist (e.g. binary crates).
 	if [[ -L "${link}" ]]; then
-		einfo "Removing ${crate} from Cargo registry"
 		# Acquire a exclusive lock since this modifies the registry.
 		_cros-rust_prepare_lock "$(cros-rust_get_reg_lock)"
-		# This triggers a linter error SC2016 which says:
-		#   "Expressions don't expand in single quotes, use double quotes for that."
-		# In this case, though, that is exactly what we want since we need the string
-		# to be passed to sh without being evaluated first.
-		# shellcheck disable=SC2016
-		flock --no-fork --exclusive "$(cros-rust_get_reg_lock)" \
-			sh -c 'rm -f "$0"' "${link}" || die
+		(
+			local owner="${ROOT}${CROS_RUST_REGISTRY_OWNER_DIR}/${crate}"
+			local removed
+			_cros-rust_flock_registry_with_diags --exclusive 100 || die
+			if [[ -n ${force} ]] || [[ $(< "${owner}") == "${PF}" ]]; then
+				rm -f "${link}" "${owner}" || die
+				removed=1
+			fi
+			flock -u 100
+
+			if [[ -n "${removed}" ]]; then
+				einfo "Removed ${crate} from Cargo registry"
+			else
+				einfo "${crate} removal from Cargo registry" \
+					"skipped due to new symlink owner"
+			fi
+		) 100>"$(cros-rust_get_reg_lock)"
 	fi
 }
 
-# @FUNCTION: cros-rust_pkg_preinst
+# @FUNCTION: _create_registry_link
+# @INTERNAL
 # @USAGE: [crate name] [crate version]
 # @DESCRIPTION:
-# Make sure a library crate isn't linked in the local registry prior to the
-# install step to avoid races.
-cros-rust_pkg_preinst() {
-	debug-print-function "${FUNCNAME[0]}" "$@"
-	if [[ "${EBUILD_PHASE_FUNC}" != "pkg_preinst" ]]; then
-		die "${FUNCNAME[0]}() should only be used in pkg_preinst() phase"
-	fi
-
-	_cleanup_registry_link "$@"
-}
-
-# @FUNCTION: cros-rust_pkg_postinst
-# @USAGE: [crate name] [crate version]
-# @DESCRIPTION:
-# Install a library crate in the local registry store into the registry,
-# making it visible to Cargo.
-cros-rust_pkg_postinst() {
-	debug-print-function "${FUNCNAME[0]}" "$@"
-	if [[ "${EBUILD_PHASE_FUNC}" != "pkg_postinst" ]]; then
-		die "${FUNCNAME[0]}() should only be used in pkg_postinst() phase"
-	fi
-
+# Link a library crate from the local registry. This is performed in the
+# postinst stage.
+_create_registry_link() {
 	local name="${1:-${CROS_RUST_CRATE_NAME}}"
 	local version="${2:-${CROS_RUST_CRATE_VERSION}}"
 	local crate="${name}-${version}"
@@ -951,28 +1142,166 @@ cros-rust_pkg_postinst() {
 		crate="$(basename "${crate_dir}")"
 	fi
 
-	# Don't install links for binary-only crates as they won't have any
-	# library crates to register.  This avoids dangling symlinks.
+	# Only install the link if there is a library crates to register. This
+	# avoids dangling symlinks in the case that this only installs
+	# executables.
 	if [[ -e "${crate_dir}" ]]; then
-		local dest="${registry_dir}/${crate}"
+		local owners_dir="${ROOT}${CROS_RUST_REGISTRY_OWNER_DIR}"
 		einfo "Linking ${crate} into Cargo registry at ${registry_dir}"
-		mkdir -p "${registry_dir}"
-		flock --no-fork --exclusive "$(cros-rust_get_reg_lock)" \
-			ln -srT "${crate_dir}" "${dest}" || die
+		mkdir -p "${registry_dir}" "${owners_dir}"
+		# A redundant link presence check is used inside the lock
+		# because we do not want to lock if we don't have to, but there
+		# is a time-of-check to time-of-use issue that shows up if the
+		# link presence check is not in the lock (two ebuilds may try to
+		# create the same lock with one succeeding and the other failing
+		# because the link already exists).
+		(
+			local dest="${registry_dir}/${crate}"
+			local owners="${owners_dir}/${crate}"
+			_cros-rust_flock_registry_with_diags --exclusive 100 || die
+			if [[ ! -L "${dest}" ]]; then
+				ln -srT "${crate_dir}" "${dest}" || die
+			fi
+			echo -n "${PF}" > "${owners}" || die
+		) 100>"$(cros-rust_get_reg_lock)"
 	fi
+}
+
+# @FUNCTION: cros-rust_cleanup_vendor_registry_links
+# @DESCRIPTION: force [crate name ...]
+# This cleans up the given vendor directories. If force is nonempty, their links
+# will be cleaned up regardless of declared ownership. Otherwise, ownership will
+# be respected.
+cros-rust_cleanup_vendor_registry_links() {
+	local force="$1"
+	shift
+	local dirs=( "$@" )
+
+	local owner_dir="${ROOT}${CROS_RUST_REGISTRY_OWNER_DIR}"
+	# The registry might not exist. In that case, great; skip everything.
+	# Check the owner dir rather than the registry dir, since the registry
+	# dir is created before the owner dir, and both are needed for the logic
+	# below.
+	[[ -e "${owner_dir}" ]] || return 0
+
+	local dir remove_paths=()
+	for dir in "${dirs[@]}"; do
+		remove_paths+=( "${dir##*/}" )
+	done
+
+	(
+		local owned_files=()
+
+		cd "${owner_dir}" || die
+		_cros-rust_flock_registry_with_diags --exclusive 100 || die
+		if [[ -n "${force}" ]]; then
+			owned_files=( "${remove_paths[@]}" )
+		else
+			for path in "${remove_paths[@]}"; do
+				if [[ "$(< "${path}" 2>/dev/null)" == "${PF}" ]]; then
+					owned_files+=( "${path}" )
+				fi
+			done
+		fi
+
+		rm -f "${owned_files[@]}" || die
+		cd "${ROOT}${CROS_RUST_REGISTRY_INST_DIR}" || die
+		rm -f "${owned_files[@]}" || die
+	) 100>"$(cros-rust_get_reg_lock)"
+}
+
+# @FUNCTION: cros-rust_create_vendor_registry_links
+# @DESCRIPTION: [crate name ...]
+# creates a registry link for every crate in [vendor tree base]. [vendor tree
+# base] should be a path to the root of a Cargo vendor/ directory. Intended
+# specifically for use by third-party-crates-src.
+#
+# This assumes that all of the crates in [vendor tree base] have been installed
+# in the registry directory.
+cros-rust_create_vendor_registry_links() {
+	local dirs=( "$@" )
+
+	# If the registry itself doesn't exist, portage has masked
+	# installations to it (e.g., we're in `build_image`, and installing
+	# registry symlinks is useless). Skip it.
+	[[ -e "${ROOT}${CROS_RUST_REGISTRY_DIR}" ]] || return 0
+
+	local registry_dir="${ROOT}${CROS_RUST_REGISTRY_INST_DIR}"
+	local owner_dir="${ROOT}${CROS_RUST_REGISTRY_OWNER_DIR}"
+	mkdir -p "${registry_dir}" "${owner_dir}" || die
+
+	# Use a subshell so we can conveniently lock the registry lock only once.
+	(
+		local crate_srcs="${ROOT}${CROS_RUST_REGISTRY_DIR}"
+		local crate crate_src
+		local crates_dne=()
+		_cros-rust_flock_registry_with_diags --exclusive 100 || die
+		for crate in "${dirs[@]}"; do
+			crate_src="${crate_srcs}/${crate}"
+			# Ensure crates exist prior to creating links. These
+			# should always exist.
+			if [[ -e "${crate_src}" ]]; then
+				ln -srTf "${crate_src}" "${registry_dir}/${crate}" || die
+				echo "${PF}" > "${owner_dir}/${crate}" || die
+			else
+				crates_dne+=( "${crate_src}" )
+			fi
+		done
+
+		if [[ "${#crates_dne[@]}" -ne 0 ]]; then
+			die "Created links with crates that DNE: ${crates_dne[*]}"
+		fi
+	) 100>"$(cros-rust_get_reg_lock)"
+}
+
+# @FUNCTION: cros-rust_pkg_preinst
+# @USAGE: [crate name] [crate version]
+# @DESCRIPTION:
+# Make sure a library crate isn't linked in the local registry prior to the
+# install step to avoid races.
+cros-rust_pkg_preinst() {
+	[[ -n "${CROS_RUST_PREINSTALLED_REGISTRY_CRATE}" ]] && return
+	debug-print-function "${FUNCNAME[0]}" "$@"
+
+	if [[ "${EBUILD_PHASE_FUNC}" != "pkg_preinst" ]]; then
+		die "${FUNCNAME[0]}() should only be used in pkg_preinst() phase"
+	fi
+
+	# Forcibly remove any existing link.
+	_cleanup_registry_link 1 "$@"
+}
+
+# @FUNCTION: cros-rust_pkg_postinst
+# @USAGE: [crate name] [crate version]
+# @DESCRIPTION:
+# Install a library crate in the local registry store into the registry,
+# making it visible to Cargo.
+cros-rust_pkg_postinst() {
+	debug-print-function "${FUNCNAME[0]}" "$@"
+	[[ -n "${CROS_RUST_PREINSTALLED_REGISTRY_CRATE}" ]] && return
+
+	if [[ "${EBUILD_PHASE_FUNC}" != "pkg_postinst" ]]; then
+		die "${FUNCNAME[0]}() should only be used in pkg_postinst() phase"
+	fi
+
+	_create_registry_link "$@"
 }
 
 # @FUNCTION: cros-rust_pkg_prerm
 # @USAGE: [crate name] [crate version]
 # @DESCRIPTION:
-# Unlink a library crate from the local registry.
+# Unlink a library crate from the local registry unless another package now owns
+# the link.
 cros-rust_pkg_prerm() {
 	debug-print-function "${FUNCNAME[0]}" "$@"
+	[[ -n "${CROS_RUST_PREINSTALLED_REGISTRY_CRATE}" ]] && return
+
 	if [[ "${EBUILD_PHASE_FUNC}" != "pkg_prerm" ]]; then
 		die "${FUNCNAME[0]}() should only be used in pkg_prerm() phase"
 	fi
 
-	_cleanup_registry_link "$@"
+	# Clean the link only if it's still owned by us
+	_cleanup_registry_link "" "$@"
 }
 
 # @FUNCTION: cros-rust_get_crate_version

@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -7,15 +7,18 @@ CROS_WORKON_INCREMENTAL_BUILD=1
 CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_OUTOFTREE_BUILD=1
-CROS_WORKON_SUBTREE="common-mk libpasswordprovider system-proxy .gn"
+CROS_WORKON_SUBTREE="common-mk libpasswordprovider net-base system-proxy .gn"
 
 PLATFORM_SUBDIR="system-proxy"
+# Do not run test parallelly for system-proxy. See b/293997430.
+# shellcheck disable=SC2034
+PLATFORM_PARALLEL_GTEST_TEST="no"
 
 inherit cros-workon platform user
 
 DESCRIPTION="A daemon that provides authentication support for system services
 and ARC apps behind an authenticated web proxy."
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/system-proxy/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/system-proxy/"
 
 LICENSE="BSD-Google"
 SLOT="0/0"
@@ -25,6 +28,7 @@ IUSE="fuzzer"
 COMMON_DEPEND="
 	chromeos-base/libpasswordprovider:=
 	chromeos-base/minijail:=
+	chromeos-base/net-base:=
 	chromeos-base/patchpanel:=
 	chromeos-base/patchpanel-client:=
 	dev-libs/protobuf:=
@@ -38,27 +42,19 @@ DEPEND="
 	fuzzer? ( dev-libs/libprotobuf-mutator:= )
 "
 
+BDEPEND="
+	chromeos-base/chromeos-dbus-bindings
+	chromeos-base/minijail
+	dev-libs/protobuf
+"
+
 pkg_preinst() {
 	enewuser "system-proxy"
 	enewgroup "system-proxy"
 }
 
 src_install() {
-	dosbin "${OUT}"/system_proxy
-	dosbin "${OUT}"/system_proxy_worker
-
-	insinto /etc/dbus-1/system.d
-	doins dbus/org.chromium.SystemProxy.conf
-
-	insinto /usr/share/dbus-1/system-services
-	doins dbus/org.chromium.SystemProxy.service
-
-	insinto /etc/init
-	doins init/system-proxy.conf
-
-	insinto /usr/share/policy
-	newins seccomp/system-proxy-seccomp-"${ARCH}".policy system-proxy-seccomp.policy
-	newins seccomp/system-proxy-worker-seccomp-"${ARCH}".policy system-proxy-worker-seccomp.policy
+	platform_src_install
 
 	if use fuzzer; then
 		local fuzzer_component_id="156085"
@@ -72,5 +68,5 @@ src_install() {
 }
 
 platform_pkg_test() {
-	platform_test "run" "${OUT}/system-proxy_test"
+	platform test_all
 }

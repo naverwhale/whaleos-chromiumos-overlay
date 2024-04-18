@@ -1,8 +1,8 @@
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Copyright 2016 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 # $Header: $
 
-EAPI="4"
+EAPI="7"
 CROS_WORKON_PROJECT="chromiumos/third_party/em100"
 
 inherit cros-workon toolchain-funcs
@@ -17,10 +17,8 @@ KEYWORDS="~*"
 DEPEND="virtual/libusb:1"
 RDEPEND="${DEPEND}"
 
-src_compile() {
+src_configure() {
 	tc-export CC PKG_CONFIG
-
-	emake
 }
 
 src_install() {

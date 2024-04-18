@@ -1,0 +1,15 @@
+BDEPEND=>=dev-util/ninja-1.8.2 >=dev-util/cmake-3.20.5
+DEFINED_PHASES=compile configure install prepare test unpack
+DEPEND=virtual/opengles media-libs/minigbm media-libs/libpng vulkan? ( virtual/vulkan-icd ) x11-drivers/opengles-headers x11-libs/libX11
+DESCRIPTION=drawElements Quality Program - an OpenGL ES testsuite
+EAPI=7
+HOMEPAGE=https://github.com/KhronosGroup/VK-GL-CTS
+IUSE=-vulkan asan cfi cfi_diag cfi_recover coverage fuzzer msan thinlto tsan ubsan
+KEYWORDS=*
+LICENSE=Apache-2.0
+RDEPEND=virtual/opengles media-libs/minigbm media-libs/libpng vulkan? ( virtual/vulkan-icd )
+REQUIRED_USE=cfi? ( thinlto ) cfi_diag? ( cfi ) cfi_recover? ( cfi_diag )
+SLOT=0
+SRC_URI=https://android.googlesource.com/platform/external/deqp/+archive/e77b3d567fe30d38659962e1305f87f5bbec9244.tar.gz -> deqp-android13-e77b3d567fe30d38659962e1305f87f5bbec9244.tar.gz https://github.com/KhronosGroup/glslang/archive/43d585d8636ebf765e567cef197b4580af8518fb.tar.gz -> glslang-43d585d8636ebf765e567cef197b4580af8518fb.tar.gz https://github.com/KhronosGroup/SPIRV-Tools/archive/20b122b2e0d43fcc322a383354d1a3f4514e3757.tar.gz -> SPIRV-Tools-20b122b2e0d43fcc322a383354d1a3f4514e3757.tar.gz https://github.com/KhronosGroup/SPIRV-Headers/archive/b42ba6d92faf6b4938e6f22ddd186dbdacc98d78.tar.gz -> SPIRV-Headers-b42ba6d92faf6b4938e6f22ddd186dbdacc98d78.tar.gz https://github.com/google/amber/archive/615ab4863f7d2e31d3037d0c6a0f641fd6fc0d07.tar.gz -> amber-615ab4863f7d2e31d3037d0c6a0f641fd6fc0d07.tar.gz
+_eclasses_=cmake	34502c2b638b59994575d53ba3805d7b	cros-sanitizers	4504f3661db0fe02309acd3555785cf2	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	ninja-utils	578ba3585e2f3ebe63ab00c07874016e	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	xdg-utils	ff2ff954e6b17929574eee4efc5152ba
+_md5_=6e76f0753c80d619d616a2dc36defc9d

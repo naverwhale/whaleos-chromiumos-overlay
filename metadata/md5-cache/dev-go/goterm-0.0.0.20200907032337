@@ -1,0 +1,11 @@
+BDEPEND=dev-lang/go
+DEFINED_PHASES=compile install nofetch postinst test unpack
+DESCRIPTION=Go Terminal library with PTY support and colors
+EAPI=7
+HOMEPAGE=https://github.com/google/goterm
+KEYWORDS=*
+LICENSE=BSD-Google
+SLOT=0
+SRC_URI=https://github.com/google/goterm/archive/555d40f16ae2fad8b4429d18d5cb777e75e5a9dc.tar.gz -> github.com-google-goterm-555d40f16ae2fad8b4429d18d5cb777e75e5a9dc.tar.gz
+_eclasses_=cros-go	77ba1c1ddf5c20dab7e47e19efeffef7	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=7c4b0429640e2a7eac4172dbb92a7a9a

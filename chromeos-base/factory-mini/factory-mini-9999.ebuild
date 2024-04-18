@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -17,15 +17,15 @@
 EAPI=7
 CROS_WORKON_PROJECT="chromiumos/platform/factory"
 CROS_WORKON_LOCALNAME="platform/factory"
-PYTHON_COMPAT=( python3_{4,5,6,7} )
+PYTHON_COMPAT=( python3_{8..11} )
 
-inherit cros-workon python-r1
+inherit cros-workon python-any-r1
 
 # TODO(b/155841952): Merge installer and factory-mini.par
 
 # External dependencies (sync with factory.ebuild)
 LOCAL_MIRROR_URL="http://commondatastorage.googleapis.com/chromeos-localmirror/"
-WEBGL_AQUARIUM_URI="${LOCAL_MIRROR_URL}/distfiles/webgl-aquarium-20130524.tar.bz2"
+WEBGL_AQUARIUM_URI="${LOCAL_MIRROR_URL}/distfiles/webgl-aquarium-20221212.tar.bz2"
 SRC_URI="${WEBGL_AQUARIUM_URI}"
 
 DESCRIPTION="Subset of factory software to be installed in test images"
@@ -34,13 +34,37 @@ LICENSE="BSD-Google"
 KEYWORDS="~*"
 IUSE=""
 
-DEPEND="${PYTHON_DEPS}
-	dev-python/jsonrpclib:=
-	dev-python/pyyaml:=
-	dev-python/protobuf-python:=
+DEPEND="
 	virtual/chromeos-bsp-factory:=
 	virtual/chromeos-regions:=
 "
+
+RDEPEND="chromeos-base/factory-deps"
+
+# shellcheck disable=SC2016
+BDEPEND="
+	app-arch/makeself
+	app-arch/zip
+	dev-java/java-config
+	dev-lang/closure-compiler-bin
+	dev-libs/closure-library
+	dev-libs/protobuf
+	$(python_gen_any_dep '
+		dev-python/jsonrpclib[${PYTHON_USEDEP}]
+		dev-python/jsonschema[${PYTHON_USEDEP}]
+		dev-python/protobuf-python[${PYTHON_USEDEP}]
+		dev-python/pyyaml[${PYTHON_USEDEP}]
+	')
+	sys-devel/gettext
+"
+
+python_check_deps() {
+	python_has_version -b \
+		"dev-python/jsonrpclib[${PYTHON_USEDEP}]" \
+		"dev-python/jsonschema[${PYTHON_USEDEP}]" \
+		"dev-python/protobuf-python[${PYTHON_USEDEP}]" \
+		"dev-python/pyyaml[${PYTHON_USEDEP}]"
+}
 
 pkg_setup() {
 	cros-workon_pkg_setup
@@ -65,6 +89,7 @@ src_configure() {
 	export BOARD="${SYSROOT##*/}"
 	export TARGET_DIR=/usr/local/factory
 	export WEBGL_AQUARIUM_DIR="${WORKDIR}/webgl_aquarium_static"
+	export CLOSURE_LIB_DIR="/opt/closure-library"
 }
 
 src_compile() {

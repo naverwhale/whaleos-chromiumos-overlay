@@ -1,3 +1,1 @@
-allenwebb@chromium.org
-jorgelo@chromium.org
-mnissler@chromium.org
+include chromiumos/owners:v1:/security/OWNERS.packages

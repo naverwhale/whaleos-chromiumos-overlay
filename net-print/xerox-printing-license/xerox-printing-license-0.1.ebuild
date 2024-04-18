@@ -6,7 +6,7 @@
 # but in order for their associated licenses to appear in the os-credits page a
 # license must be generated from an ebuild.
 
-EAPI=6
+EAPI="7"
 
 DESCRIPTION="Licenses for Xerox PPD files"
 HOMEPAGE="http://dev.chromium.org"

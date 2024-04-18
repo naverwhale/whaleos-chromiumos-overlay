@@ -1,13 +1,14 @@
-BDEPEND=dev-vcs/git
+BDEPEND=app-arch/makeself app-arch/zip dev-java/java-config dev-lang/closure-compiler-bin dev-libs/closure-library dev-libs/protobuf || ( ( dev-lang/python:3.8 dev-python/jsonrpclib[python_targets_python3_8(-),python_single_target_python3_8(+)] dev-python/jsonschema[python_targets_python3_8(-),python_single_target_python3_8(+)] dev-python/protobuf-python[python_targets_python3_8(-),python_single_target_python3_8(+)] dev-python/pyyaml[python_targets_python3_8(-),python_single_target_python3_8(+)] ) ( dev-lang/python:3.9 dev-python/jsonrpclib[python_targets_python3_9(-),python_single_target_python3_9(+)] dev-python/jsonschema[python_targets_python3_9(-),python_single_target_python3_9(+)] dev-python/protobuf-python[python_targets_python3_9(-),python_single_target_python3_9(+)] dev-python/pyyaml[python_targets_python3_9(-),python_single_target_python3_9(+)] ) ( dev-lang/python:3.10 dev-python/jsonrpclib[python_targets_python3_10(-),python_single_target_python3_10(+)] dev-python/jsonschema[python_targets_python3_10(-),python_single_target_python3_10(+)] dev-python/protobuf-python[python_targets_python3_10(-),python_single_target_python3_10(+)] dev-python/pyyaml[python_targets_python3_10(-),python_single_target_python3_10(+)] ) ( dev-lang/python:3.11 dev-python/jsonrpclib[python_targets_python3_11(-),python_single_target_python3_11(+)] dev-python/jsonschema[python_targets_python3_11(-),python_single_target_python3_11(+)] dev-python/protobuf-python[python_targets_python3_11(-),python_single_target_python3_11(+)] dev-python/pyyaml[python_targets_python3_11(-),python_single_target_python3_11(+)] ) ) sys-devel/gettext dev-vcs/git app-misc/jq
 DEFINED_PHASES=compile configure info install setup unpack
-DEPEND=python_targets_python3_6? ( dev-lang/python:3.6 ) python_targets_python3_7? ( dev-lang/python:3.7 ) >=dev-lang/python-exec-2:=[python_targets_python3_6(-)?,python_targets_python3_7(-)?,-python_single_target_python3_6(-),-python_single_target_python3_7(-)] dev-python/jsonrpclib:= dev-python/pyyaml:= dev-python/protobuf-python:= virtual/chromeos-bsp-factory:= virtual/chromeos-regions:=
+DEPEND=virtual/chromeos-bsp-factory:= virtual/chromeos-regions:=
 DESCRIPTION=Subset of factory software to be installed in test images
 EAPI=7
-IUSE=cros_host cros_workon_tree_ python_targets_python3_6 python_targets_python3_7
+IUSE=cros_host cros_workon_tree_
 KEYWORDS=~*
 LICENSE=BSD-Google
 PROPERTIES=live
+RDEPEND=chromeos-base/factory-deps
 SLOT=0/9999
-SRC_URI=http://commondatastorage.googleapis.com/chromeos-localmirror//distfiles/webgl-aquarium-20130524.tar.bz2
-_eclasses_=cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-credentials	4fd98ebbff6a1534ca9a89547e13dc92	cros-workon	ff100259492312ff6570e490bcb9a320	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multibuild	40fe59465edacd730c644ec2bc197809	multilib	2477ebe553d3e4d2c606191fe6c33602	python-r1	79e26ce8f853c9daebe9a4956e37cc1b	python-utils-r1	157a6a7a3e99c7dbdf81acc9dd4f57cd	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
-_md5_=5a32c811a6a07504e363251feb4fc5c5
+SRC_URI=http://commondatastorage.googleapis.com/chromeos-localmirror//distfiles/webgl-aquarium-20221212.tar.bz2
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	python-any-r1	54a3178500786b0a7ede4a23b7f2a6ad	python-utils-r1	76252008070e69454f51fa80c07638c9	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=50d71cdb6ec7210962d79cf10be110dd

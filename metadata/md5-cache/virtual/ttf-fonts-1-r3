@@ -6,4 +6,4 @@ KEYWORDS=*
 LICENSE=metapackage
 RDEPEND=chromeos-base/chromeos-fonts
 SLOT=0
-_md5_=086ab8742dc5b55c60a9bc7739ce89eb
+_md5_=968d001184639badd545a12fc472ced9

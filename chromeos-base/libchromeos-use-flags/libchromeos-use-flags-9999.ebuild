@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="7"
@@ -25,17 +25,23 @@ IUSE="
 	allow_consumer_kiosk
 	arc
 	arc_adb_sideloading
+	arc_container_app_killer
+	arc_disable_cros_video_decoder
+	arc_erofs
 	arc_force_2x_scaling
-	arc_native_bridge_64bit_support_experiment
 	arc_transition_m_to_n
-	arc_uses_cros_video_decoder
 	arcpp
 	arcvm
+	arcvm_data_migration
+	arcvm_virtio_blk_data
 	asan
 	background_blur
 	big_little
 	biod
+	block_keymint
 	borealis_host
+	broken_24hours_wake
+	camera_feature_effects
 	cfm_enabled_device
 	cheets
 	clear_fast_ink_buffer
@@ -52,6 +58,8 @@ IUSE="
 	enable_dsp_hotword
 	enable_heuristic_palm_detection_filter
 	enable_neural_palm_detection_filter
+	federated_service
+	floss
 	force_breakpad
 	gpu_sandbox_allow_sysv_shm
 	gpu_sandbox_failures_not_fatal
@@ -61,17 +69,21 @@ IUSE="
 	houdini_dlc
 	kvm_guest
 	kvm_host
-	kvm_transition
 	lacros
 	legacy_keyboard
 	legacy_power_button
+	lvm_application_containers
+	ml_service
 	moblab
+	mojo_service_manager
 	native_gpu_memory_buffers
 	natural_scroll_default
 	ndk_translation
 	ndk_translation64
 	neon
 	ondevice_document_scanner
+	ondevice_document_scanner_dlc
+	ondevice_grammar
 	ondevice_handwriting
 	ondevice_handwriting_dlc
 	ondevice_speech
@@ -83,6 +95,7 @@ IUSE="
 	pita
 	pita-camera
 	pita-microphone
+	reven_branding
 	rialto
 	scheduler_configuration_performance
 	screenshare_sw_codec
@@ -93,6 +106,7 @@ IUSE="
 	touch_centric_device
 	touchscreen_wakeup
 	touchview
+	tpm_dynamic
 	video_capture_use_gpu_memory_buffer
 	virtio_gpu
 	webui-tab-strip
@@ -113,7 +127,7 @@ EOF
 	local flags=( ${IUSE} )
 	local flag
 	for flag in "${flags[@]/#[-+]}" ; do
-		usev ${flag}
+		usev "${flag}"
 	done | sort -u >>"${path}"
 
 	insinto /etc

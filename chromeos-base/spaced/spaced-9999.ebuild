@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -7,7 +7,7 @@ CROS_WORKON_INCREMENTAL_BUILD="1"
 CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_OUTOFTREE_BUILD=1
-CROS_WORKON_SUBTREE="common-mk spaced .gn"
+CROS_WORKON_SUBTREE="common-mk spaced system_api .gn"
 
 PLATFORM_SUBDIR="spaced"
 
@@ -20,22 +20,28 @@ LICENSE="BSD-Google"
 KEYWORDS="~*"
 IUSE="+seccomp"
 
+RDEPEND="
+	dev-libs/protobuf:=
+	sys-apps/rootdev:=
+"
+DEPEND="
+	${RDEPEND}
+	chromeos-base/system_api:=
+"
+
+BDEPEND="
+	chromeos-base/chromeos-dbus-bindings
+	chromeos-base/minijail
+"
+
 pkg_preinst() {
 	enewuser "spaced"
 	enewgroup "spaced"
 }
 
 src_install() {
-	# D-Bus configuration.
-	insinto /etc/dbus-1/system.d
-	doins dbus_bindings/org.chromium.Spaced.conf
-
-	dolib.so "${OUT}"/lib/libspaced.so
-	dosbin "${OUT}"/spaced
-	dosbin "${OUT}"/spaced_cli
-
-	insinto /etc/init
-	doins init/spaced.conf
+	platform_src_install
+	platform_install_dbus_client_lib
 
 	if use seccomp; then
 		local policy="seccomp/spaced-seccomp-${ARCH}.policy"
@@ -46,11 +52,8 @@ src_install() {
 			--default-action trap "${policy}" "${policy_out}" \
 			|| die "failed to compile seccomp policy ${policy}"
 	fi
-
-	insinto "/usr/include/spaced"
-	doins ./*.h
 }
 
 platform_pkg_test() {
-	platform_test "run" "${OUT}"/libspaced_unittests
+	platform test_all
 }

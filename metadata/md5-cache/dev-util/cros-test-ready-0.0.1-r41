@@ -1,0 +1,13 @@
+BDEPEND=|| ( ( dev-lang/python:3.8 chromeos-base/cros-config-api[python_targets_python3_8(-),python_single_target_python3_8(+)] dev-python/protobuf-python[python_targets_python3_8(-),python_single_target_python3_8(+)] dev-python/six[python_targets_python3_8(-),python_single_target_python3_8(+)] ) ( dev-lang/python:3.9 chromeos-base/cros-config-api[python_targets_python3_9(-),python_single_target_python3_9(+)] dev-python/protobuf-python[python_targets_python3_9(-),python_single_target_python3_9(+)] dev-python/six[python_targets_python3_9(-),python_single_target_python3_9(+)] ) ( dev-lang/python:3.10 chromeos-base/cros-config-api[python_targets_python3_10(-),python_single_target_python3_10(+)] dev-python/protobuf-python[python_targets_python3_10(-),python_single_target_python3_10(+)] dev-python/six[python_targets_python3_10(-),python_single_target_python3_10(+)] ) ( dev-lang/python:3.11 chromeos-base/cros-config-api[python_targets_python3_11(-),python_single_target_python3_11(+)] dev-python/protobuf-python[python_targets_python3_11(-),python_single_target_python3_11(+)] dev-python/six[python_targets_python3_11(-),python_single_target_python3_11(+)] ) ) dev-lang/go dev-vcs/git app-misc/jq
+DEFINED_PHASES=compile info install postinst prepare setup test unpack
+DEPEND=chromeos-base/cros-config-api chromeos-base/autotest-client chromeos-base/tast-local-tests-cros dev-go/protobuf-legacy-api dev-go/subcommands
+DESCRIPTION=Utility to check if a DUT is ready to be used for testing
+EAPI=7
+HOMEPAGE=https://chromium.googlesource.com/chromiumos/platform/dev-util/+/HEAD/src/chromiumos/test/check
+IUSE=cros_host cros_workon_tree_b19a06e06c2031617e28402f02efb418a910dcb9_e270c736198fdd7492db7df686efd8ec09aeacdc
+KEYWORDS=*
+LICENSE=BSD-Google
+PROPERTIES=live
+SLOT=0/0.0.1-r41
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-go	77ba1c1ddf5c20dab7e47e19efeffef7	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	python-any-r1	54a3178500786b0a7ede4a23b7f2a6ad	python-utils-r1	76252008070e69454f51fa80c07638c9	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=fced367c6c627816a3aa9b698e30b6dd

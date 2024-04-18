@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -21,11 +21,15 @@ KEYWORDS="~*"
 COMMON_DEPEND="
 	chromeos-base/metrics:=
 	chromeos-base/vboot_reference:=
+	dev-cpp/abseil-cpp:=
+	dev-libs/re2:=
 "
 RDEPEND="${COMMON_DEPEND}
 	chromeos-base/minijail:=
 "
-DEPEND="${COMMON_DEPEND}"
+DEPEND="${COMMON_DEPEND}
+	chromeos-base/session_manager-client:=
+"
 
 pkg_setup() {
 	enewuser "secanomaly"
@@ -34,14 +38,6 @@ pkg_setup() {
 	cros-workon_pkg_setup
 }
 
-src_install() {
-	dosbin "${OUT}"/secanomalyd
-
-	# Install Upstart configuration.
-	insinto /etc/init
-	doins secanomalyd.conf
-}
-
 platform_pkg_test() {
-	platform_test "run" "${OUT}/secanomalyd_testrunner"
+	platform test_all
 }

@@ -23,3 +23,5 @@ The Chrome OS openssl ebuild carries the following modifications vs. upstream:
    work with RSA-PSS) and drops the OpenSSL security level to 0 to keep outdated
    crypto working (namely MD5 in certificate validation, sigh). All this should
    get dropped, see b/172208472.
+
+ * append-lfs-flags - Enables large file support on ARM.

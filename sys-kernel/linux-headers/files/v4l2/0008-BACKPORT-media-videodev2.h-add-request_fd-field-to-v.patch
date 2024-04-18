@@ -1,0 +1,54 @@
+From db5bc8904e4d5755972b19bec6518cfcc1c558aa Mon Sep 17 00:00:00 2001
+From: Alexandre Courbot <acourbot@chromium.org>
+Date: Mon, 21 May 2018 04:54:35 -0400
+Subject: [PATCH] BACKPORT: media: videodev2.h: add request_fd field to
+ v4l2_ext_controls
+
+If 'which' is V4L2_CTRL_WHICH_REQUEST_VAL, then the 'request_fd' field
+can be used to specify a request for the G/S/TRY_EXT_CTRLS ioctls.
+
+Signed-off-by: Alexandre Courbot <acourbot@chromium.org>
+Signed-off-by: Hans Verkuil <hans.verkuil@cisco.com>
+Reviewed-by: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>
+Signed-off-by: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>
+(cherry picked from commit f23317adf6a726b9dbedbe3a0363846f597cc0e8)
+
+Conflicts:
+   drivers/media/v4l2-core/v4l2-compat-ioctl32.c
+
+Non-uAPI changes dropped.
+
+BUG=b:278157861
+TEST=Check header
+
+Change-Id: I2c2d86ed103098473f0a0d4be4a6d64e24bdd65b
+Signed-off-by: Chen-Yu Tsai <wenst@chromium.org>
+---
+ include/uapi/linux/videodev2.h | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index 8cd7ad3f3e96..0989b7e3cebc 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -1591,7 +1591,8 @@ struct v4l2_ext_controls {
+ 	};
+ 	__u32 count;
+ 	__u32 error_idx;
+-	__u32 reserved[2];
++	__s32 request_fd;
++	__u32 reserved[1];
+ 	struct v4l2_ext_control *controls;
+ };
+ 
+@@ -1604,6 +1605,7 @@ struct v4l2_ext_controls {
+ #define V4L2_CTRL_MAX_DIMS	  (4)
+ #define V4L2_CTRL_WHICH_CUR_VAL   0
+ #define V4L2_CTRL_WHICH_DEF_VAL   0x0f000000
++#define V4L2_CTRL_WHICH_REQUEST_VAL 0x0f010000
+ 
+ enum v4l2_ctrl_type {
+ 	V4L2_CTRL_TYPE_INTEGER	     = 1,
+-- 
+2.40.1.606.ga4b1b128d6-goog
+

@@ -1,2 +1,4 @@
-set noparent
 include chromiumos/overlays/portage-stable:/metadata/OWNERS
+
+# Bot that commits cache updates.
+include chromiumos/owners:v1:/bots/OWNERS.metadata_cache

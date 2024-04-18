@@ -1,12 +1,13 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2.
 
-EAPI=5
+EAPI=7
 
 CROS_GO_SOURCE="github.com/golang/mock v${PV}"
 
 CROS_GO_PACKAGES=(
 	"github.com/golang/mock/gomock"
+	"github.com/golang/mock/gomock/internal/mock_gomock"
 	"github.com/golang/mock/mockgen/model"
 )
 

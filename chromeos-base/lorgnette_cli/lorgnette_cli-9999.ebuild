@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -20,8 +20,22 @@ SLOT="0/0"
 
 RDEPEND="
 	chromeos-base/lorgnette
+	dev-libs/protobuf:=
+	dev-libs/re2:=
+"
+
+DEPEND="${RDEPEND}
+	chromeos-base/permission_broker-client:=
+	chromeos-base/system_api:=
+"
+
+BDEPEND="
+	chromeos-base/chromeos-dbus-bindings
 "
 
 src_install() {
+	# platform_src_install omitted, to avoid conflicts with
+	# chromeos-base/lorgnette.
+
 	dobin "${OUT}"/lorgnette_cli
 }

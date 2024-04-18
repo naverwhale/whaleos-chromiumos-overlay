@@ -1,0 +1,197 @@
+From 18bd0eeea5461afb2ec5164fe05b4559d44768c7 Mon Sep 17 00:00:00 2001
+From: Jun Ishiguro <junis@google.com>
+Date: Thu, 7 Sep 2023 14:00:13 +0900
+Subject: [PATCH 2/3] Part2: CERT_CreateSubjectCertList
+
+CERT_CreateSubjectCertList
+NSSTrustDomain_FindCertificatesBySubject
+nssTrustDomain_FindCertificatesBySubject
+---
+ lib/certdb/cert.h        |  6 +++++
+ lib/certdb/stanpcertdb.c | 13 ++++++++--
+ lib/nss/nss.def          |  1 +
+ lib/pki/nsspki.h         |  9 +++++++
+ lib/pki/pki.h            |  9 +++++++
+ lib/pki/trustdomain.c    | 52 ++++++++++++++++++++++++++++++++++++----
+ 6 files changed, 83 insertions(+), 7 deletions(-)
+
+diff --git a/lib/certdb/cert.h b/lib/certdb/cert.h
+index 456494b..fd5114d 100644
+--- a/lib/certdb/cert.h
++++ b/lib/certdb/cert.h
+@@ -1246,6 +1246,12 @@ CERTCertList *CERT_CreateSubjectCertList(CERTCertList *certList,
+                                          const SECItem *name, PRTime sorttime,
+                                          PRBool validOnly);
+ 
++CERTCertList *CERT_CreateSubjectCertListForChromium(CERTCertList *certList,
++                                                    CERTCertDBHandle *handle,
++                                                    const SECItem *name, PRTime sorttime,
++                                                    PRBool validOnly,
++                                                    PRBool ignoreChaps);
++
+ /*
+  * remove certs from a list that don't have keyUsage and certType
+  * that match the given usage.
+diff --git a/lib/certdb/stanpcertdb.c b/lib/certdb/stanpcertdb.c
+index fd1efec..b614825 100644
+--- a/lib/certdb/stanpcertdb.c
++++ b/lib/certdb/stanpcertdb.c
+@@ -753,6 +753,14 @@ CERTCertList *
+ CERT_CreateSubjectCertList(CERTCertList *certList, CERTCertDBHandle *handle,
+                            const SECItem *name, PRTime sorttime,
+                            PRBool validOnly)
++{
++    return CERT_CreateSubjectCertListForChromium(certList, handle, name, sorttime, validOnly, PR_FALSE);
++}
++
++CERTCertList *
++CERT_CreateSubjectCertListForChromium(CERTCertList *certList, CERTCertDBHandle *handle,
++                                      const SECItem *name, PRTime sorttime,
++                                      PRBool validOnly, PRBool ignoreChaps)
+ {
+     NSSCryptoContext *cc;
+     NSSCertificate **tSubjectCerts, **pSubjectCerts;
+@@ -765,8 +773,9 @@ CERT_CreateSubjectCertList(CERTCertList *certList, CERTCertDBHandle *handle,
+     /* Collect both temp and perm certs for the subject */
+     tSubjectCerts =
+         NSSCryptoContext_FindCertificatesBySubject(cc, &subject, NULL, 0, NULL);
+-    pSubjectCerts = NSSTrustDomain_FindCertificatesBySubject(handle, &subject,
+-                                                             NULL, 0, NULL);
++    pSubjectCerts = NSSTrustDomain_FindCertificatesBySubjectForChromium(handle, &subject,
++                                                                        NULL, 0, NULL,
++                                                                        ignoreChaps);
+     if (!tSubjectCerts && !pSubjectCerts) {
+         return NULL;
+     }
+diff --git a/lib/nss/nss.def b/lib/nss/nss.def
+index bb23f59..ceb1bb7 100644
+--- a/lib/nss/nss.def
++++ b/lib/nss/nss.def
+@@ -548,6 +548,7 @@ __CERT_AddTempCertToPerm;
+ CERT_AddOKDomainName;
+ CERT_CopyName;
+ CERT_CreateSubjectCertList;
++CERT_CreateSubjectCertListForChromium;
+ CERT_DecodeAVAValue;
+ ;+#CERT_DecodeCertFromPackage;
+ CERT_DecodeGeneralName;
+diff --git a/lib/pki/nsspki.h b/lib/pki/nsspki.h
+index f695edf..c0a56ec 100644
+--- a/lib/pki/nsspki.h
++++ b/lib/pki/nsspki.h
+@@ -1532,6 +1532,15 @@ NSSTrustDomain_FindCertificatesBySubject(
+     PRUint32 maximumOpt, /* 0 for no max */
+     NSSArena *arenaOpt);
+ 
++NSS_EXTERN NSSCertificate **
++NSSTrustDomain_FindCertificatesBySubjectForChromium(
++    NSSTrustDomain *td,
++    NSSDER /*NSSUTF8*/ *subject,
++    NSSCertificate *rvOpt[],
++    PRUint32 maximumOpt, /* 0 for no max */
++    NSSArena *arenaOpt,
++    PRBool ignoreChaps);
++
+ /*
+  * NSSTrustDomain_FindBestCertificateByNameComponents
+  *
+diff --git a/lib/pki/pki.h b/lib/pki/pki.h
+index 00cebe7..aaad24e 100644
+--- a/lib/pki/pki.h
++++ b/lib/pki/pki.h
+@@ -32,6 +32,15 @@ nssTrustDomain_FindCertificatesBySubject(
+     PRUint32 maximumOpt,
+     NSSArena *arenaOpt);
+ 
++NSS_EXTERN NSSCertificate **
++nssTrustDomain_FindCertificatesBySubjectForChromium(
++    NSSTrustDomain *td,
++    NSSDER *subject,
++    NSSCertificate *rvOpt[],
++    PRUint32 maximumOpt,
++    NSSArena *arenaOpt,
++    PRBool ignoreChaps);
++
+ NSS_EXTERN NSSTrust *
+ nssTrustDomain_FindTrustForCertificate(
+     NSSTrustDomain *td,
+diff --git a/lib/pki/trustdomain.c b/lib/pki/trustdomain.c
+index ba691a7..cf7546d 100644
+--- a/lib/pki/trustdomain.c
++++ b/lib/pki/trustdomain.c
+@@ -574,6 +574,23 @@ nssTrustDomain_FindCertificatesBySubject(
+     NSSCertificate *rvOpt[],
+     PRUint32 maximumOpt, /* 0 for no max */
+     NSSArena *arenaOpt)
++{
++    return nssTrustDomain_FindCertificatesBySubjectForChromium(td,
++                                                               subject,
++                                                               rvOpt,
++                                                               maximumOpt,
++                                                               arenaOpt,
++                                                               PR_FALSE);
++}
++
++NSS_IMPLEMENT NSSCertificate **
++nssTrustDomain_FindCertificatesBySubjectForChromium(
++    NSSTrustDomain *td,
++    NSSDER *subject,
++    NSSCertificate *rvOpt[],
++    PRUint32 maximumOpt, /* 0 for no max */
++    NSSArena *arenaOpt,
++    PRBool ignoreChaps)
+ {
+     NSSToken *token = NULL;
+     NSSSlot **slots = NULL;
+@@ -604,6 +621,13 @@ nssTrustDomain_FindCertificatesBySubject(
+         goto loser;
+     }
+     for (slotp = slots; *slotp; slotp++) {
++        if (ignoreChaps) {
++            SECMODModule* pk11_module = PK11_GetModule((*slotp)->pk11slot);
++            if (pk11_module && strcmp(pk11_module->commonName, "Chaps") == 0) {
++                continue;
++            }
++        }
++
+         token = nssSlot_GetToken(*slotp);
+         if (token) {
+             nssSession *session;
+@@ -668,11 +692,29 @@ NSSTrustDomain_FindCertificatesBySubject(
+     PRUint32 maximumOpt,
+     NSSArena *arenaOpt)
+ {
+-    return nssTrustDomain_FindCertificatesBySubject(td,
+-                                                    subject,
+-                                                    rvOpt,
+-                                                    maximumOpt,
+-                                                    arenaOpt);
++    return NSSTrustDomain_FindCertificatesBySubjectForChromium(td,
++                                                               subject,
++                                                               rvOpt,
++                                                               maximumOpt,
++                                                               arenaOpt,
++                                                               PR_FALSE);
++}
++
++NSS_IMPLEMENT NSSCertificate **
++NSSTrustDomain_FindCertificatesBySubjectForChromium(
++    NSSTrustDomain *td,
++    NSSDER *subject,
++    NSSCertificate *rvOpt[],
++    PRUint32 maximumOpt,
++    NSSArena *arenaOpt,
++    PRBool ignoreChaps)
++{
++    return nssTrustDomain_FindCertificatesBySubjectForChromium(td,
++                                                               subject,
++                                                               rvOpt,
++                                                               maximumOpt,
++                                                               arenaOpt,
++                                                               ignoreChaps);
+ }
+ 
+ NSS_IMPLEMENT NSSCertificate *
+-- 
+2.42.0.582.g8ccd20d70d-goog
+

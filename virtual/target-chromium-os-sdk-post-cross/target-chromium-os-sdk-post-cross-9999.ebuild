@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -23,12 +23,11 @@ IUSE=""
 # here that need the cross-compiler toolchains installed first.
 RDEPEND="
 	dev-lang/rust
-	dev-rust/bindgen
-	dev-rust/dbus-codegen
-	dev-rust/protobuf-codegen
-	dev-util/cxxbridge-cmd
-	sys-apps/ripgrep
-	dev-embedded/coreboot-sdk
-	dev-embedded/ti50-sdk
-	chromeos-base/sirenia-tools
+"
+
+# We want to avoid very slow toolchain rebuilds. Also depends on host rust
+# toolchain and on cross-compiler toolchain.
+# Needed for hps-firmware.
+RDEPEND="${RDEPEND}
+	dev-embedded/hps-sdk
 "

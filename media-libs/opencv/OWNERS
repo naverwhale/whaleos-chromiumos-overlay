@@ -1,0 +1,2 @@
+# OpenCV is required for factory tests.
+include chromiumos/owners:v1:/factory/OWNERS.factory

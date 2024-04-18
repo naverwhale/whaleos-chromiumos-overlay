@@ -1,14 +1,14 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-EAPI=6
+EAPI=7
 
 CROS_WORKON_PROJECT="chromiumos/third_party/mesa"
 CROS_WORKON_LOCALNAME="mesa-iris"
 CROS_WORKON_EGIT_BRANCH="chromeos-iris"
 
-inherit base meson multilib-minimal flag-o-matic cros-workon arc-build
+inherit meson multilib-minimal flag-o-matic cros-workon arc-build
 
 DESCRIPTION="The Mesa 3D Graphics Library"
 HOMEPAGE="http://mesa3d.org/"
@@ -43,6 +43,8 @@ DEPEND="
 RDEPEND="${DEPEND}"
 
 src_configure() {
+	cros_optimize_package_for_speed
+
 	arc-build-select-clang
 
 	multilib-minimal_src_configure
@@ -62,19 +64,18 @@ multilib_src_configure() {
 		--prefix="${ARC_PREFIX}/vendor"
 		--sysconfdir="/system/vendor/etc"
 		-Ddri-search-path="/system/$(get_libdir)/dri:/system/vendor/$(get_libdir)/dri"
-		-Dllvm=false
-		-Ddri3=false
-		-Dshader-cache=true
+		-Dllvm=disabled
+		-Ddri3=disabled
+		-Dshader-cache=enabled
 		-Dglx=disabled
-		-Degl=true
-		-Dgbm=false
-		-Dgles1=true
-		-Dgles2=true
-		-Dshared-glapi=true
-		-Ddri-drivers=
+		-Degl=enabled
+		-Dgbm=disabled
+		-Dgles1=enabled
+		-Dgles2=enabled
+		-Dshared-glapi=enabled
 		-Dgallium-drivers=iris
-		-Dgallium-vdpau=false
-		-Dgallium-xa=false
+		-Dgallium-vdpau=disabled
+		-Dgallium-xa=disabled
 		-Dplatforms=android
 		-Degl-lib-suffix=_mesa
 		-Dgles-lib-suffix=_mesa

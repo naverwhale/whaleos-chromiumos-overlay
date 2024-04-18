@@ -1,14 +1,14 @@
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Copyright 2016 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # @ECLASS: autotest-external-dep.eclass
 # @MAINTAINER:
 # ChromiumOS Build Team
 # @AUTHOR:
-# The Chromium OS Authors <chromium-os-dev@chromium.org>
+# The ChromiumOS Authors <chromium-os-dev@chromium.org>
 # @BUGREPORTS:
 # Please report bugs via http://crbug.com/new (with label Build)
-# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/master/eclass/@ECLASS@
+# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/eclass/@ECLASS@
 # @BLURB: Eclass for handling minimal external autotest-dep packages
 # @DESCRIPTION:
 # Since all autotest dep package requires basic fake test during compile stage,

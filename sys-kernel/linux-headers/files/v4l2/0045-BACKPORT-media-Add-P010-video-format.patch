@@ -1,0 +1,44 @@
+From 1960595d5fc80eb3395b7707ad475080e577930a Mon Sep 17 00:00:00 2001
+From: Benjamin Gaignard <benjamin.gaignard@collabora.com>
+Date: Thu, 19 May 2022 08:11:46 +0100
+Subject: [PATCH] BACKPORT: media: Add P010 video format
+
+P010 is a YUV format with 10-bits per component with interleaved UV.
+
+Signed-off-by: Benjamin Gaignard <benjamin.gaignard@collabora.com>
+Acked-by: Nicolas Dufresne <nicolas.dufresne@collabora.com>
+Signed-off-by: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Signed-off-by: Mauro Carvalho Chehab <mchehab@kernel.org>
+(cherry picked from commit 5374d8fb75f313294c7d97e85c22bead34d63f2b)
+
+Conflicts:
+   Documentation/userspace-api/media/v4l/pixfmt-yuv-planar.rst
+   drivers/media/v4l2-core/v4l2-common.c
+   drivers/media/v4l2-core/v4l2-ioctl.c
+
+Non-uAPI changes dropped.
+
+BUG=b:278157861
+TEST=Check header
+
+Change-Id: I3db195f410ba7c87b497947f7ae3012d1500ad01
+Signed-off-by: Chen-Yu Tsai <wenst@chromium.org>
+---
+ include/uapi/linux/videodev2.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index 96488d224de0..363b63b4c479 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -554,6 +554,7 @@ struct v4l2_pix_format {
+ #define V4L2_PIX_FMT_NV61    v4l2_fourcc('N', 'V', '6', '1') /* 16  Y/CrCb 4:2:2  */
+ #define V4L2_PIX_FMT_NV24    v4l2_fourcc('N', 'V', '2', '4') /* 24  Y/CbCr 4:4:4  */
+ #define V4L2_PIX_FMT_NV42    v4l2_fourcc('N', 'V', '4', '2') /* 24  Y/CrCb 4:4:4  */
++#define V4L2_PIX_FMT_P010    v4l2_fourcc('P', '0', '1', '0') /* 24  Y/CbCr 4:2:0 10-bit per component */
+ 
+ /* two non contiguous planes - one Y, one Cr + Cb interleaved  */
+ #define V4L2_PIX_FMT_NV12M   v4l2_fourcc('N', 'M', '1', '2') /* 12  Y/CbCr 4:2:0  */
+-- 
+2.40.1.606.ga4b1b128d6-goog
+

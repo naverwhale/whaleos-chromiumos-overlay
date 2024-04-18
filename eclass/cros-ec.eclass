@@ -1,4 +1,4 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # @ECLASS: cros-ec.eclass
@@ -6,7 +6,7 @@
 # Chromium OS Firmware Team
 # @BUGREPORTS:
 # Please report bugs via http://crbug.com/new (with label Build)
-# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/master/eclass/@ECLASS@
+# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/eclass/@ECLASS@
 # @BLURB: helper eclass for building Chromium OS EC firmware
 # @DESCRIPTION:
 # Builds the EC firmware and installs into /build/<board>/<EC_board> so that
@@ -16,7 +16,7 @@
 #
 # NOTE: When making changes to this class, make sure to modify all the -9999
 # ebuilds that inherit it (e.g., chromeos-ec) to work around
-# http://crbug.com/220902.
+# https://issuetracker.google.com/201299127.
 
 if [[ -z "${_ECLASS_CROS_EC}" ]]; then
 _ECLASS_CROS_EC="1"
@@ -29,10 +29,11 @@ esac
 
 inherit toolchain-funcs cros-ec-board cros-workon cros-unibuild coreboot-sdk
 
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform/ec/+/master/README.md"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform/ec/+/HEAD/README.md"
 
 LICENSE="CrOS-EC"
-IUSE="quiet verbose coreboot-sdk unibuild fuzzer bootblock_in_ec asan msan ubsan test"
+IUSE="quiet verbose +coreboot-sdk unibuild fuzzer bootblock_in_ec asan msan ubsan test"
+REQUIRED_USE="coreboot-sdk unibuild"
 
 RDEPEND="
 	fuzzer? (
@@ -53,7 +54,6 @@ DEPEND="
 	test? ( dev-libs/libprotobuf-mutator:= )
 	virtual/chromeos-ec-private-files
 	virtual/chromeos-ec-touch-firmware
-	unibuild? ( chromeos-base/chromeos-config:= )
 	bootblock_in_ec? ( sys-boot/coreboot )
 "
 
@@ -88,31 +88,45 @@ cros-ec_src_prepare() {
 # @DESCRIPTION:
 # Set toolchain and build options.
 cros-ec_set_build_env() {
-	cros_use_gcc
-
-	if ! use coreboot-sdk; then
-		export CROSS_COMPILE_arm=arm-none-eabi-
-		export CROSS_COMPILE_i386=i686-pc-linux-gnu-
-	else
-		export CROSS_COMPILE_arm=${COREBOOT_SDK_PREFIX_arm}
-		export CROSS_COMPILE_i386=${COREBOOT_SDK_PREFIX_x86_32}
-	fi
-
-	export CROSS_COMPILE_coreboot_sdk_arm=${COREBOOT_SDK_PREFIX_arm}
-	export CROSS_COMPILE_coreboot_sdk_i386=${COREBOOT_SDK_PREFIX_x86_32}
-
-	# nds32 always uses coreboot-sdk
-	export CROSS_COMPILE_nds32=${COREBOOT_SDK_PREFIX_nds32}
-
-	tc-export CC BUILD_CC
-	export HOSTCC=${CC}
-	export BUILDCC=${BUILD_CC}
-
 	get_ec_boards
+
+	cros_allow_gnu_build_tools
+
+	# Let the EC Makefiles set the compiler. It already has logic for choosing
+	# between gcc and clang for the different architectures that EC builds.
+	unset CC
+
+	# Setting SYSROOT to the board's sysroot (e.g., /build/hatch) causes
+	# compilation failures when cross-compiling for other targets (e.g., ARM).
+	# HOST_SYSROOT is used by the EC Makefiles to set the sysroot when building
+	# for the host.
+	export HOST_SYSROOT=${SYSROOT}
+	unset SYSROOT
+
+	# Let the EC Makefiles determine architecture flags. For example, using
+	# "-march=goldmont" fails when using "armv7m-cros-eabi-clang" with the
+	# error: the clang compiler does not support '-march=goldmont'
+	filter-flags "-march=*"
+
+	# b/247791129: EC expects HOST_PKG_CONFIG to be the pkg-config targeting the
+	# platform that the EC is running on top of (e.g., the Chromebook's AP).
+	# That platform corresponds to the ChromeOS "$BOARD" and the pkg-config for
+	# the "$BOARD" being built is specified by tc-getPKG_CONFIG.
+	export HOST_PKG_CONFIG
+	HOST_PKG_CONFIG=$(tc-getPKG_CONFIG)
+
+	# EC expects BUILD_PKG_CONFIG to be the pkg-config targeting the build
+	# machine (the machine doing the compilation).
+	export BUILD_PKG_CONFIG
+	BUILD_PKG_CONFIG=$(tc-getBUILD_PKG_CONFIG)
 
 	EC_OPTS=()
 	use quiet && EC_OPTS+=( "-s V=0" )
 	use verbose && EC_OPTS+=( "V=1" )
+
+	# Disable the kconfig checker, as the platform/ec commit queue
+	# does not use this code path.
+	EC_OPTS+=( "ALLOW_CONFIG=1" )
 }
 
 # @FUNCTION: cros-ec_make_ec
@@ -159,10 +173,8 @@ cros-ec_src_compile() {
 	for target in "${EC_BOARDS[@]}"; do
 		# Always pass TOUCHPAD_FW parameter: boards that do not require
 		# it will simply ignore the parameter, even if the touchpad FW
-		# file does not exist.  Note that touchpad firmware lives in
-		# the ${target} subdirectory regardless of whether or not unibuild
-		# is enabled.
-		local touchpad_fw="${SYSROOT}/firmware/${target}/touchpad.bin"
+		# file does not exist.
+		local touchpad_fw="${HOST_SYSROOT}/firmware/${target}/touchpad.bin"
 
 		# In certain devices, the only root-of-trust available is EC-RO.
 		# Thus the AP bootblock needs to be installed in this write-protected
@@ -170,11 +182,7 @@ cros-ec_src_compile() {
 		local bootblock
 		local bootblock_serial
 		local target_root
-		if use unibuild; then
-			target_root="${SYSROOT}/firmware/${target}"
-		else
-			target_root="${SYSROOT}/firmware"
-		fi
+		target_root="${HOST_SYSROOT}/firmware/${target}"
 
 		if use bootblock_in_ec; then
 			bootblock="${target_root}/coreboot/bootblock.bin"
@@ -230,7 +238,7 @@ cros-ec_board_install() {
 	newins ec.obj "ec${file_suffix}.obj"
 	if grep -q '^CONFIG_VBOOT_EFS=y' .config; then
 		# This extracts EC_RW.bin (= RW_A region image) from ec.bin.
-		futility sign --type rwsig ec.bin || die
+		futility sign --type rwsig --ecrw_out EC_RW.bin ec.bin || die
 		ecrw="EC_RW.bin"
 	else
 		ecrw="RW/ec.RW.flat"
@@ -291,19 +299,6 @@ cros-ec_src_install() {
 					|| die "Couldn't install ${target} (serial)"
 		fi
 	done
-	# Unibuild platforms don't have "main" EC firmware.
-	if ! use unibuild; then
-		target="${EC_BOARDS[0]}"
-		cros-ec_board_install "${target}" "${WORKDIR}/build_${target}" \
-			/firmware "" \
-			|| die "Couldn't install main firmware"
-		if use bootblock_in_ec && \
-			[[ -d "${WORKDIR}/build_${target}_serial" ]]; then
-				cros-ec_board_install "${target}" "${WORKDIR}/build_${target}_serial" \
-					/firmware serial \
-					|| die "Couldn't install main firmware"
-		fi
-	fi
 
 	if use fuzzer; then
 		local f
@@ -327,29 +322,6 @@ cros-ec_src_install() {
 	fi
 }
 
-# @FUNCTION: cros-ec_src_test
-# @DESCRIPTION:
-# Compile all boards, even if they're not listed in EC_BOARDS.
-cros-ec_src_test() {
-	debug-print-function "${FUNCNAME[0]}" "$@"
-
-	cros-ec_set_build_env
-
-	# Verify compilation of all boards.
-	emake "${EC_OPTS[@]}" buildall
-
-	# Verify compilation of the on-device unit test binaries.
-	# TODO(b/172501728) These should build  for all boards, but they've bit
-	# rotted, so we only build the ones that compile.
-	# NOTE: Any changes here must also be reflected in
-	# platform/ec/firmware_builder.py which is used for the ec cq
-	local -a unit_test_boards=("bloonchipper" "dartmonkey")
-	for board in "${unit_test_boards[@]}"; do
-		einfo "Building unit tests for ${board}"
-		BOARD=${board} emake "${EC_OPTS[@]}" tests
-	done
-}
-
-EXPORT_FUNCTIONS src_unpack src_prepare src_compile src_test src_install
+EXPORT_FUNCTIONS src_unpack src_prepare src_compile src_install
 
 fi  # _ECLASS_CROS_EC

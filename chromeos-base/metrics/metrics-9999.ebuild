@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -11,17 +11,20 @@ CROS_WORKON_SUBTREE="common-mk metrics .gn"
 
 PLATFORM_SUBDIR="metrics"
 
-inherit cros-constants cros-workon libchrome-version platform tmpfiles systemd user
+inherit cros-constants cros-workon platform tmpfiles systemd user
 
 DESCRIPTION="Metrics aggregation service for Chromium OS"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/metrics/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/metrics/"
 LICENSE="BSD-Google"
 KEYWORDS="~*"
 IUSE="fuzzer metrics_uploader +passive_metrics systemd"
 
 COMMON_DEPEND="
+	chromeos-base/chromeos-base:=
+	dev-cpp/abseil-cpp:=
 	dev-libs/protobuf:=
 	dev-libs/re2:=
+	sys-apps/dbus:=
 	sys-apps/rootdev:=
 	"
 
@@ -33,7 +36,14 @@ DEPEND="
 	chromeos-base/vboot_reference:=
 	"
 
+BDEPEND="
+	chromeos-base/chromeos-base
+	dev-libs/protobuf
+"
+
 src_install() {
+	platform_src_install
+
 	dobin "${OUT}"/metrics_client
 	dobin "${OUT}"/chromeos-pgmem
 
@@ -42,11 +52,12 @@ src_install() {
 		if use systemd; then
 			systemd_dounit init/metrics-daemon.service
 			systemd_enable_service multi-user.target metrics-daemon.service
-			systemd_dotmpfilesd init/metrics.conf
+			dotmpfiles init/metrics.conf
 		else
 			dotmpfiles tmpfiles.d/metrics_daemon_dirs.conf
 			insinto /etc/init
-			doins init/metrics_library.conf init/metrics_daemon.conf
+			doins init/metrics_library.conf init/metrics_daemon.conf \
+				init/structured_metrics.conf
 		fi
 
 		if use metrics_uploader; then
@@ -60,12 +71,27 @@ src_install() {
 		fi
 	fi
 
-	insinto /usr/$(get_libdir)/pkgconfig
-	local v="$(libchrome_ver)"
-	./platform2_preinstall.sh "${OUT}" "${v}"
+	local daemon_store="/etc/daemon-store/uma-consent"
+	dodir "${daemon_store}"
+	fperms 0774 "${daemon_store}"
+	fowners chronos:chronos-access "${daemon_store}"
+
+	local appsync_daemon_store="/etc/daemon-store/appsync-optin"
+	dodir "${appsync_daemon_store}"
+	fperms 0774 "${appsync_daemon_store}"
+	fowners chronos:chronos-access "${appsync_daemon_store}"
+
+	# TODO(chromium:1193485) remove on 2024-01-30
+	local appsync_daemon_store="/etc/daemon-store/appsync-consent"
+	dodir "${appsync_daemon_store}"
+	fperms 0774 "${appsync_daemon_store}"
+	fowners chronos:chronos-access "${appsync_daemon_store}"
+
+	insinto "/usr/$(get_libdir)/pkgconfig"
 	dolib.so "${OUT}/lib/libmetrics.so"
-	doins "${OUT}/lib/libmetrics.pc"
+	doins "${S}/libmetrics.pc"
 	dolib.so "${OUT}/lib/libstructuredmetrics.so"
+	doins "${OUT}"/obj/metrics/structured/libstructuredmetrics.pc
 
 	dotmpfiles tmpfiles.d/structured_metrics.conf
 
@@ -73,10 +99,21 @@ src_install() {
 	doins c_metrics_library.h \
 		cumulative_metrics.h \
 		metrics_library{,_mock}.h \
+		metrics_writer.h \
 		persistent_integer.h \
 		structured/c_structured_metrics.h \
 		timer{,_mock}.h \
 		"${OUT}"/gen/include/metrics/structured/structured_events.h
+
+	insinto /usr/include/metrics/serialization
+	doins serialization/metric_sample.h
+
+	insinto /usr/include/metrics/structured
+	doins structured/event_base.h
+
+	insinto /usr/include/metrics/structured/proto
+	doins "${OUT}"/gen/include/metrics/structured/proto/storage.pb.h \
+		"${OUT}"/gen/include/metrics/structured/proto/structured_data.pb.h
 
 	# Install the protobuf so that autotests can have access to it.
 	insinto /usr/include/metrics/proto

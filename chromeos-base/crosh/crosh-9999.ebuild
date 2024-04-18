@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright 2011 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -15,42 +15,39 @@ HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/crosh/"
 LICENSE="BSD-Google"
 SLOT="0/0"
 KEYWORDS="~*"
-IUSE="+rust-crosh"
+IUSE=""
 
-DEPEND="
-	=dev-rust/chrono-0.4*:=
-	=dev-rust/dbus-0.9*:=
-	=dev-rust/getopts-0.2*:=
-	dev-rust/libchromeos:=
-	=dev-rust/rand-0.7*:=
-	>=dev-rust/regex-1.0.6:= <dev-rust/regex-2.0.0
-	dev-rust/remain:=
-	=dev-rust/rustyline-7*:=
-	dev-rust/shell-words:=
-	dev-rust/sys_util:=
-	dev-rust/system_api:=
-	dev-rust/tempfile:=
-	>dev-rust/tlsdate_dbus-0.24.52-r8:=
+COMMON_DEPEND="
+	chromeos-base/metrics:=
+	chromeos-base/vboot_reference:=
+	sys-apps/dbus
 "
-RDEPEND="app-admin/sudo
-	chromeos-base/vboot_reference
+
+DEPEND="${COMMON_DEPEND}
+	dev-rust/third-party-crates-src:=
+	dev-rust/libchromeos:=
+	dev-rust/metrics_rs:=
+	dev-rust/system_api:=
+	>dev-rust/tlsdate_dbus-0.24.52-r8:=
+	sys-apps/dbus:=
+	virtual/bindgen:=
+"
+RDEPEND="${COMMON_DEPEND}
+	app-admin/sudo
 	net-misc/iputils
 	net-misc/openssh
 	net-wireless/iw
-	sys-apps/dbus
 	sys-apps/net-tools
 "
 
-src_compile() {
-	# File order is important here.
-	sed \
-		-e '/^#/d' \
-		-e '/^$/d' \
-		inputrc.safe inputrc.extra \
-		> "${WORKDIR}"/inputrc.crosh || die
+BDEPEND="
+	dev-rust/bindgen
+	dev-rust/chromeos-dbus-bindings
+"
 
-	cros-rust_src_compile
-}
+PATCHES=(
+        "${FILESDIR}/0001-WhaleOS-fix-brand-for-crosh.patch"
+)
 
 src_test() {
 	./run_tests.sh || die
@@ -66,18 +63,12 @@ src_test() {
 }
 
 src_install() {
-	if use rust-crosh; then
-		dobin "$(cros-rust_get_build_dir)/crosh"
-		newbin crosh crosh.sh
-	else
-		dobin crosh
-	fi
+	dobin "$(cros-rust_get_build_dir)/crosh"
+	newbin crosh crosh.sh
 	dobin network_diag
 	local d="/usr/share/crosh"
 	insinto "${d}/dev.d"
 	doins dev.d/*.sh
 	insinto "${d}/removable.d"
 	doins removable.d/*.sh
-	insinto "${d}"
-	doins "${WORKDIR}"/inputrc.crosh
 }

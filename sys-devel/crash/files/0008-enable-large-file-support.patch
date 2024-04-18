@@ -1,0 +1,23 @@
+Enable LFS. Pass LFS flags to impacted files.
+
+diff --git a/Makefile b/Makefile
+index a94a243..bda32f7 100644
+--- a/Makefile
++++ b/Makefile
+@@ -31,6 +31,7 @@ ARCH := $(shell uname -m | sed -e s/i.86/i386/ -e s/sun4u/sparc64/ -e s/arm.*/ar
+ ifeq (${ARCH}, ppc64)
+ CONF_FLAGS = -m64
+ endif
++CONF_FLAGS += ${CPPFLAGS}
+ 
+ #
+ # GDB, GDB_FILES, GDB_OFILES and GDB_PATCH_FILES will be configured automatically by configure 
+@@ -206,6 +207,7 @@ GDB_FLAGS=
+ TARGET_CFLAGS=
+ 
+ CRASH_CFLAGS=-g -D${TARGET} ${TARGET_CFLAGS} ${GDB_FLAGS} ${CFLAGS}
++CRASH_CFLAGS += ${CPPFLAGS}
+ 
+ GPL_FILES=
+ TAR_FILES=${SOURCE_FILES} Makefile ${GPL_FILES} README .rh_rpm_package crash.8 \
+

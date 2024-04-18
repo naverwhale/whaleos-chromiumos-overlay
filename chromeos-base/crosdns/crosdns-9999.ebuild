@@ -1,4 +1,4 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -10,10 +10,10 @@ CROS_WORKON_SUBTREE="common-mk crosdns .gn"
 
 PLATFORM_SUBDIR="crosdns"
 
-inherit cros-fuzzer cros-sanitizers cros-workon platform user
+inherit cros-fuzzer cros-sanitizers cros-workon platform tmpfiles user
 
 DESCRIPTION="Local hostname modifier service for Chromium OS"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/crosdns"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/crosdns"
 
 LICENSE="BSD-Google"
 SLOT="0/0"
@@ -30,30 +30,22 @@ DEPEND="
 	${COMMON_DEPEND}
 	chromeos-base/system_api:=[fuzzer?]"
 
+BDEPEND="
+	chromeos-base/chromeos-dbus-bindings
+	chromeos-base/minijail
+"
+
 src_install() {
-	# Install our binary.
-	dosbin "${OUT}"/crosdns
+	platform_src_install
 
-	# Install D-Bus configuration.
-	insinto /etc/dbus-1/system.d
-	doins dbus_permissions/org.chromium.CrosDns.conf
-
-	# Install seccomp policy file.
-	insinto /usr/share/policy
-	if use seccomp; then
-		newins "init/crosdns-seccomp-${ARCH}.policy" crosdns-seccomp.policy
-	fi
-
-	# Install the init script.
-	insinto /etc/init
-	doins init/crosdns.conf
+	dotmpfiles tmpfiles.d/*.conf
 
 	# fuzzer_component_id is unknown/unlisted
 	platform_fuzzer_install "${S}"/OWNERS "${OUT}"/hosts_modifier_fuzzer
 }
 
 platform_pkg_test() {
-	platform_test "run" "${OUT}/run_tests"
+	platform test_all
 }
 
 pkg_preinst() {

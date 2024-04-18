@@ -1,4 +1,4 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -16,8 +16,12 @@ CROS_WORKON_DESTDIR=(
 	"${S}/platform/ec"
 	"${S}/platform/cr50"
 )
+CROS_WORKON_SUBTREE=(
+	"include util"
+	"board include"
+)
 CROS_WORKON_EGIT_BRANCH=(
-	"master"
+	"main"
 	"cr50_stab"
 )
 
@@ -45,10 +49,12 @@ src_install() {
 	dir_cr50=${CROS_WORKON_DESTDIR[1]}
 
 	insinto /usr/include/trunks/cr50_headers/
-	doins "${dir_cr50}"/include/pinweaver_types.h
 	doins "${dir_cr50}"/include/u2f.h
+	doins "${dir_cr50}"/include/ap_ro_status.h
 	doins "${dir_cr50}"/board/cr50/tpm2/virtual_nvmem.h
 	insinto /usr/include/chromeos/ec/
 	doins "${dir_ec}"/include/ec_commands.h
+	doins "${dir_ec}"/include/ec_cmd_api.h
+	doins "${dir_ec}"/include/panic_defs.h
 	doins "${dir_ec}"/util/cros_ec_dev.h
 }

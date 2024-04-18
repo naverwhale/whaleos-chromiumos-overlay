@@ -1,4 +1,4 @@
-# Copyright 2012 The Chromium OS Authors.
+# Copyright 2012 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Change this version number when any change is made to configs/files under
@@ -6,20 +6,31 @@
 # VERSION=REVBUMP-0.0.18
 
 EAPI=7
-CROS_WORKON_PROJECT="chromiumos/third_party/coreboot"
-CROS_WORKON_EGIT_BRANCH="chromeos-2016.05"
+CROS_WORKON_PROJECT=(
+	"chromiumos/third_party/coreboot"
+	"chromiumos/platform/vboot_reference"
+)
+CROS_WORKON_EGIT_BRANCH=(
+	"chromeos-2016.05"
+	"main"
+)
 
 DESCRIPTION="coreboot's libpayload library"
 HOMEPAGE="http://www.coreboot.org"
 LICENSE="GPL-2"
 KEYWORDS="~*"
-IUSE="coreboot-sdk unibuild verbose"
+IUSE="coreboot-sdk unibuild verbose ti50_onboard vboot_disable_cbfs_integration"
 
 # No pre-unibuild boards build firmware on ToT anymore.  Assume
 # unibuild to keep ebuild clean.
 REQUIRED_USE="unibuild"
+# Make sure we don't use SDK gcc anymore.
+REQUIRED_USE+=" coreboot-sdk"
 
-DEPEND="chromeos-base/chromeos-config:="
+DEPEND="
+	chromeos-base/chromeos-config:=
+	dev-libs/nss:=
+"
 
 # While this package is never actually executed, we still need to specify
 # RDEPEND. A binary version of this package could exist that was built using an
@@ -30,17 +41,35 @@ DEPEND="chromeos-base/chromeos-config:="
 # the package manager to ensure the two versions use the same chromeos-config.
 RDEPEND="${DEPEND}"
 
-CROS_WORKON_LOCALNAME="coreboot"
+CROS_WORKON_LOCALNAME=(
+	"coreboot"
+	"../platform/vboot_reference"
+)
 
-# kconfig and xcompile are reused from coreboot.
+VBOOT_DESTDIR="${S}/3rdparty/vboot"
+CROS_WORKON_DESTDIR=(
+	"${S}"
+	"${S}/3rdparty/vboot"
+)
+
+# commonlib, kconfig and xcompile are reused from coreboot.
 # Everything else is not supposed to matter for
 # libpayload.
-CROS_WORKON_SUBTREE="payloads/libpayload util/kconfig util/xcompile"
+CROS_WORKON_SUBTREE=(
+	"payloads/libpayload src/commonlib util/kconfig util/xcompile"
+	"Makefile firmware"
+)
 
-# Don't strip to ease remote GDB use (cbfstool strips final binaries anyway)
-STRIP_MASK="*"
+# Disable binary checks for PIE and relative relocatons.
+# Don't strip to ease remote GDB use (cbfstool strips final binaries anyway).
+# This is only okay because this ebuild only installs files into
+# ${SYSROOT}/firmware, which is not copied to the final system image.
+RESTRICT="binchecks strip"
 
-inherit cros-workon toolchain-funcs coreboot-sdk
+# Disable warnings for executable stack.
+QA_EXECSTACK="*"
+
+inherit cros-workon toolchain-funcs coreboot-sdk cros-sanitizers cros-unibuild
 
 LIBPAYLOAD_BUILD_NAMES=()
 LIBPAYLOAD_BUILD_TARGETS=()
@@ -51,6 +80,8 @@ src_unpack() {
 }
 
 src_configure() {
+	sanitizers-setup-env
+
 	local name
 	local target
 
@@ -79,6 +110,7 @@ libpayload_compile() {
 		DOTCONFIG="${dotconfig}"
 		HOSTCC="$(tc-getBUILD_CC)"
 		HOSTCXX="$(tc-getBUILD_CXX)"
+		VBOOT_SOURCE="${VBOOT_DESTDIR}"
 	)
 	use verbose && OPTS+=( "V=1" )
 
@@ -115,20 +147,28 @@ src_compile() {
 		< <(printf "%s\n" "${LIBPAYLOAD_BUILD_TARGETS[@]}" | sort -u)
 
 	local target
+	local board_config
 	local dotconfig
 	local dotconfig_gdb
 	for target in "${unique_targets[@]}"; do
-		dotconfig="${FILESDIR}/configs/config.${target}"
-		cp "${dotconfig}" "${T}/config.${target}"
-		libpayload_compile "${T}/config.${target}" "${T}/${target}"
+		board_config="${FILESDIR}/configs/config.${target}"
 
-		dotconfig_gdb="${T}/config_gdb.${target}"
+		dotconfig="${T}/config.${target}"
+		if use ti50_onboard; then
+			echo "CONFIG_LP_CBFS_VERIFICATION=y" >> "${dotconfig}"
+		fi
+		if use ti50_onboard && ! use vboot_disable_cbfs_integration; then
+			echo "CONFIG_LP_VBOOT_CBFS_INTEGRATION=y" >> "${dotconfig}"
+		fi
+		cat "${board_config}" >> "${dotconfig}"
+		# In case "${board_config}" does not have a newline at the end
+		echo >> "${dotconfig}"
+		libpayload_compile "${dotconfig}" "${T}/${target}"
+
 		# Build a second set of libraries with GDB support for developers
+		dotconfig_gdb="${T}/config_gdb.${target}"
 		cp "${dotconfig}" "${dotconfig_gdb}"
-		(
-			echo
-			echo "CONFIG_LP_REMOTEGDB=y"
-		) >>"${dotconfig_gdb}"
+		echo "CONFIG_LP_REMOTEGDB=y" >> "${dotconfig_gdb}"
 		libpayload_compile "${dotconfig_gdb}" "${T}/${target}.gdb"
 	done
 }
@@ -142,9 +182,12 @@ src_install() {
 		name="${LIBPAYLOAD_BUILD_NAMES[${i}]}"
 		target="${LIBPAYLOAD_BUILD_TARGETS[${i}]}"
 
-		emake obj="${T}/${target}" DOTCONFIG="${T}/config.${target}" \
+		emake obj="${T}/${target}" \
+			DOTCONFIG="${T}/config.${target}" VBOOT_SOURCE="${VBOOT_DESTDIR}" \
 			DESTDIR="${D}/firmware/${name}/libpayload" install
-		emake obj="${T}/${target}.gdb" DOTCONFIG="${T}/config_gdb.${target}" \
+		emake obj="${T}/${target}.gdb" \
+			DOTCONFIG="${T}/config_gdb.${target}" \
+			VBOOT_SOURCE="${VBOOT_DESTDIR}" \
 			DESTDIR="${D}/firmware/${name}/libpayload.gdb" install
 	done
 }

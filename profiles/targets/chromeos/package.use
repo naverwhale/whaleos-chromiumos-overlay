@@ -1,13 +1,18 @@
-# Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+# Copyright 2009 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 app-accessibility/brltty	-beeper -contracted-braille -doc -fm -gpm -java -learn-mode -midi -ncurses -ocaml -pcm -speech -tcl -X
 app-admin/logrotate	-cron
-app-admin/rsyslog	-gcrypt -ssl -zlib
+app-admin/rsyslog	-gcrypt -gnutls -openssl -ssl -zlib
 app-benchmarks/i7z	-X
 app-editors/nano	-unicode
 app-editors/qemacs	-X
-app-editors/vim		-X minimal
+app-editors/vim		-crypt -X minimal
+app-editors/vim-core    minimal
+
+# We do not use the tpm with gnupg
+app-crypt/gnupg -tpm
+
 # We don't use network functionality in bash, and since we ship it in a release
 # image, we'd prefer that attack surface simply not exist.
 app-shells/bash		-net
@@ -17,6 +22,7 @@ app-text/poppler	cairo
 app-text/tessdata_fast  osd
 app-text/tesseract      -doc jpeg -opencl -openmp png -static-libs tiff -training -webp
 dev-cpp/glog		gflags
+dev-cpp/msgpack-cxx	-boost
 dev-db/sqlite		-extensions
 # Disable Segger J-Link for building openocd-0.10.0. We currently
 # don't use J-Link. It requires upgrading libjaylink, which is not yet
@@ -24,7 +30,6 @@ dev-db/sqlite		-extensions
 dev-embedded/openocd	-jlink
 dev-lang/perl		gdbm
 dev-lang/python		gdbm -sqlite
-dev-libs/dbus-glib	tools
 dev-libs/elfutils	-utils
 dev-libs/expat		-unicode
 dev-libs/glib		-doc
@@ -33,20 +38,27 @@ dev-libs/libp11         -bindist
 # Readline is used by pcretest which we don't use.
 # zlib/bzip2 are only used by pcregrep which we don't use.
 dev-libs/libpcre	-bzip2 -readline -zlib
+# JIT uses mmap(..., PROT_WRITE | PROT_EXEC, ...)
+dev-libs/libpcre2	-bzip2 -jit -readline -zlib
 dev-libs/leveldb	-tcmalloc
 dev-libs/nss		-utils
 dev-libs/opencryptoki	tpmtok
 dev-libs/opensc	-pcsc-lite ctapi
 dev-libs/openssl	pkcs11 -tls-heartbeat
 dev-python/pygobject	-cairo
-dev-python/pyudev	pygobject
 dev-util/dialog		-unicode minimal
 dev-util/perf		-audit -doc -demangle -tui -ncurses -perl -python -slang -unwind
 chromeos-base/chromeos-chrome   build_tests
+chromeos-base/debugd    cfi thinlto
 chromeos-base/nsswitch	zeroconf
-media-gfx/imagemagick	jpeg png svg tiff
-# Disable all SANE backends that don't support USB.
-media-gfx/sane-backends -sane_backends_abaton -sane_backends_agfafocus -sane_backends_apple -sane_backends_artec -sane_backends_bh -sane_backends_canon -sane_backends_coolscan -sane_backends_dc210 -sane_backends_dc240 -sane_backends_dc25 -sane_backends_dmc -sane_backends_hs2p -sane_backends_ibm -sane_backends_kodak -sane_backends_leo -sane_backends_matsushita -sane_backends_microtek -sane_backends_mustek -sane_backends_nec -sane_backends_net -sane_backends_p5 -sane_backends_pie -sane_backends_plustek_pp -sane_backends_qcam -sane_backends_ricoh -sane_backends_s9036 -sane_backends_sceptre -sane_backends_sharp -sane_backends_sp15c -sane_backends_st400 -sane_backends_tamarack -sane_backends_teco1 -sane_backends_teco2 -sane_backends_teco3 -sane_backends_umax_pp
+media-gfx/imagemagick	jpeg png svg tiff xml
+# Disable all SANE backends that don't support USB,
+# plus additional backends that metrics indicate have no users.
+# sane-backends and sane-backends-extras CAN NOT have the same backend enabled in both
+media-gfx/sane-backends sane_backends_epson2 sane_backends_epsonds sane_backends_fujitsu sane_backends_pixma sane_backends_test
+media-gfx/sane-backends-extras sane_backends_canon_dr sane_backends_genesys sane_backends_hp sane_backends_hp3900 sane_backends_hp5590 sane_backends_kodakaio sane_backends_lexmark sane_backends_pnm sane_backends_ricoh2 sane_backends_snapscan sane_backends_xerox_mfp
+# TODO(rishabhagr):b/268700936 Remove this once this package has been renamed
+media-gfx/sane-backends-extras-dlc sane_backends_canon_dr sane_backends_genesys sane_backends_hp sane_backends_hp3900 sane_backends_hp5590 sane_backends_kodakaio sane_backends_lexmark sane_backends_pnm sane_backends_ricoh2 sane_backends_snapscan sane_backends_xerox_mfp
 media-gfx/zbar		-gtk -imagemagick jpeg python -qt4 threads -v4l -X -xv
 media-libs/freeimage	jpeg png
 # TODO(derat): Unset glib for harfbuzz if/when pango is no longer needed:
@@ -62,6 +74,11 @@ media-libs/openh264	utils
 media-libs/waffle	gbm
 media-plugins/live      -ssl
 media-sound/sox		alsa ogg
+# Libvpx is required for video recording using the vnc2video go module.
+# Libdrm is required for go/chrome-os-capture-ffmpeg.
+# Shared libs are used in release for go/a2dp-codecs-design-doc.
+# Avoid GPL and non-free components.
+media-video/ffmpeg vpx libdrm -gpl -openssl
 media-video/mplayer	cpudetection fbcon -encode -ass -a52 -cdio -dirac -dts -dv -dvd -dvdnav -enca -faac -faad -live -quicktime -mp3 -rar -real -speex -schroedinger -theora -tremor -toolame -twolame -vorbis -xscreensaver -x264 -xv -xvid
 net-analyzer/tcpdump	-chroot
 net-dns/avahi-daemon	zeroconf
@@ -76,8 +93,9 @@ net-libs/glib-networking -gnome -libproxy
 # Also |messages| is for enabling POST processor in the library.
 net-libs/libmicrohttpd	ssl messages
 net-libs/libsoup	-ssl
-# TODO(b/172893124): Enable http2
-net-misc/curl		adns -ftp -imap kerberos -http2 -pop3 -progress-meter -smtp -tftp
+# Disable boost.asio in net-libs/nghttp2 (b/172893124).
+net-libs/nghttp2	-cxx
+net-misc/curl		adns -ftp -imap kerberos -pop3 -progress-meter -smtp -tftp
 net-misc/dhcpcd		crash
 net-misc/iperf		threads
 # arping is used by some wifi autotests.
@@ -86,7 +104,7 @@ net-misc/iputils	arping tracepath
 net-misc/ntp		caps
 net-misc/openssh	-hpn -X
 net-vpn/openvpn		pkcs11
-net-vpn/strongswan	cisco nat-transport -strongswan_plugins_unity pkcs11
+net-vpn/strongswan	cisco nat-transport -strongswan_plugins_unity pkcs11 eap -pam curl
 net-vpn/wireguard-tools	-wg-quick
 net-nds/openldap	minimal -cxx
 net-print/cups		-dbus zeroconf upstart
@@ -98,7 +116,6 @@ net-proxy/tsocks	tordns
 # No support for bluetooth printing.
 net-wireless/bluez	-cups
 net-wireless/wpa_supplicant-cros	dbus debug -readline smartcard
-sci-geosciences/gpsd	-python -ntp -X dbus garmin minimal ocean tntc usb -sockets
 # Build only TF lite to save disk space.
 sci-libs/tensorflow	-python minimal
 sys-apps/busybox	-pam -selinux
@@ -106,11 +123,12 @@ sys-apps/baselayout	-auto_seed_etc_files
 sys-apps/coreutils	multicall
 sys-apps/dbus		-X
 sys-apps/fwupd		-gpg -man pkcs7 synaptics thunderbolt
-sys-apps/hwids		-net
+sys-apps/hwdata		-net -usb
 sys-apps/mawk		forced-sandbox
 sys-apps/sed		forced-sandbox
-sys-apps/smartmontools	minimal -daemon
+sys-apps/smartmontools	minimal -daemon -update-drivedb
 sys-apps/systemd-tmpfiles selinux
+sys-apps/systemd-utils -boot selinux -udev
 sys-apps/usbguard	-dbus
 sys-apps/util-linux     -unicode -udev
 # pam_unix: empty password is not OK
@@ -118,24 +136,27 @@ sys-auth/pambase	-nullok
 sys-block/fio		aio
 sys-block/parted	device-mapper
 sys-devel/bc		forced-sandbox
-sys-devel/clang		-multitarget
 sys-devel/llvm		-multitarget -ncurses
-sys-fs/lvm2		-lvm1 -readline -static
+sys-fs/cryptsetup	-argon2
+sys-fs/lvm2		-lvm1 -readline -static thin lvm
 sys-fs/mtools		-X
 sys-fs/ntfs3g		-crypt external-fuse ntfsprogs -suid
+sys-fs/squashfs-tools	lzo lz4 lzma zstd
 sys-fs/udev		-devfs-compat -rule_generator hwdb acl
-sys-kernel/chromeos-kernel-3_18 frozen_gcc -clang -lld -llvm_ias
-sys-kernel/chromeos-kernel-4_4 -llvm_ias
 sys-kernel/chromeos-kernel-4_14 -llvm_ias
 sys-kernel/chromeos-kernel-experimental -llvm_ias
 sys-kernel/chromeos-kernel-next -llvm_ias
 sys-kernel/linux-firmware	linux_firmware_keyspan_usb
+
+# We use the chromeos-base/nsswitch package to provide nsswitch.conf.
+sys-libs/glibc -nsswitch
+
 # We disable berkdb in general, but we need gdbm to provide the API.
 sys-libs/gdbm		berkdb
-sys-libs/ldb		-python -lmdb
+sys-libs/ldb		ldap -python -lmdb
 # Use pcre2 rather than pcre as everything else has moved.
 sys-libs/libselinux	pcre2
-sys-libs/ncurses	-cxx -unicode minimal tinfo
+sys-libs/ncurses	-cxx -unicode tinfo
 # Readline requires the unicode flag to match sys-libs/ncurses.
 sys-libs/readline	-unicode
 sys-libs/talloc		-python
@@ -161,91 +182,5 @@ media-libs/freetype	png -bzip2
 dev-libs/boost -python
 sys-apps/flashmap -python
 
-# Freeze Python 2.7 versions for all existing packages.  We'll slowly trim this
-# list down as packages don't need them.  New packages should *not* be added
-# here as new code should be using Python 3.
-# TODO(crbug.com/1007152): Trim this entirely!
-chromeos-base/telemetry python_targets_python2_7
-dev-python/btsocket python_targets_python2_7
-dev-python/certifi python_targets_python2_7
-dev-python/cffi python_targets_python2_7
-dev-python/chardet python_targets_python2_7
-dev-python/cheroot python_targets_python2_7
-dev-python/cherrypy python_targets_python2_7
-dev-python/contextlib2 python_targets_python2_7
-dev-python/cryptography python_targets_python2_7
-dev-python/cycler python_targets_python2_7
-dev-python/cython python_targets_python2_7
-dev-python/dbus-python python_targets_python2_7
-dev-python/django python_targets_python2_7
-dev-python/dpkt python_targets_python2_7
-dev-python/grpcio python_targets_python2_7
-dev-python/idna python_targets_python2_7
-dev-python/imaging python_targets_python2_7
-dev-python/jaraco-functools python_targets_python2_7
-dev-python/kiwisolver python_targets_python2_7
-dev-python/linecache2 python_targets_python2_7
-dev-python/lockfile python_targets_python2_7
-dev-python/lxml python_targets_python2_7
-dev-python/markupsafe python_targets_python2_7
-dev-python/matplotlib python_targets_python2_7
-dev-python/mkvparse python_targets_python2_7
-dev-python/mock python_targets_python2_7
-dev-python/more-itertools python_targets_python2_7
-dev-python/mysqlclient python_targets_python2_7
-dev-python/namespace-google python_targets_python2_7
-dev-python/namespace-jaraco python_targets_python2_7
-dev-python/numpy python_targets_python2_7
-dev-python/pbr python_targets_python2_7
-dev-python/pexpect python_targets_python2_7
-dev-python/ply python_targets_python2_7
-dev-python/portend python_targets_python2_7
-dev-python/protobuf-python python_targets_python2_7
-dev-python/psutil python_targets_python2_7
-dev-python/ptyprocess python_targets_python2_7
-dev-python/py python_targets_python2_7
-dev-python/pycparser python_targets_python2_7
-dev-python/pygobject python_targets_python2_7
-dev-python/pyopenssl python_targets_python2_7
-dev-python/pyparsing python_targets_python2_7
-dev-python/PySocks python_targets_python2_7
-dev-python/python-dateutil python_targets_python2_7
-dev-python/python-uinput python_targets_python2_7
-dev-python/pytz python_targets_python2_7
-dev-python/pyudev python_targets_python2_7
-dev-python/pyusb python_targets_python2_7
-dev-python/pyxattr python_targets_python2_7
-dev-python/pyyaml python_targets_python2_7
-dev-python/requests python_targets_python2_7
-dev-python/scandir python_targets_python2_7
-dev-python/selenium python_targets_python2_7
-dev-python/setuptools python_targets_python2_7
-dev-python/setuptools_scm python_targets_python2_7
-dev-python/six python_targets_python2_7
-dev-python/tempora python_targets_python2_7
-dev-python/traceback2 python_targets_python2_7
-dev-python/trollius python_targets_python2_7
-dev-python/urllib3 python_targets_python2_7
-dev-python/versioneer python_targets_python2_7
-dev-python/zc-lockfile python_targets_python2_7
-
-# These packages only support Python 2.7.  They aren't needed in Python 3.6+.
-# TODO(crbug.com/1007152): Trim this entirely!
-dev-python/backports-functools-lru-cache python_targets_python2_7 -python_targets_python3_6
-dev-python/enum34 python_targets_python2_7 -python_targets_python3_6
-dev-python/funcsigs python_targets_python2_7
-dev-python/functools32 python_targets_python2_7 -python_targets_python3_6
-dev-python/futures python_targets_python2_7 -python_targets_python3_6
-dev-python/ipaddress python_targets_python2_7 -python_targets_python3_6
-dev-python/mox python_targets_python2_7 -python_targets_python3_6
-dev-python/pathlib python_targets_python2_7 -python_targets_python3_6
-dev-python/subprocess32 python_targets_python2_7 -python_targets_python3_6
-virtual/python-enum34 python_targets_python2_7
-virtual/python-funcsigs python_targets_python2_7
-virtual/python-futures python_targets_python2_7
-
-# To permit images without Python2.7, these packages must only depend
-# conditionally on Python2-only packages. These entries keep those
-# dependencies enabled by default.
-virtual/target-chromium-os-dev python_targets_python2_7
-virtual/target-chromium-os-test python_targets_python2_7
+# We do not need udev rules in this package.
+dev-util/android-tools -udev

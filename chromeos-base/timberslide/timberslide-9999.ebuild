@@ -1,4 +1,4 @@
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Copyright 2016 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -15,7 +15,7 @@ PLATFORM_SUBDIR="timberslide"
 inherit cros-workon platform
 
 DESCRIPTION="EC log concatenator for Chromium OS"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/timberslide/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/timberslide/"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
@@ -28,16 +28,6 @@ RDEPEND="
 
 DEPEND="${RDEPEND}"
 
-src_install() {
-	dobin "${OUT}/timberslide"
-
-	# Install upstart configs and scripts
-	insinto /etc/init
-	doins init/*.conf
-	exeinto /usr/share/cros/init
-	doexe init/*.sh
-}
-
 platform_pkg_test() {
-	platform_test "run" "${OUT}/timberslide_test_runner"
+	platform test_all
 }

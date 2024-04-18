@@ -1,0 +1,33 @@
+From 2d360474a66ae308ca6a1c1703e763cdd12f0699 Mon Sep 17 00:00:00 2001
+From: George D Sworo <george.d.sworo@intel.com>
+Date: Tue, 26 Sep 2023 09:09:09 -0700
+Subject: [PATCH] [Decode] add more device IDs for RPL support
+
+Signed-off-by: George D Sworo <george.d.sworo@intel.com>
+
+diff --git a/media_driver/linux/gen12/ddi/media_sysinfo_g12.cpp b/media_driver/linux/gen12/ddi/media_sysinfo_g12.cpp
+index cf24db5560c1..4ded173f0548 100644
+--- a/media_driver/linux/gen12/ddi/media_sysinfo_g12.cpp
++++ b/media_driver/linux/gen12/ddi/media_sysinfo_g12.cpp
+@@ -515,6 +515,18 @@ static bool rplpGt2DeviceA721 = DeviceInfoFactory<GfxDeviceInfo>::
+ 
+ static bool rplpGt2DeviceA7A9 = DeviceInfoFactory<GfxDeviceInfo>::
+     RegisterDevice(0xA7A9, &adlpGt2Info);
++
++static bool rplGt1DeviceA7AA = DeviceInfoFactory<GfxDeviceInfo>::
++    RegisterDevice(0xA7AA, &adlpGt2Info);
++
++static bool rplGt1DeviceA7AB = DeviceInfoFactory<GfxDeviceInfo>::
++    RegisterDevice(0xA7AB, &adlpGt2Info);
++
++static bool rplGt1DeviceA7AC = DeviceInfoFactory<GfxDeviceInfo>::
++    RegisterDevice(0xA7AC, &adlpGt2Info);
++
++static bool rplGt1DeviceA7AD = DeviceInfoFactory<GfxDeviceInfo>::
++    RegisterDevice(0xA7AD, &adlpGt2Info);
+ #endif
+ 
+ #ifdef IGFX_GEN12_ADLN_SUPPORTED
+-- 
+2.34.1
+

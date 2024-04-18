@@ -1,0 +1,15 @@
+Disable zlib, readline as the system would build and install them.
+
+diff --git a/Makefile b/Makefile
+index 192e9fe..efe88ab 100644
+--- a/Makefile
++++ b/Makefile
+@@ -262,6 +262,8 @@ gdb_merge: force
+ 	@rm -f ${PROGRAM}
+ 	@if [ ! -f ${GDB}/config.status ]; then \
+ 	  (cd ${GDB}; ./configure --host=${GDB_TARGET} --build=${GDB_HOST} --with-separate-debug-dir=/usr/lib/debug \
++	    --without-zlib --with-system-zlib --disable-readline --with-system-readline \
++	    --enable-64-bit-bfd --disable-install-libbfd --disable-install-libiberty \
+ 	    --with-bugurl="" --with-expat=no --with-python=no --disable-sim; \
+ 	  $(MAKE) CRASH_TARGET=${TARGET}; echo ${TARGET} > crash.target) \
+ 	else $(MAKE) rebuild; fi

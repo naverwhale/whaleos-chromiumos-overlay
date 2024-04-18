@@ -27,8 +27,9 @@ CONFIG_SPI_FLASH_SMM=y
 CONFIG_ELOG_BOOT_COUNT=y
 CONFIG_ELOG_BOOT_COUNT_CMOS_OFFSET=144
 CONFIG_USE_OEM_BIN=y
-CONFIG_OEM_BIN_FILE="/build/grunt/firmware/coreboot-private/3rdparty/blobs/mainboard/google/kahlee/variants/careena/oem.bin"
+CONFIG_OEM_BIN_FILE="3rdparty/blobs/mainboard/google/kahlee/variants/careena/oem.bin"
 CONFIG_AMDFW_CONFIG_FILE=""
 CONFIG_STONEYRIDGE_XHCI_FWM_FILE=""
 CONFIG_AGESA_PRE_MEMORY_BINARY_PI_FILE=""
 CONFIG_AGESA_POST_MEMORY_BINARY_PI_FILE=""
+# CONFIG_USE_PSPSECUREOS is not set

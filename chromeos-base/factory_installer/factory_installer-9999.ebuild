@@ -1,11 +1,12 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
-# Distributed under the terms of the GNU General Public License v2
+# Copyright 2010 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
 
 EAPI=7
 CROS_WORKON_PROJECT="chromiumos/platform/factory_installer"
 CROS_WORKON_LOCALNAME="platform/factory_installer"
 
-inherit cros-sanitizers cros-workon toolchain-funcs cros-factory
+inherit cros-sanitizers cros-workon cros-factory
 
 DESCRIPTION="Chrome OS Factory Installer"
 HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform/factory_installer/"
@@ -25,8 +26,8 @@ ALL_PORTS=(
 	ttyUSB{0..5}
 	tty{0..5}
 )
-IUSE_PORTS="${ALL_PORTS[@]/#/${USE_PREFIX}}"
-IUSE="${IUSE_PORTS} -asan test"
+IUSE_PORTS="${ALL_PORTS[*]/#/${USE_PREFIX}}"
+IUSE="${IUSE_PORTS} -asan test cr50_onboard ti50_onboard tpm"
 
 # Factory install images operate by downloading content from a
 # server.  In some cases, the downloaded content contains programs
@@ -83,7 +84,9 @@ RDEPEND="${COMMON_DEPEND}
 	app-misc/jq
 	chromeos-base/chromeos-installer
 	chromeos-base/chromeos-storage-info
+	chromeos-base/dlcservice
 	chromeos-base/ec-utils
+	chromeos-base/factory_fai
 	chromeos-base/secure-wipe
 	chromeos-base/vpd
 	dev-util/stressapptest
@@ -94,8 +97,8 @@ RDEPEND="${COMMON_DEPEND}
 	sys-apps/upstart
 	sys-apps/util-linux
 	sys-block/parted
-	sys-fs/e2fsprogs"
-
+	sys-fs/e2fsprogs
+	sys-kernel/linux-firmware"
 
 src_configure() {
 	sanitizers-setup-env
@@ -115,13 +118,13 @@ src_install() {
 	local service_file="factory_tty.sh"
 	local tmp_service_file="${T}/${service_file}"
 	local scripts=(*.sh)
-	scripts=(${scripts[@]#${service_file}})
+	scripts=( "${scripts[@]# ${service_file}}" )
 
 	if [[ -n "${TTY_CONSOLE}" ]]; then
 		local item ports=()
 		for item in ${IUSE_PORTS}; do
-			if use ${item}; then
-				ports+=("${item#${USE_PREFIX}}")
+			if use "${item}"; then
+				ports+=("${item#"${USE_PREFIX}"}")
 			fi
 		done
 		sed -e "s/^TTY_CONSOLE=.*$/TTY_CONSOLE=\"${ports[*]}\"/" \
@@ -132,14 +135,24 @@ src_install() {
 	fi
 	dosbin "${scripts[@]}" "${service_file}"
 
-	insinto /usr/share/factory_installer/tpm
-	doins tpm/*.sh
+	local tpm_dir="/usr/share/factory_installer/tpm"
+	local tpm_utils="stub.sh"
+	insinto "${tpm_dir}"
+
+	if use cr50_onboard || use ti50_onboard; then
+		tpm_utils=cros.sh
+	elif use tpm; then
+		tpm_utils=infineon.sh
+	fi
+
+	einfo "Installing ${tpm_dir}/${tpm_utils}"
+	newins tpm/"${tpm_utils}" "tpm_utils.sh"
 
 	insinto /usr/share/factory_installer/init
 	doins init/*.conf
 
 	insinto /root
-	newins $FILESDIR/dot.factory_installer .factory_installer
+	newins "${FILESDIR}/dot.factory_installer" .factory_installer
 	# install PMBR code
 	case "$(tc-arch)" in
 		"x86")
@@ -148,10 +161,10 @@ src_install() {
 		;;
 		*)
 		einfo "using default PMBR code"
-		PMBR_SOURCE=$FILESDIR/dot.pmbr_code
+		PMBR_SOURCE="${FILESDIR}/dot.pmbr_code"
 		;;
 	esac
-	newins $PMBR_SOURCE .pmbr_code
+	newins "${PMBR_SOURCE}" .pmbr_code
 
 	einfo "Install resources from chromeos-base/factory."
 	factory_unpack_resource installer "${ED}/usr"

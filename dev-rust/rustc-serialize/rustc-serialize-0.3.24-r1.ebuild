@@ -1,1 +1,0 @@
-rustc-serialize-0.3.24.ebuild

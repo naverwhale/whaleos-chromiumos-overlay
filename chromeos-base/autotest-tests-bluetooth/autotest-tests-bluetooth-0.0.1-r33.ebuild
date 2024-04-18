@@ -1,0 +1,51 @@
+# Copyright 2022 The ChromiumOS Authors
+# Distributed under the terms of the GNU General Public License v2
+
+EAPI="7"
+
+CROS_WORKON_COMMIT="b5bbb8140fb6106ab65432004f1ca9e554981c55"
+CROS_WORKON_TREE="a668fd9afe33857885e2156f55182fcc1ded2ada"
+PYTHON_COMPAT=( python3_{8..11} )
+
+CROS_WORKON_PROJECT="chromiumos/third_party/autotest"
+CROS_WORKON_LOCALNAME="third_party/autotest/files"
+
+inherit cros-workon autotest python-any-r1
+
+DESCRIPTION="Autotest tests for Bluetooth"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/third_party/autotest/"
+SRC_URI=""
+LICENSE="GPL-2"
+SLOT="0"
+KEYWORDS="*"
+
+# Enable autotest by default.
+IUSE="+autotest"
+
+RDEPEND="
+	chromeos-base/autotest-client
+	dev-python/btsocket
+"
+
+BDEPEND="
+	dev-python/btsocket
+	dev-python/dbus-python
+	dev-python/numpy
+	dev-python/protobuf-python
+	dev-python/pydbus
+	dev-python/pygobject
+"
+
+CLIENT_IUSE_TESTS="
+	+tests_bluetooth_AVLHCI
+	+tests_bluetooth_AVLDriver
+	+tests_bluetooth_AdapterQuickHealthClient
+"
+
+IUSE_TESTS="${IUSE_TESTS}
+	${CLIENT_IUSE_TESTS}
+"
+
+IUSE="${IUSE} ${IUSE_TESTS}"
+
+AUTOTEST_FILE_MASK="*.a *.tar.bz2 *.tbz2 *.tgz *.tar.gz"

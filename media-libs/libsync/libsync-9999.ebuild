@@ -1,13 +1,12 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
+EAPI="7"
 
 inherit cros-constants
 
 CROS_WORKON_PROJECT="aosp/platform/system/core/libsync"
 CROS_WORKON_EGIT_BRANCH="master"
-CROS_WORKON_REPO="${CROS_GIT_AOSP_URL}"
 CROS_WORKON_LOCALNAME="../aosp/system/libsync"
 CROS_WORKON_MANUAL_UPREV="1"
 
@@ -26,7 +25,8 @@ src_prepare() {
 	cp "${FILESDIR}/Makefile" "${S}" || die "Copying Makefile"
 	cp "${FILESDIR}/strlcpy.c" "${S}" || die "Copying strlcpy.c"
 	cp "${FILESDIR}/libsync.pc.template" "${S}" || die "Copying libsync.pc.template"
-	epatch "${FILESDIR}/0001-libsync-add-prototype-for-strlcpy.patch"
+	eapply "${FILESDIR}/0001-libsync-add-prototype-for-strlcpy.patch"
+	default
 }
 
 src_configure() {

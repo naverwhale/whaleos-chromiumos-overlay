@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -34,9 +34,4 @@ DEPEND="${RDEPEND}
 src_configure() {
 	cros_optimize_package_for_speed
 	platform_src_configure
-}
-
-src_install() {
-	dobin "${OUT}"/image_processor_test
-	platform_src_install
 }

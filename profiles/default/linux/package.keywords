@@ -1,4 +1,4 @@
-# Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+# Copyright 2009 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # This controls the KEYWORDs for the cros_sdk chroot.
@@ -8,5 +8,3 @@
 #   in the ebuild itself (even for portage-stable/).
 # - If you want to use different versions in the cros_sdk chroot and the target
 #   boards, then use package.mask to control visibility.
-
-=app-text/xmlto-0.0.24-r1	amd64 arm x86

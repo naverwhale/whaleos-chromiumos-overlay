@@ -1,0 +1,3 @@
+# disable cras service when docker enabled, we do not need it and it
+# is broken and blocks cros-provision from working
+manual

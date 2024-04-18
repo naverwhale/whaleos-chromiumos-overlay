@@ -1,4 +1,4 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2012 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -13,7 +13,7 @@ PLATFORM_NATIVE_TEST="yes"
 inherit cros-workon platform systemd user
 
 DESCRIPTION="MTP daemon for Chromium OS"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/mtpd"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/mtpd"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
@@ -22,15 +22,25 @@ IUSE="-asan +seccomp systemd test"
 COMMON_DEPEND="
 	dev-libs/protobuf:=
 	media-libs/libmtp:=
-	virtual/udev
+	virtual/libudev:=
 "
 
-RDEPEND="${COMMON_DEPEND}"
+RDEPEND="
+	${COMMON_DEPEND}
+	virtual/udev
+"
 
 DEPEND="${COMMON_DEPEND}
 	chromeos-base/system_api:="
 
+BDEPEND="
+	chromeos-base/chromeos-dbus-bindings
+	seccomp? ( chromeos-base/minijail )
+"
+
 src_install() {
+	platform_src_install
+
 	dosbin "${OUT}"/mtpd
 
 	# Install seccomp policy file.

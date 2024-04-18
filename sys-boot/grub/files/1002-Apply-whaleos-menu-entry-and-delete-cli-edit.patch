@@ -1,0 +1,108 @@
+diff --git a/grub-core/normal/menu.c b/grub-core/normal/menu.c
+index 5084480..1c69a42 100644
+--- a/grub-core/normal/menu.c
++++ b/grub-core/normal/menu.c
+@@ -584,7 +584,6 @@ run_menu (grub_menu_t menu, int nested, int *auto_boot)
+ 
+   /* If DEFAULT_ENTRY is not within the menu entries, fall back to
+      the first entry.  */
+-  if (default_entry < 0 || default_entry >= menu->size)
+     default_entry = 0;
+ 
+   timeout = grub_menu_get_timeout ();
+@@ -792,20 +791,6 @@ run_menu (grub_menu_t menu, int nested, int *auto_boot)
+ 		}
+ 	      break;
+ 
+-	    case 'c':
+-	      menu_fini ();
+-	      grub_cmdline_run (1, 0);
+-	      goto refresh;
+-
+-	    case 'e':
+-	      menu_fini ();
+-		{
+-		  grub_menu_entry_t e = grub_menu_get_entry (menu, current_entry);
+-		  if (e)
+-		    grub_menu_entry_run (e);
+-		}
+-	      goto refresh;
+-
+ 	    default:
+ 	      {
+ 		int entry;
+@@ -882,10 +867,48 @@ show_menu (grub_menu_t menu, int nested, int autobooted)
+       grub_menu_entry_t e;
+       int auto_boot;
+ 
+-      boot_entry = run_menu (menu, nested, &auto_boot);
++      int saved_size = menu->size;
++      int i, default_entry;
++      grub_menu_entry_t tmp_entry = menu->entry_list;
++      for (i = 0; i < 5; i++)
++        tmp_entry = tmp_entry->next;
++
++      grub_menu_t whale_menu = grub_zalloc (sizeof (struct grub_menu));
++      whale_menu->size = 3;
++      whale_menu->entry_list = tmp_entry;
++      boot_entry = run_menu (whale_menu, nested, &auto_boot);
+       if (boot_entry < 0)
+ 	break;
+ 
++      grub_free(whale_menu);
++      menu->size = saved_size;
++
++      if (via_menu)
++        {
++	  if (boot_entry == 0) // Normal Boot
++	    {
++              boot_entry = get_entry_number (menu, "default");
++	    }
++	  else if (boot_entry == 1) // Previous Successful Boot
++	    {
++               default_entry = get_entry_number (menu, "default");
++	       boot_entry = default_entry % 2? --default_entry : ++default_entry;
++	    }
++	  else // System Recovery
++	    {
++	       boot_entry = 7;
++	    }
++
++	  if (boot_entry != 7)
++            {
++              grub_cls ();
++              grub_printf ("  ");
++              grub_printf_ (N_("Booting `verified image %c'"), boot_entry % 2? 'B' : 'A');
++              grub_printf ("\n\n");
++              grub_millisleep (1000);
++            }
++	}
++
+       e = grub_menu_get_entry (menu, boot_entry);
+       if (! e)
+ 	continue; /* Menu is empty.  */
+diff --git a/grub-core/normal/menu_text.c b/grub-core/normal/menu_text.c
+index 18240e7..dba061f 100644
+--- a/grub-core/normal/menu_text.c
++++ b/grub-core/normal/menu_text.c
+@@ -181,17 +181,14 @@ command-line or ESC to discard edits and return to the GRUB menu."),
+       if (nested)
+ 	{
+ 	  ret += grub_print_message_indented_real
+-	    (_("Press enter to boot the selected OS, "
+-	       "`e' to edit the commands before booting "
+-	       "or `c' for a command-line. ESC to return previous menu."),
++	    (_("Press enter to boot the selected boot mode."
++	       "ESC to return previous menu."),
+ 	     STANDARD_MARGIN, STANDARD_MARGIN, term, dry_run);
+ 	}
+       else
+ 	{
+ 	  ret += grub_print_message_indented_real
+-	    (_("Press enter to boot the selected OS, "
+-	       "`e' to edit the commands before booting "
+-	       "or `c' for a command-line."),
++	    (_("Press enter to boot the selected boot mode."),
+ 	     STANDARD_MARGIN, STANDARD_MARGIN, term, dry_run);
+ 	}	
+     }

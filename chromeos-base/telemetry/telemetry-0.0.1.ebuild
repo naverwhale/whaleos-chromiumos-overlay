@@ -1,9 +1,9 @@
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright 2013 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="6"
+EAPI="7"
 
-PYTHON_COMPAT=( python2_7 python{3_6,3_7} )
+PYTHON_COMPAT=( python3_{6..9} )
 
 inherit python-r1 cros-constants
 
@@ -15,8 +15,10 @@ SLOT="0"
 KEYWORDS="*"
 
 # Ensure the telemetry dep tarball is created already.
-DEPEND="chromeos-base/chromeos-chrome"
-RDEPEND="dev-python/psutil[${PYTHON_USEDEP}]"
+DEPEND="${PYTHON_DEPS}
+	chromeos-base/chromeos-chrome:="
+RDEPEND="${PYTHON_DEPS}
+	dev-python/psutil[${PYTHON_USEDEP}]"
 
 S=${WORKDIR}
 

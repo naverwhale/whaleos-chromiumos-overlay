@@ -1,0 +1,15 @@
+BDEPEND=dev-vcs/git app-misc/jq !cros_host? ( dev-lang/rust:= ) dev-lang/rust-host:=
+DEFINED_PHASES=compile configure info install postinst preinst prepare prerm setup test unpack
+DEPEND=dev-rust/third-party-crates-src:= sys-apps/flashrom >=virtual/rust-1.60.0:= virtual/rust-binaries:=
+DESCRIPTION=Utility for AVL qualification of SPI flash chips with flashrom
+EAPI=7
+HOMEPAGE=https://www.flashrom.org/Flashrom
+IUSE=cros_host cros_workon_tree_77847d4270d60c0edc787b4643d5dbf936df62bd_9ced2651cc64774f29cf29ab901161dbdd496d3a_30be527243b50817fe644449d8e15bc80e788a8e_556985904c2d2e4e13c91c1e28418aac66e96103 cros-debug asan cfi cfi_diag cfi_recover coverage fuzzer msan thinlto tsan ubsan asan rust-coverage cros_host fuzzer lsan +lto msan +panic-abort sccache test tsan ubsan
+KEYWORDS=*
+LICENSE=GPL-2
+PROPERTIES=live
+RDEPEND=!<=sys-apps/flashrom-tester-1.60-r41 sys-apps/flashrom virtual/rust-binaries:=
+REQUIRED_USE=cfi? ( thinlto ) cfi_diag? ( cfi ) cfi_recover? ( cfi_diag ) ?? ( asan lsan msan tsan )
+SLOT=0/1.6.0-r169
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-debug	af551fd1f4be5284c65a5f020aa73c5c	cros-rust	355336aa5f14b110d88a9f2917c72f39	cros-sanitizers	4504f3661db0fe02309acd3555785cf2	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=8fd34b7883291edc9825790d9b492324

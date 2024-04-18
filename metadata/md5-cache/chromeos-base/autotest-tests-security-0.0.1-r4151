@@ -1,0 +1,15 @@
+BDEPEND=dev-vcs/git app-misc/jq dev-python/chardet
+DEFINED_PHASES=compile info install postinst prepare setup unpack
+DEPEND=!<chromeos-base/autotest-tests-0.0.3 autotest? ( chromeos-base/autotest ) >=chromeos-base/libchrome-0.0.1-r884:0=[cros-debug=] dev-cpp/gtest:=
+DESCRIPTION=Security autotests
+EAPI=7
+HOMEPAGE=https://chromium.googlesource.com/chromiumos/third_party/autotest/
+IUSE=+autotest -chromeless_tests -chromeless_tty containers +seccomp selinux cros_host cros_workon_tree_a2c6b0739e2a6819c4396010a998d4e2a8531a2e +buildcheck autotest opengles cros-debug asan cfi cfi_diag cfi_recover coverage fuzzer msan thinlto tsan ubsan
+KEYWORDS=*
+LICENSE=GPL-2
+PROPERTIES=live
+RDEPEND=!<chromeos-base/autotest-tests-0.0.3 autotest? ( chromeos-base/autotest ) >=chromeos-base/libchrome-0.0.1-r884:0=[cros-debug=]
+REQUIRED_USE=cfi? ( thinlto ) cfi_diag? ( cfi ) cfi_recover? ( cfi_diag )
+SLOT=0
+_eclasses_=autotest	8421fa03ce96ac0b8d34f5c5020ab8d3	cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-debug	af551fd1f4be5284c65a5f020aa73c5c	cros-sanitizers	4504f3661db0fe02309acd3555785cf2	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	libchrome	84a911cdf2eb95f651e86cd39c89d0f7	libchrome-version	c3e83b27c95464f9fe98ff4d1016ffbb	multilib	2477ebe553d3e4d2c606191fe6c33602	python-any-r1	54a3178500786b0a7ede4a23b7f2a6ad	python-utils-r1	76252008070e69454f51fa80c07638c9	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=11e88eb724564af4f4fad5a0da3f5214

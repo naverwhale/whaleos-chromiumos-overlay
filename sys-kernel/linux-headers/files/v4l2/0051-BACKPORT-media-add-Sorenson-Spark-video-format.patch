@@ -1,0 +1,46 @@
+From 109dccb514e82a5dc24e2a451037a3e41d538843 Mon Sep 17 00:00:00 2001
+From: Ming Qian <ming.qian@nxp.com>
+Date: Thu, 12 Jan 2023 09:04:47 +0000
+Subject: [PATCH] BACKPORT: media: add Sorenson Spark video format
+
+Sorenson Spark is an implementation of H.263 for use
+in Flash Video and Adobe Flash files.
+Sorenson Spark is an incomplete implementation of H.263.
+It differs mostly in header structure and ranges of the coefficients.
+
+Signed-off-by: Ming Qian <ming.qian@nxp.com>
+Reviewed-by: Nicolas Dufresne <nicolas.dufresne@collabora.com>
+Signed-off-by: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Signed-off-by: Mauro Carvalho Chehab <mchehab@kernel.org>
+(cherry picked from commit ae77d1391445f1357d888990c07b5288a4cacac5)
+
+Conflicts:
+   Documentation/userspace-api/media/v4l/pixfmt-compressed.rst
+   drivers/media/v4l2-core/v4l2-ioctl.c
+
+Non-uAPI changes dropped.
+
+BUG=b:278157861
+TEST=Check header
+
+Change-Id: Ie6960585d87b783207e2283d49964cca0ec92a53
+Signed-off-by: Chen-Yu Tsai <wenst@chromium.org>
+---
+ include/uapi/linux/videodev2.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index 658822a65d95..5a4d7f28a0d9 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -644,6 +644,7 @@ struct v4l2_pix_format {
+ #define V4L2_PIX_FMT_HEVC     v4l2_fourcc('H', 'E', 'V', 'C') /* HEVC aka H.265 */
+ #define V4L2_PIX_FMT_H264_SLICE v4l2_fourcc('S', '2', '6', '4') /* H264 parsed slices */
+ #define V4L2_PIX_FMT_HEVC_SLICE v4l2_fourcc('S', '2', '6', '5') /* HEVC parsed slices */
++#define V4L2_PIX_FMT_SPK      v4l2_fourcc('S', 'P', 'K', '0') /* Sorenson Spark */
+ 
+ /*  Vendor-specific formats   */
+ #define V4L2_PIX_FMT_CPIA1    v4l2_fourcc('C', 'P', 'I', 'A') /* cpia1 YUV */
+-- 
+2.39.2
+

@@ -1,0 +1,11 @@
+DEFINED_PHASES=-
+DEPEND=!internal? ( app-i18n/nacl-mozc )
+DESCRIPTION=This is a meta package for installing Japanese IME packages
+EAPI=7
+HOMEPAGE=https://www.google.com/inputtools/
+IUSE=internal
+KEYWORDS=*
+LICENSE=metapackage
+RDEPEND=!internal? ( app-i18n/nacl-mozc )
+SLOT=0
+_md5_=16ef67b28447551f68f1e47968a944e1

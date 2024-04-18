@@ -1,6 +1,6 @@
 ### mesa-amd dev and uprev process
 
-mesa-amd follows a traditional [cros_workon](https://chromium.googlesource.com/chromiumos/docs/+/master/developer_guide.md#making-changes-to-packages-whose-source-code-is-checked-into-chromium-os-git-repositories) workflow where changes are made directly to src/third_party/mesa-amd. This is different from the [mesa](https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/media-libs/mesa/mesa-9999.ebuild) project, which follows the CROS_WORKON_MANUAL_UPREV workflow.
+mesa-amd follows a traditional [cros_workon](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/developer_guide.md#making-changes-to-packages-whose-source-code-is-checked-into-chromium-os-git-repositories) workflow where changes are made directly to src/third_party/mesa-amd. This is different from the [mesa](https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/media-libs/mesa/mesa-9999.ebuild) project, which follows the CROS_WORKON_MANUAL_UPREV workflow.
 
 Working in mesa-amd takes an "upstream first" philosophy, and downstream changes represent technical debt and should be avoided. Commit messages for downstream changes in mesa-amd are [prefixed in a similar fashion](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/kernel_development.md#commit-messages-summary-lines-chromium_upstream_fromlist_backport) as changes in the kernel and elsewhere in Chrome OS.
 
@@ -15,7 +15,7 @@ Tags and branches from upstream are automatically synced to the chromiumos mesa 
 When uprevving to a new release branch, follow the below process to reset the tree to its upstream state.
 ```
  # Create a merge commit that resolves all merge conflicts such that all changes are discarded in favor of those in the new upstream branch
- git merge upstream/mesa-21.2.1 --no-commit
+ git merge upstream/mesa-21.2.1 -X theirs --no-commit
  git read-tree upstream/mesa-21.2.1
  # Restore this file to ensure that presubmit checks survive the uprev.
  git add PRESUBMIT.cfg

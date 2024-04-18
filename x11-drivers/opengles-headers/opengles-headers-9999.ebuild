@@ -1,11 +1,11 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright 2010 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
 CROS_WORKON_PROJECT="chromiumos/third_party/khronos"
 CROS_WORKON_LOCALNAME="khronos"
 
-inherit cros-workon
+inherit cros-workon cros-sanitizers
 
 DESCRIPTION="OpenGL|ES headers."
 HOMEPAGE="http://www.khronos.org/opengles/2_X/"
@@ -14,13 +14,21 @@ LICENSE="SGI-B-2.0"
 KEYWORDS="~*"
 IUSE=""
 
-# libX11 needs to be in RDEPEND because we depend on the header being present
-RDEPEND="x11-libs/libX11:="
 DEPEND="
-	${RDEPEND}
+	x11-libs/libX11
 	>=dev-util/opencl-headers-2021.04.29
-	>=dev-util/spirv-headers-1.5.4.1
+	dev-util/spirv-headers
 "
+# Packages need to be in RDEPEND because we depend on the headers being present
+# See http://go/ebuild-faq#dependency-types for detail
+RDEPEND="
+	${DEPEND}
+"
+
+src_configure() {
+	sanitizers-setup-env
+	default
+}
 
 src_install() {
 	# headers

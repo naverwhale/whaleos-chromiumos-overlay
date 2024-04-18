@@ -1,0 +1,89 @@
+From 98f9e20c6207b81a2f5203b3d0579b42598488c1 Mon Sep 17 00:00:00 2001
+From: Sergey Senozhatsky <senozhatsky@chromium.org>
+Date: Thu, 14 May 2020 18:01:45 +0200
+Subject: [PATCH] BACKPORT: media: videobuf2: handle
+ V4L2_FLAG_MEMORY_NON_CONSISTENT flag
+
+This patch lets user-space to request a non-consistent memory
+allocation during CREATE_BUFS and REQBUFS ioctl calls.
+
+= CREATE_BUFS
+
+  struct v4l2_create_buffers has seven 4-byte reserved areas,
+  so reserved[0] is renamed to ->flags. The struct, thus, now
+  has six reserved 4-byte regions.
+
+= CREATE_BUFS32
+
+  struct v4l2_create_buffers32 has seven 4-byte reserved areas,
+  so reserved[0] is renamed to ->flags. The struct, thus, now
+  has six reserved 4-byte regions.
+
+= REQBUFS
+
+ We use one bit of a ->reserved[1] member of struct v4l2_requestbuffers,
+ which is now renamed to ->flags. Unlike v4l2_create_buffers, struct
+ v4l2_requestbuffers does not have enough reserved room. Therefore for
+ backward compatibility  ->reserved and ->flags were put into anonymous
+ union.
+
+Signed-off-by: Sergey Senozhatsky <senozhatsky@chromium.org>
+Signed-off-by: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Signed-off-by: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
+(cherry picked from commit 1e0b2318fa75d186ee0d2be31843ce867385fcc4)
+
+Conflicts:
+   drivers/media/v4l2-core/v4l2-compat-ioctl32.c
+   drivers/media/v4l2-core/v4l2-ioctl.c
+   drivers/media/v4l2-core/videobuf2-v4l2.c
+
+Non-uAPI changes dropped.
+
+BUG=b:278157861
+TEST=Check header
+
+Change-Id: Id19bb1a2f04a471e54bd0a878ab732a4a35b46f9
+Signed-off-by: Chen-Yu Tsai <wenst@chromium.org>
+---
+ include/uapi/linux/videodev2.h | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index 32d454df89ab..41668e9a865e 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -854,7 +854,10 @@ struct v4l2_requestbuffers {
+ 	__u32			type;		/* enum v4l2_buf_type */
+ 	__u32			memory;		/* enum v4l2_memory */
+ 	__u32			capabilities;
+-	__u32			reserved[1];
++	union {
++		__u32		flags;
++		__u32		reserved[1];
++	};
+ };
+ 
+ /* capabilities for struct v4l2_requestbuffers and v4l2_create_buffers */
+@@ -2335,6 +2338,9 @@ struct v4l2_dbg_chip_info {
+  * @memory:	enum v4l2_memory; buffer memory type
+  * @format:	frame format, for which buffers are requested
+  * @capabilities: capabilities of this buffer type.
++ * @flags:	additional buffer management attributes (ignored unless the
++ *		queue has V4L2_BUF_CAP_SUPPORTS_MMAP_CACHE_HINTS capability
++ *		and configured for MMAP streaming I/O).
+  * @reserved:	future extensions
+  */
+ struct v4l2_create_buffers {
+@@ -2343,7 +2349,8 @@ struct v4l2_create_buffers {
+ 	__u32			memory;
+ 	struct v4l2_format	format;
+ 	__u32			capabilities;
+-	__u32			reserved[7];
++	__u32			flags;
++	__u32			reserved[6];
+ };
+ 
+ /*
+-- 
+2.40.1.606.ga4b1b128d6-goog
+

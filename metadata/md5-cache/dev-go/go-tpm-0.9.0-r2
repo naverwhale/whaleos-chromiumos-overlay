@@ -1,0 +1,13 @@
+BDEPEND=dev-lang/go
+DEFINED_PHASES=compile install nofetch postinst test unpack
+DEPEND=dev-go/go-sys dev-go/cmp
+DESCRIPTION=This is a go library for working with TPM devices, that is encoding and decoding binary commands.
+EAPI=7
+HOMEPAGE=https://github.com/google/go-tpm
+KEYWORDS=*
+LICENSE=Apache-2.0
+RESTRICT=binchecks strip
+SLOT=0
+SRC_URI=https://github.com/google/go-tpm/archive/v0.9.0.tar.gz -> github.com-google-go-tpm-v0.9.0.tar.gz
+_eclasses_=cros-go	77ba1c1ddf5c20dab7e47e19efeffef7	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=c7802afd36d8e7ec27a5fa518b5fcc87

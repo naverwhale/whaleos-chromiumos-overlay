@@ -1,4 +1,4 @@
-# Copyright 2015 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -12,7 +12,7 @@ HOMEPAGE="https://chromium.googlesource.com/chromiumos/third_party/tpm2/"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
-IUSE="generic_tpm2 tpm2_simulator tpm2_simulator_manufacturer"
+IUSE="generic_tpm2 test tpm2_simulator tpm2_simulator_manufacturer"
 
 DEPEND="dev-libs/openssl:0="
 
@@ -39,6 +39,7 @@ src_install() {
 	doins Capabilities.h
 	doins ExecCommand_fp.h
 	doins GetCommandCodeString_fp.h
+	doins GlobalStateCleanup_fp.h
 	doins Implementation.h
 	doins Manufacture_fp.h
 	doins Platform.h
@@ -52,7 +53,7 @@ src_install() {
 	doins swap.h
 	doins tpm_generated.h
 	doins tpm_types.h
-	if use tpm2_simulator; then
+	if use test || use tpm2_simulator; then
 		doins tpm_manufacture.h
 		doins tpm_simulator.hpp
 	fi

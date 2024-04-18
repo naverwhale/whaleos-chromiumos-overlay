@@ -1,8 +1,0 @@
-DEFINED_PHASES=install
-DESCRIPTION=Das U-Boot -- the Universal Boot Loader
-EAPI=6
-HOMEPAGE=https://www.denx.de/wiki/U-Boot
-KEYWORDS=*
-LICENSE=GPL-2
-SLOT=0
-_md5_=fe43845faf7d2d8a563e1b6e6b414408

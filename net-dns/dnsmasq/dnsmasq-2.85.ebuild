@@ -88,23 +88,28 @@ use_have() {
 }
 
 pkg_setup() {
+	enewgroup dnsmasq
+	enewuser dnsmasq
+
 	use lua && lua-single_pkg_setup
 }
 
-pkg_pretend() {
+src_prepare() {
 	if use static; then
 		einfo "Only sys-libs/gmp and dev-libs/nettle are statically linked."
 		use dnssec || einfo "Thus, ${P}[!dnssec,static] makes no sense;" \
 			"in this case the static USE flag does nothing."
 	fi
-}
 
-src_prepare() {
 	default
 
 	if use dhcp-options; then
 		eapply "${FILESDIR}"/${PN}-2.72-Write-DHCP-request-options-to-lease-file.patch
 	fi
+	# Fix CVE-2022-0934
+	eapply "${FILESDIR}"/${PN}-2.87-Fix-write-after-free-error-in-DHCPv6-server-code.patch
+	# Fix CVE-2023-28450
+	eapply "${FILESDIR}"/${PN}-2.90-Fix-CVE-2023-28450.patch
 
 	eapply_user
 

@@ -1,9 +1,9 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2022 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2.
 
-EAPI=5
+EAPI=7
 
-CROS_GO_SOURCE="go.googlesource.com/sync:golang.org/x/sync f52d1811a62927559de87708c8913c1650ce4f26"
+CROS_GO_SOURCE="go.googlesource.com/sync:golang.org/x/sync 036812b2e83c0ddf193dd5a34e034151da389d09"
 
 CROS_GO_PACKAGES=(
 	"golang.org/x/sync/errgroup"

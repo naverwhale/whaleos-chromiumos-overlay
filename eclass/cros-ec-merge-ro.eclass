@@ -1,4 +1,4 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # @ECLASS: cros-ec-merge-ro.eclass
@@ -6,21 +6,21 @@
 # Chromium OS Firmware Team
 # @BUGREPORTS:
 # Please report bugs via http://crbug.com/new (with label Build)
-# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/master/eclass/@ECLASS@
+# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/eclass/@ECLASS@
 # @BLURB: helper eclass for merging RO firmware into EC firmware
 # @DESCRIPTION:
 # Merges a specific RO version of firmware into the firmware that was built
 # during the build.
 #
 # NOTE: When making changes to this class, make sure to modify all the -9999
-# ebuilds that inherit it to work around http://crbug.com/220902.
+# ebuilds that inherit it to work around https://issuetracker.google.com/201299127.
 
 if [[ -z "${_ECLASS_CROS_EC_MERGE_RO}" ]]; then
 _ECLASS_CROS_EC_MERGE_RO="1"
 
-# Check for EAPI 6+
+# Check for EAPI 7+
 case "${EAPI:-0}" in
-0|1|2|3|4|5|6) die "unsupported EAPI (${EAPI}) in eclass (${ECLASS})" ;;
+[0123456]) die "unsupported EAPI (${EAPI}) in eclass (${ECLASS})" ;;
 *) ;;
 esac
 

@@ -1,16 +1,18 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2.
 
-EAPI=5
+EAPI=7
 
-CROS_GO_SOURCE="go.googlesource.com/oauth2:golang.org/x/oauth2 fdc9e635145ae97e6c2cb777c48305600cf515cb"
+CROS_GO_SOURCE="go.googlesource.com/oauth2:golang.org/x/oauth2 b44042a4b9c12aec471902e0287a912bcb3ac1db"
 
 CROS_GO_PACKAGES=(
 	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/authhandler"
 	"golang.org/x/oauth2/internal"
 	"golang.org/x/oauth2/jws"
 	"golang.org/x/oauth2/jwt"
 	"golang.org/x/oauth2/google"
+	"golang.org/x/oauth2/google/internal/externalaccount"
 )
 
 CROS_GO_TEST=(
@@ -18,8 +20,7 @@ CROS_GO_TEST=(
 	#Flaky: "golang.org/x/oauth2/internal"
 	"golang.org/x/oauth2/jws"
 	"golang.org/x/oauth2/jwt"
-	# Needs to import "google.golang.org/appengine", which we don't have.
-	# "golang.org/x/oauth2/google"
+	"golang.org/x/oauth2/google"
 )
 
 inherit cros-go
@@ -34,5 +35,10 @@ KEYWORDS="*"
 IUSE=""
 RESTRICT="binchecks strip"
 
-DEPEND="dev-go/gcp-compute"
+DEPEND="
+	dev-go/gcp-compute
+	dev-go/cmp
+	dev-go/net
+	dev-go/appengine
+"
 RDEPEND="${DEPEND}"

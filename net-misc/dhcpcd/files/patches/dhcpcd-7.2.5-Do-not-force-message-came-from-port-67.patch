@@ -1,0 +1,34 @@
+From 5ed32b97bca868534b5dd20f4a27fec05a7a274f Mon Sep 17 00:00:00 2001
+From: Roy Marples <roy@marples.name>
+Date: Mon, 8 May 2023 15:52:11 +0100
+Subject: [PATCH] DHCP: Don't enforce the message came port 67
+
+RFC2131 and updates make no mention of what the source port
+should or must be.
+
+Update for #179.
+---
+ src/bpf.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/src/bpf.c b/src/bpf.c
+index ea08c846..a50048cc 100644
+--- a/src/bpf.c
++++ b/src/bpf.c
+@@ -580,9 +580,10 @@ static const struct bpf_insn bpf_bootp_filter[] = {
+ 	/* Store X in M3. */
+ 	BPF_STMT(BPF_STX, 3),
+ 
+-	/* Make sure it's from and to the right port. */
+-	BPF_STMT(BPF_LD + BPF_W + BPF_IND, 0),
+-	BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, (BOOTPS << 16) + BOOTPC, 1, 0),
++	/* Make sure it's to the right port.
++	 * RFC2131 makes no mention of enforcing a source port. */
++	BPF_STMT(BPF_LD + BPF_H + BPF_IND, offsetof(struct udphdr, uh_dport)),
++	BPF_JUMP(BPF_JMP + BPF_JEQ + BPF_K, BOOTPC, 1, 0),
+ 	BPF_STMT(BPF_RET + BPF_K, 0),
+ 
+ 	/* Store UDP length in X. */
+-- 
+2.42.0.515.g380fc7ccd1-goog
+

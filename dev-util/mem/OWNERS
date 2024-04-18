@@ -1,0 +1,2 @@
+# Required by dev-util/testclock::chipset-qc7180.
+include chromiumos/overlays/board-overlays:/chipset-qc7180/OWNERS

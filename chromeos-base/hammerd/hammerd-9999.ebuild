@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -14,7 +14,7 @@ PLATFORM_SUBDIR="hammerd"
 inherit cros-workon platform user
 
 DESCRIPTION="A daemon to update EC firmware of hammer, the base of the detachable."
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/hammerd/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/hammerd/"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
@@ -30,6 +30,7 @@ RDEPEND="
 DEPEND="
 	${RDEPEND}
 	chromeos-base/system_api:=[fuzzer?]
+	dev-libs/libpcre
 "
 
 pkg_preinst() {
@@ -39,21 +40,7 @@ pkg_preinst() {
 }
 
 src_install() {
-	dobin "${OUT}/hammerd"
-
-	# Install upstart configs and scripts.
-	insinto /etc/init
-	doins init/*.conf
-	exeinto /usr/share/cros/init
-	doexe init/*.sh
-
-	# Install DBus config.
-	insinto /etc/dbus-1/system.d
-	doins dbus/org.chromium.hammerd.conf
-
-	# Install rsyslog config.
-	insinto /etc/rsyslog.d
-	doins rsyslog/rsyslog.hammerd.conf
+	platform_src_install
 
 	local fuzzer_component_id="167114"
 	platform_fuzzer_install "${S}"/OWNERS "${OUT}"/hammerd_load_ec_image_fuzzer \
@@ -63,5 +50,5 @@ src_install() {
 }
 
 platform_pkg_test() {
-	platform_test "run" "${OUT}/unittest_runner"
+	platform test_all
 }

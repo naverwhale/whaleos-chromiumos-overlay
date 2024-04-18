@@ -1,6 +1,9 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
 
 accept: 1
 bind: 1
@@ -14,6 +17,7 @@ dup3: 1
 epoll_create1: 1
 epoll_ctl: 1
 epoll_pwait: 1
+eventfd2: 1
 execve: 1
 exit: 1
 exit_group: 1
@@ -25,6 +29,7 @@ fchmodat: 1
 fchown: 1
 fchownat: 1
 fcntl: 1
+flock: 1
 fstat: 1
 fstatfs: 1
 ftruncate: 1
@@ -57,10 +62,11 @@ madvise: 1
 memfd_create: 1
 mkdirat: 1
 # Don't allow mmap or mprotect with both PROT_WRITE and PROT_EXEC
-mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd
-mprotect: arg2 in 0xfffffffb || arg2 in 0xfffffffd
+mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mremap: 1
 munmap: 1
+name_to_handle_at: 1
 nanosleep: 1
 clock_nanosleep: 1
 newfstatat: 1
@@ -79,8 +85,10 @@ recvmsg: 1
 renameat: 1
 restart_syscall: 1
 rt_sigaction: 1
+rt_sigpending: 1
 rt_sigprocmask: 1
 rt_sigreturn: 1
+sendfile: 1
 sendmmsg: 1
 sendmsg: 1
 sendto: 1
@@ -93,9 +101,10 @@ set_robust_list: 1
 setsockopt: 1
 set_tid_address: 1
 shutdown: 1
-socket: arg0 == PF_FILE || arg0 == PF_INET || arg0 == PF_NETLINK
+socket: 1
 socketpair: 1
 statfs: 1
+statx: 1
 sysinfo: 1
 timerfd_create: 1
 timerfd_settime: 1

@@ -1,22 +1,24 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
-#
+
 # @ECLASS: cbi-image.eclass
 # @MAINTAINER:
 # Chromium OS Firmware Team
 # @BUGREPORTS:
 # Please report bugs via http://crbug.com/new (with label Build)
-# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/master/eclass/@ECLASS@
+# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/eclass/@ECLASS@
 # @BLURB: helper eclass for building Cros Board Info (CBI) images
 # @DESCRIPTION:
 # CBI is the Chrome OS standard data format for storing board version, OEM,
 # SKU, etc. This library provides helper functions for each board to create
 # custom CBI images.
 
-# Check for EAPI 5+
+if [[ -z ${_ECLASS_CBI_IMAGE} ]]; then
+_ECLASS_CBI_IMAGE="yes"
+
+# Check for EAPI 7+.
 case "${EAPI:-0}" in
-5|6) ;;
-*) die "unsupported EAPI (${EAPI}) in eclass (${ECLASS})" ;;
+[0123456]) die "Unsupported EAPI=${EAPI:-0} (too old) for ${ECLASS}" ;;
 esac
 
 # @ECLASS-VARIABLE: CROS_CBI_IMAGE_DIR
@@ -67,3 +69,5 @@ cbi-image_install() {
 	insinto "${CROS_CBI_IMAGE_DIR}"
 	doins cbi_*.bin
 }
+
+fi

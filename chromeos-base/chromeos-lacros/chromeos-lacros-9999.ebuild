@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -9,31 +9,47 @@ CROS_WORKON_LOCALNAME="platform/empty-project"
 
 inherit cros-workon
 
+DESCRIPTION="Rootfs lacros for all architectures"
+
 LICENSE="BSD-Google"
 SLOT="0"
 KEYWORDS="~*"
+S="${WORKDIR}"
 
 # All runtime dependencies should already be part of
 # chromeos-base/chromeos-chrome, the ones that aren't will be handled in
 # crbug.com/1199441.
 RDEPEND="chromeos-base/chromeos-chrome"
-# Omit DEPEND as nothing is built in this ebuild.
 DEPEND=""
 
 if [[ ${PV} != 9999 ]]; then
-	ORIG_GS_URI_PREFIX="gs://chrome-unsigned/desktop-5c0tCh"
-	LACROS_SQUASHFS="${PN}-squash-${PV}"
-	LACROS_METADATA="${PN}-metadata-${PV}"
+	ORIG_URI="gs://chrome-unsigned/desktop-5c0tCh"
 	SRC_URI="
-		${ORIG_GS_URI_PREFIX}/${LACROS_SQUASHFS}
-		${ORIG_GS_URI_PREFIX}/${LACROS_METADATA}
+		amd64? (
+			${ORIG_URI}/${PV}/lacros64/lacros_compressed_zstd.squash -> ${PN}-amd64-squash-zstd-${PV}
+			${ORIG_URI}/${PV}/lacros64/metadata.json -> ${PN}-amd64-metadata-${PV}
+		)
+		arm? (
+			${ORIG_URI}/${PV}/lacros-arm32/lacros_compressed_zstd.squash -> ${PN}-arm-squash-zstd-${PV}
+			${ORIG_URI}/${PV}/lacros-arm32/metadata.json -> ${PN}-arm-metadata-${PV}
+		)
+		arm64? (
+			${ORIG_URI}/${PV}/lacros-arm64/lacros_compressed_zstd.squash -> ${PN}-arm64-squash-zstd-${PV}
+			${ORIG_URI}/${PV}/lacros-arm64/metadata.json -> ${PN}-arm64-metadata-${PV}
+		)
 	"
 fi
 
+# Don't need to unpack anything.
+# Also suppresses messages related to unpacking unrecognized formats.
+src_unpack() {
+	:
+}
+
 src_install() {
 	insinto /opt/google/lacros
-	newins "${DISTDIR}/${LACROS_SQUASHFS}" lacros.squash
-	newins "${DISTDIR}/${LACROS_METADATA}" metadata.json
+	newins "${DISTDIR}/${PN}-${ARCH}-squash-zstd-${PV}" lacros.squash
+	newins "${DISTDIR}/${PN}-${ARCH}-metadata-${PV}" metadata.json
 
 	# Upstart configuration
 	insinto /etc/init

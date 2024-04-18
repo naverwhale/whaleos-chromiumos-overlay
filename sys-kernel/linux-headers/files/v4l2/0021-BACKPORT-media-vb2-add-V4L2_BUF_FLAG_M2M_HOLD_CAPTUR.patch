@@ -1,0 +1,68 @@
+From 2db6d2aa7547c05b66735dfb7337a37b1283a27b Mon Sep 17 00:00:00 2001
+From: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Date: Fri, 11 Oct 2019 06:32:40 -0300
+Subject: [PATCH] BACKPORT: media: vb2: add V4L2_BUF_FLAG_M2M_HOLD_CAPTURE_BUF
+
+This patch adds support for the V4L2_BUF_FLAG_M2M_HOLD_CAPTURE_BUF
+flag.
+
+It also adds a new V4L2_BUF_CAP_SUPPORTS_M2M_HOLD_CAPTURE_BUF
+capability.
+
+Drivers should set vb2_queue->subsystem_flags to
+VB2_V4L2_FL_SUPPORTS_M2M_HOLD_CAPTURE_BUF to indicate support
+for this flag.
+
+Signed-off-by: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Signed-off-by: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>
+(cherry picked from commit 137272cdf7cc5be835f44216e6003769d1638480)
+
+Conflicts:
+   Documentation/media/uapi/v4l/vidioc-reqbufs.rst
+   drivers/media/v4l2-core/videobuf2-v4l2.c
+   include/media/videobuf2-core.h
+   include/media/videobuf2-v4l2.h
+
+BUG=b:278157861
+TEST=Check header
+
+Change-Id: I1aec144950e0162e893201739ee4bca825db8ad8
+Signed-off-by: Chen-Yu Tsai <wenst@chromium.org>
+---
+ include/uapi/linux/videodev2.h | 13 ++++++++-----
+ 1 file changed, 8 insertions(+), 5 deletions(-)
+
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index 7591a0f2bfe8..1d698c934ddf 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -856,11 +856,12 @@ struct v4l2_requestbuffers {
+ };
+ 
+ /* capabilities for struct v4l2_requestbuffers and v4l2_create_buffers */
+-#define V4L2_BUF_CAP_SUPPORTS_MMAP	(1 << 0)
+-#define V4L2_BUF_CAP_SUPPORTS_USERPTR	(1 << 1)
+-#define V4L2_BUF_CAP_SUPPORTS_DMABUF	(1 << 2)
+-#define V4L2_BUF_CAP_SUPPORTS_REQUESTS	(1 << 3)
+-#define V4L2_BUF_CAP_SUPPORTS_ORPHANED_BUFS (1 << 4)
++#define V4L2_BUF_CAP_SUPPORTS_MMAP			(1 << 0)
++#define V4L2_BUF_CAP_SUPPORTS_USERPTR			(1 << 1)
++#define V4L2_BUF_CAP_SUPPORTS_DMABUF			(1 << 2)
++#define V4L2_BUF_CAP_SUPPORTS_REQUESTS			(1 << 3)
++#define V4L2_BUF_CAP_SUPPORTS_ORPHANED_BUFS		(1 << 4)
++#define V4L2_BUF_CAP_SUPPORTS_M2M_HOLD_CAPTURE_BUF	(1 << 5)
+ 
+ /**
+  * struct v4l2_plane - plane info for multi-planar buffers
+@@ -982,6 +983,8 @@ static inline __u64 v4l2_timeval_to_ns(const struct timeval *tv)
+ #define V4L2_BUF_FLAG_IN_REQUEST		0x00000080
+ /* timecode field is valid */
+ #define V4L2_BUF_FLAG_TIMECODE			0x00000100
++/* Don't return the capture buffer until OUTPUT timestamp changes */
++#define V4L2_BUF_FLAG_M2M_HOLD_CAPTURE_BUF	0x00000200
+ /* Buffer is prepared for queuing */
+ #define V4L2_BUF_FLAG_PREPARED			0x00000400
+ /* Cache handling flags */
+-- 
+2.40.1.606.ga4b1b128d6-goog
+

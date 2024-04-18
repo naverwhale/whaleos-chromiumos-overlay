@@ -1,11 +1,14 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright 2010 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
+EAPI="7"
+
+PYTHON_COMPAT=( python3_{8..11} )
+
 CROS_WORKON_PROJECT="chromiumos/third_party/autotest"
 CROS_WORKON_LOCALNAME="third_party/autotest/files"
 
-inherit cros-workon autotest-deponly
+inherit cros-workon autotest-deponly python-any-r1
 
 DESCRIPTION="Autotest common deps"
 HOMEPAGE="https://chromium.googlesource.com/chromiumos/third_party/autotest/"
@@ -20,7 +23,7 @@ IUSE="+autotest"
 # following deps don't compile: boottool, mysql, pgpool, pgsql, systemtap, # dejagnu, libcap, libnet
 # following deps are not deps: factory
 # following tests are going to be moved: chrome_test
-AUTOTEST_DEPS_LIST="gtest iwcap"
+AUTOTEST_DEPS_LIST="gtest"
 AUTOTEST_CONFIG_LIST=*
 AUTOTEST_PROFILERS_LIST=*
 
@@ -30,7 +33,6 @@ AUTOTEST_FILE_MASK="*.tar.bz2 *.tbz2 *.tgz *.tar.gz"
 # deps/gtest
 RDEPEND="
 	dev-cpp/gtest:=
-	dev-libs/libnl:0
 	>=dev-python/grpcio-1.19
 	>=dev-python/psutil-5.5.0
 	sys-devel/binutils

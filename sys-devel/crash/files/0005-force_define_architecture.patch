@@ -1,0 +1,20 @@
+Make the kdump target same as the cross compile target. This won't be
+upstreamed as crash currently doesn't support cross compile.
+
+Patch source: http://cgit.openembedded.org/meta-openembedded/tree/meta-oe/recipes-kernel/crash/crash/7001force_define_architecture.patch
+
+diff --git a/configure.c b/configure.c
+index 08b52be..2d39aa8 100644
+--- a/configure.c
++++ b/configure.c
+@@ -569,6 +569,9 @@ get_current_configuration(struct supported_gdb_version *sp)
+                        arch_mismatch(sp);
+        }
+ 
++        /** Force define archtecture */
++        target_data.target = FORCE_DEFINE_ARCH;
++
+         if ((fp = fopen("Makefile", "r")) == NULL) {
+                perror("Makefile");
+                goto get_release;
+

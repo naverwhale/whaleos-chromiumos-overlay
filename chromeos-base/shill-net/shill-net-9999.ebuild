@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -7,7 +7,7 @@ CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_OUTOFTREE_BUILD=1
 CROS_WORKON_INCREMENTAL_BUILD=1
-CROS_WORKON_SUBTREE="common-mk shill .gn"
+CROS_WORKON_SUBTREE="common-mk net-base shill .gn"
 
 PLATFORM_SUBDIR="shill/net"
 
@@ -19,37 +19,40 @@ HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/shill/ne
 LICENSE="BSD-Google"
 SLOT="0"
 KEYWORDS="~*"
-IUSE="fuzzer +wifi"
+IUSE="fuzzer"
 
-DEPEND=""
+COMMON_DEPEND="
+	chromeos-base/minijail:=
+	chromeos-base/net-base:=
+"
+DEPEND="
+	${COMMON_DEPEND}
+	dev-libs/re2:=
+"
 RDEPEND="
+	${COMMON_DEPEND}
 	!<chromeos-base/shill-0.0.5
 "
 
 src_install() {
-	# Install libshill-net library.
+	platform_src_install
+
+	# Generate and install libshill-net pkgconfig.
 	insinto "/usr/$(get_libdir)/pkgconfig"
 	local v="$(libchrome_ver)"
 	./preinstall.sh "${OUT}" "${v}"
-	dolib.so "${OUT}/lib/libshill-net.so"
 	doins "${OUT}/lib/libshill-net.pc"
 
-	# Install header files from libshill-net.
-	insinto /usr/include/shill/net
-	doins ./*.h
+	local platform_network_component_id="167325"
+	local platform_wifi_component_id="893827"
 
 	# These each have different listed component ids.
-	local arp_client_fuzzer_component_id="167325"
-	platform_fuzzer_install "${S}"/../OWNERS "${OUT}/arp_client_fuzzer" \
-		--comp "${arp_client_fuzzer_component_id}"
-	local nl80211_message_fuzzer_component_id="893827"
+	platform_fuzzer_install "${S}"/../OWNERS "${OUT}/netlink_attribute_list_fuzzer" \
+		--comp "${platform_network_component_id}"
 	platform_fuzzer_install "${S}"/../OWNERS "${OUT}/nl80211_message_fuzzer" \
-		--comp "${nl80211_message_fuzzer_component_id}"
-	local rtnl_handler_fuzzer_component_id="156085"
-	platform_fuzzer_install "${S}"/../OWNERS "${OUT}/rtnl_handler_fuzzer" \
-		--comp "${rtnl_handler_fuzzer_component_id}"
+		--comp "${platform_wifi_component_id}"
 }
 
 platform_pkg_test() {
-	platform_test "run" "${OUT}/shill_net_test"
+	platform test_all
 }

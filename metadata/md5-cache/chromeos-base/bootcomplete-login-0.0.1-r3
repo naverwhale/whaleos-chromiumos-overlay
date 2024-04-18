@@ -1,9 +1,0 @@
-DEFINED_PHASES=install
-DESCRIPTION=Defines the boot-complete boot marker for ChromeOS (login-prompt-visible signal emitted)
-EAPI=4
-HOMEPAGE=http://www.chromium.org/
-KEYWORDS=*
-LICENSE=BSD-Google
-RDEPEND=chromeos-base/chromeos-login !chromeos-base/bootcomplete-embedded
-SLOT=0
-_md5_=336f7539cda0cb2572144575ecb827e0

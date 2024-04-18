@@ -1,0 +1,11 @@
+DEFINED_PHASES=-
+DEPEND=!internal? ( app-i18n/chromeos-hangul )
+DESCRIPTION=This is a meta package for installing hangul IME packages
+EAPI=7
+HOMEPAGE=https://www.google.com/inputtools/
+IUSE=internal
+KEYWORDS=*
+LICENSE=metapackage
+RDEPEND=!internal? ( app-i18n/chromeos-hangul )
+SLOT=0
+_md5_=1dbc75c4ddabf5bc66ab517fb885c04b

@@ -1,0 +1,12 @@
+BDEPEND=|| ( ( dev-lang/python:3.8 dev-python/six[python_targets_python3_8(-),python_single_target_python3_8(+)] dev-python/pyyaml[python_targets_python3_8(-),python_single_target_python3_8(+)] ) ( dev-lang/python:3.9 dev-python/six[python_targets_python3_9(-),python_single_target_python3_9(+)] dev-python/pyyaml[python_targets_python3_9(-),python_single_target_python3_9(+)] ) ( dev-lang/python:3.10 dev-python/six[python_targets_python3_10(-),python_single_target_python3_10(+)] dev-python/pyyaml[python_targets_python3_10(-),python_single_target_python3_10(+)] ) ( dev-lang/python:3.11 dev-python/six[python_targets_python3_11(-),python_single_target_python3_11(+)] dev-python/pyyaml[python_targets_python3_11(-),python_single_target_python3_11(+)] ) ) dev-vcs/git app-misc/jq
+DEFINED_PHASES=compile info install setup unpack
+DESCRIPTION=Protobuf installer for the device policy proto definitions.
+EAPI=7
+HOMEPAGE=https://chromium.googlesource.com/chromium/src/components/policy
+IUSE=cros_host cros_workon_tree_3c03e07aa0cb784fbcc63010ea32bf5cf856045e_fd684cbf81f159c94dde7ffa9ec4d8dac993d17c_3304467e89364e7636f4e213777926bfacf9d34a
+KEYWORDS=*
+LICENSE=BSD-Google
+PROPERTIES=live
+SLOT=0/0.0.117
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-workon	247d4700539e27bc12026f785ec53757	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	python-any-r1	54a3178500786b0a7ede4a23b7f2a6ad	python-utils-r1	76252008070e69454f51fa80c07638c9	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=1ec135ad100d6b22f7bcd83d6f0db9a2

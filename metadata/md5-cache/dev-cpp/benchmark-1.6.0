@@ -1,0 +1,13 @@
+BDEPEND=>=dev-util/ninja-1.8.2 >=dev-util/cmake-3.20.5
+DEFINED_PHASES=compile configure install prepare test
+DESCRIPTION=A microbenchmark support library
+EAPI=7
+HOMEPAGE=https://github.com/google/benchmark
+IUSE=debug test
+KEYWORDS=-* amd64 arm arm64
+LICENSE=Apache-2.0
+RESTRICT=!test? ( test )
+SLOT=0
+SRC_URI=https://github.com/google/benchmark/archive/v1.6.0.tar.gz -> benchmark-1.6.0.tar.gz
+_eclasses_=cmake	34502c2b638b59994575d53ba3805d7b	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	ninja-utils	578ba3585e2f3ebe63ab00c07874016e	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	xdg-utils	ff2ff954e6b17929574eee4efc5152ba
+_md5_=af445286b6de321ae36f29e2a917b763

@@ -1,0 +1,13 @@
+BDEPEND=dev-util/gn dev-util/ninja
+DEFINED_PHASES=compile configure install prepare setup test
+DEPEND=x11-drivers/opengles-headers:= virtual/opengles:= media-libs/freetype:2= || ( dev-lang/python:3.8 dev-lang/python:3.9 dev-lang/python:3.10 dev-lang/python:3.11 )
+DESCRIPTION=Skia: The 2D Graphics Library
+EAPI=7
+HOMEPAGE=https://github.com/google/skia
+KEYWORDS=*
+LICENSE=BSD-Google
+RDEPEND=virtual/opengles:= media-libs/freetype:2=
+SLOT=0
+SRC_URI=https://github.com/google/skia/archive/52aecbec6fb24f9cf0491563674906a9a43170da.tar.gz -> skia-106.tar.gz
+_eclasses_=cros-common.mk	2d7f996e1e032714cebaf61ba9f9ee6a	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	ninja-utils	578ba3585e2f3ebe63ab00c07874016e	python-any-r1	54a3178500786b0a7ede4a23b7f2a6ad	python-utils-r1	76252008070e69454f51fa80c07638c9	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=f6a453b24d998982484aa96e741a326f

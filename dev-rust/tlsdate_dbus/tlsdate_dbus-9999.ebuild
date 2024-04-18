@@ -1,4 +1,4 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -19,9 +19,14 @@ SLOT="0/${PVR}"
 KEYWORDS="~*"
 
 DEPEND="
-	=dev-rust/dbus-0.9*:=
+	dev-rust/third-party-crates-src:=
 	dev-rust/chromeos-dbus-bindings:=
+	sys-apps/dbus:=
 "
 # (crbug.com/1182669): build-time only deps need to be in RDEPEND so they are pulled in when
 # installing binpkgs since the full source tree is required to use the crate.
 RDEPEND="${DEPEND}"
+
+BDEPEND="
+	dev-rust/chromeos-dbus-bindings
+"

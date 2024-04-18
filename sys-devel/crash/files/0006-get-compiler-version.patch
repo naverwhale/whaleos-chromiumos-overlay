@@ -1,0 +1,17 @@
+crash configure code used gcc to get compiler version. Directly using gcc is
+not allowed on chromeOS. Use ${CC} arg instead.
+
+diff --git a/configure.c b/configure.c
+index 08b52be..09c8388 100644
+--- a/configure.c
++++ b/configure.c
+@@ -1328,7 +1328,7 @@ make_build_data(char *target)
+ 
+         fp1 = popen("date", "r");
+         fp2 = popen("id", "r");
+-	fp3 = popen("gcc --version", "r");
++	fp3 = popen("${CC} --version", "r");
+ 
+	if ((fp4 = fopen("build_data.c", "w")) == NULL) {
+		perror("build_data.c");
+

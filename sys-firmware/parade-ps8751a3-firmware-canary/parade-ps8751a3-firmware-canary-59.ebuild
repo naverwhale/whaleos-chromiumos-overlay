@@ -1,4 +1,4 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 #
 # This package is for canarying new Parade PS8751 TCPC firmware versions
@@ -9,7 +9,7 @@
 # package.  This exists separately so that two revisions can be installed
 # concurrently.
 
-EAPI=6
+EAPI=7
 
 DESCRIPTION="PS8751-A3 Firmware Binary - Canary Package"
 SRC_URI="gs://chromeos-localmirror/distfiles/parade-ps8751a3-firmware-${PV}.tar.xz"

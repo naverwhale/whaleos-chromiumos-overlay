@@ -2,17 +2,16 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header: /var/cvsroot/gentoo-x86/media-libs/mesa/mesa-7.9.ebuild,v 1.3 2010/12/05 17:19:14 arfrever Exp $
 
-EAPI="6"
+EAPI="7"
 
-MESON_AUTO_DEPEND=no
-
-EGIT_REPO_URI="git://anongit.freedesktop.org/mesa/mesa"
 CROS_WORKON_PROJECT="chromiumos/third_party/mesa"
 CROS_WORKON_LOCALNAME="mesa"
 CROS_WORKON_EGIT_BRANCH="master"
 CROS_WORKON_MANUAL_UPREV="1"
 
-inherit base meson multilib-minimal flag-o-matic toolchain-funcs cros-workon arc-build
+EGIT_REPO_URI="git://anongit.freedesktop.org/mesa/mesa"
+
+inherit meson multilib-minimal flag-o-matic toolchain-funcs cros-workon arc-build cros-sanitizers
 
 OPENGL_DIR="xorg-x11"
 
@@ -99,13 +98,6 @@ src_prepare() {
 		echo "#define MESA_GIT_SHA1 \"git-deadbeef\"" > src/git_sha1.h
 	fi
 
-	# apply patches
-	if [[ ${PV} != 9999* && -n ${SRC_PATCHES} ]]; then
-		EPATCH_FORCE="yes" \
-		EPATCH_SOURCE="${WORKDIR}/patches" \
-		EPATCH_SUFFIX="patch" \
-		epatch
-	fi
 	# FreeBSD 6.* doesn't have posix_memalign().
 	if [[ ${CHOST} == *-freebsd6.* ]]; then
 		sed -i \
@@ -116,86 +108,89 @@ src_prepare() {
 	# Restrict gles version based on USE flag. (See crbug.com/30202361, b/30202371, b/31041422, b:68023287)
 	if use android_gles32; then
 		einfo "Limiting android to gles32."
-		epatch "${FILESDIR}/gles32/0001-limit-gles-version.patch"
+		eapply "${FILESDIR}/gles32/0001-limit-gles-version.patch"
 	elif use android_gles31; then
 		einfo "Limiting android to gles31."
-		epatch "${FILESDIR}/gles31/0001-limit-gles-version.patch"
+		eapply "${FILESDIR}/gles31/0001-limit-gles-version.patch"
 	elif use android_gles30; then
 		einfo "Limiting android to gles30."
-		epatch "${FILESDIR}/gles30/0001-limit-gles-version.patch"
+		eapply "${FILESDIR}/gles30/0001-limit-gles-version.patch"
 	elif use android_gles2; then
 		einfo "Limiting android to gles2."
-		epatch "${FILESDIR}/gles2/0001-limit-gles-version.patch"
+		eapply "${FILESDIR}/gles2/0001-limit-gles-version.patch"
 	fi
 
-	epatch "${FILESDIR}"/19.0-util-Don-t-block-SIGSYS-for-new-threads.patch
-	epatch "${FILESDIR}"/19.0-radv-Use-given-stride-for-images-imported-from-Andro.patch
+	eapply "${FILESDIR}"/19.0-util-Don-t-block-SIGSYS-for-new-threads.patch
+	eapply "${FILESDIR}"/19.0-radv-Use-given-stride-for-images-imported-from-Andro.patch
 
-	epatch "${FILESDIR}"/CHROMIUM-intel-limit-urb-size-for-SKL-KBL-CFL-GT1.patch
+	eapply "${FILESDIR}"/CHROMIUM-intel-limit-urb-size-for-SKL-KBL-CFL-GT1.patch
 
-	epatch "${FILESDIR}"/FROMLIST-configure.ac-meson.build-Add-optio.patch
-	epatch "${FILESDIR}"/CHROMIUM-egl-android-plumb-swrast-option.patch
-	epatch "${FILESDIR}"/CHROMIUM-egl-android-use-swrast-option-in-droid_load_driver.patch
-	epatch "${FILESDIR}"/CHROMIUM-egl-android-fallback-to-software-rendering.patch
+	eapply "${FILESDIR}"/FROMLIST-configure.ac-meson.build-Add-optio.patch
+	eapply "${FILESDIR}"/CHROMIUM-egl-android-plumb-swrast-option.patch
+	eapply "${FILESDIR}"/CHROMIUM-egl-android-use-swrast-option-in-droid_load_driver.patch
+	eapply "${FILESDIR}"/CHROMIUM-egl-android-fallback-to-software-rendering.patch
 
-	epatch "${FILESDIR}"/CHROMIUM-anv-move-anv_GetMemoryAndroidHardwareBufferANDROID-u.patch
-	epatch "${FILESDIR}"/CHROMIUM-remove-unknown-android-extensions.patch
-	epatch "${FILESDIR}"/CHROMIUM-disable-unknown-device-extensions.patch
+	eapply "${FILESDIR}"/CHROMIUM-anv-move-anv_GetMemoryAndroidHardwareBufferANDROID-u.patch
+	eapply "${FILESDIR}"/CHROMIUM-remove-unknown-android-extensions.patch
+	eapply "${FILESDIR}"/CHROMIUM-disable-unknown-device-extensions.patch
 
-	epatch "${FILESDIR}"/CHROMIUM-HACK-radv-disable-TC-compatible-HTILE-on-Stoney.patch
+	eapply "${FILESDIR}"/CHROMIUM-HACK-radv-disable-TC-compatible-HTILE-on-Stoney.patch
 
-	epatch "${FILESDIR}"/FROMLIST-egl-fix-KHR_partial_update-without-EXT_buff.patch
-	epatch "${FILESDIR}"/BACKPORT-egl-android-Only-keep-BGRA-EGL-configs-as-fallback.patch
-	epatch "${FILESDIR}"/FROMLIST-egl-android-require-ANDROID_native_fence_sy.patch
-	epatch "${FILESDIR}"/FROMLIST-egl-android-Update-color_buffers-querying-for-buffer.patch
+	eapply "${FILESDIR}"/FROMLIST-egl-fix-KHR_partial_update-without-EXT_buff.patch
+	eapply "${FILESDIR}"/BACKPORT-egl-android-Only-keep-BGRA-EGL-configs-as-fallback.patch
+	eapply "${FILESDIR}"/FROMLIST-egl-android-require-ANDROID_native_fence_sy.patch
+	eapply "${FILESDIR}"/FROMLIST-egl-android-Update-color_buffers-querying-for-buffer.patch
 
-	epatch "${FILESDIR}"/FROMLIST-glsl-fix-an-incorrect-max_array_access-afte.patch
-	epatch "${FILESDIR}"/FROMLIST-glsl-fix-a-binding-points-assignment-for-ss.patch
+	eapply "${FILESDIR}"/FROMLIST-glsl-fix-an-incorrect-max_array_access-afte.patch
+	eapply "${FILESDIR}"/FROMLIST-glsl-fix-a-binding-points-assignment-for-ss.patch
 
-	epatch "${FILESDIR}"/FROMLIST-glcpp-Hack-to-handle-expressions-in-line-di.patch
-	epatch "${FILESDIR}"/UPSTREAM-intel-Add-support-for-Comet-Lake.patch
+	eapply "${FILESDIR}"/FROMLIST-glcpp-Hack-to-handle-expressions-in-line-di.patch
+	eapply "${FILESDIR}"/UPSTREAM-intel-Add-support-for-Comet-Lake.patch
 
-	epatch "${FILESDIR}"/UPSTREAM-st-mesa-fix-2-crashes-in-st_tgsi_lower_yuv.patch
+	eapply "${FILESDIR}"/UPSTREAM-st-mesa-fix-2-crashes-in-st_tgsi_lower_yuv.patch
 
-	epatch "${FILESDIR}"/CHROMIUM-Add-HAL_PIXEL_FORMAT_YCbCr_420_888-in-vk_format.patch
-	epatch "${FILESDIR}"/CHROMIUM-Add-HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED-in-vk_fo.patch
+	eapply "${FILESDIR}"/CHROMIUM-Add-HAL_PIXEL_FORMAT_YCbCr_420_888-in-vk_format.patch
+	eapply "${FILESDIR}"/CHROMIUM-Add-HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED-in-vk_fo.patch
 
-	epatch "${FILESDIR}"/CHROMIUM-radv-Disable-VK_KHR_create_renderpass2.patch
+	eapply "${FILESDIR}"/CHROMIUM-radv-Disable-VK_KHR_create_renderpass2.patch
 
-	epatch "${FILESDIR}"/FROMLIST-virgl-Set-meta-data-for-textures-from-handle.patch
+	eapply "${FILESDIR}"/FROMLIST-virgl-Set-meta-data-for-textures-from-handle.patch
 
-	epatch "${FILESDIR}"/BACKPORT-egl-Enable-eglGetPlatformDisplay-on-Android.patch
+	eapply "${FILESDIR}"/BACKPORT-egl-Enable-eglGetPlatformDisplay-on-Android.patch
 
-	epatch "${FILESDIR}"/FROMLIST-anv-Fix-vulkan-build-in-meson.patch
-	epatch "${FILESDIR}"/FROMLIST-anv-Add-android-dependencies-on-android.patch
-	epatch "${FILESDIR}"/FROMLIST-radv-Fix-vulkan-build-in-meson.patch
-	epatch "${FILESDIR}"/FROMLIST-meson-Allow-building-radeonsi-with-.patch
-	epatch "${FILESDIR}"/FROMLIST-meson-i965-Link-with-android.patch
-	epatch "${FILESDIR}"/FROMLIST-configure.ac-meson-depend-on-libnativewindow-when-ap.patch
+	eapply "${FILESDIR}"/FROMLIST-anv-Fix-vulkan-build-in-meson.patch
+	eapply "${FILESDIR}"/FROMLIST-anv-Add-android-dependencies-on-android.patch
+	eapply "${FILESDIR}"/FROMLIST-radv-Fix-vulkan-build-in-meson.patch
+	eapply "${FILESDIR}"/FROMLIST-meson-Allow-building-radeonsi-with-.patch
+	eapply "${FILESDIR}"/FROMLIST-meson-i965-Link-with-android.patch
+	eapply "${FILESDIR}"/FROMLIST-configure.ac-meson-depend-on-libnativewindow-when-ap.patch
+	eapply "${FILESDIR}"/CHROMIUM-HACK-allow-platform-sdk-version-30.patch
 
-	epatch "${FILESDIR}"/UPSTREAM-drm-uapi-Update-headers-for-fp16-formats.patch
-	epatch "${FILESDIR}"/BACKPORT-i965-Add-helper-function-for-allowed-config.patch
-	epatch "${FILESDIR}"/UPSTREAM-dri-Add-config-attributes-for-color-channel.patch
-	epatch "${FILESDIR}"/UPSTREAM-util-move-bitcount-to-bitscan.h.patch
-	epatch "${FILESDIR}"/BACKPORT-egl-Convert-configs-to-use-shifts-and-sizes.patch
-	epatch "${FILESDIR}"/UPSTREAM-glx-Add-fields-for-color-shifts.patch
-	epatch "${FILESDIR}"/BACKPORT-dri-Handle-configs-with-floating-point-pixe.patch
-	epatch "${FILESDIR}"/UPSTREAM-egl-Handle-dri-configs-with-floating-point-.patch
-	epatch "${FILESDIR}"/BACKPORT-dri-Add-fp16-formats.patch
-	epatch "${FILESDIR}"/UPSTREAM-gbm-Add-buffer-handling-and-visuals-for-fp1.patch
-	epatch "${FILESDIR}"/BACKPORT-i965-Add-handling-for-fp16-configs.patch
-	epatch "${FILESDIR}"/UPSTREAM-egl-android-Enable-HAL_PIXEL_FORMAT_RGBA_FP.patch
-	epatch "${FILESDIR}"/BACKPORT-egl-android-Enable-HAL_PIXEL_FORMAT_RGBA_10.patch
-	epatch "${FILESDIR}"/UPSTREAM-intel-compiler-force-simd8-when-dual-src-blending-on.patch
+	eapply "${FILESDIR}"/UPSTREAM-drm-uapi-Update-headers-for-fp16-formats.patch
+	eapply "${FILESDIR}"/BACKPORT-i965-Add-helper-function-for-allowed-config.patch
+	eapply "${FILESDIR}"/UPSTREAM-dri-Add-config-attributes-for-color-channel.patch
+	eapply "${FILESDIR}"/UPSTREAM-util-move-bitcount-to-bitscan.h.patch
+	eapply "${FILESDIR}"/BACKPORT-egl-Convert-configs-to-use-shifts-and-sizes.patch
+	eapply "${FILESDIR}"/UPSTREAM-glx-Add-fields-for-color-shifts.patch
+	eapply "${FILESDIR}"/BACKPORT-dri-Handle-configs-with-floating-point-pixe.patch
+	eapply "${FILESDIR}"/UPSTREAM-egl-Handle-dri-configs-with-floating-point-.patch
+	eapply "${FILESDIR}"/BACKPORT-dri-Add-fp16-formats.patch
+	eapply "${FILESDIR}"/UPSTREAM-gbm-Add-buffer-handling-and-visuals-for-fp1.patch
+	eapply "${FILESDIR}"/BACKPORT-i965-Add-handling-for-fp16-configs.patch
+	eapply "${FILESDIR}"/UPSTREAM-egl-android-Enable-HAL_PIXEL_FORMAT_RGBA_FP.patch
+	eapply "${FILESDIR}"/BACKPORT-egl-android-Enable-HAL_PIXEL_FORMAT_RGBA_10.patch
+	eapply "${FILESDIR}"/UPSTREAM-intel-compiler-force-simd8-when-dual-src-blending-on.patch
 
-	epatch "${FILESDIR}"/UPSTREAM-i965-setup-sized-internalformat-for-MESA_FO.patch
+	eapply "${FILESDIR}"/UPSTREAM-i965-setup-sized-internalformat-for-MESA_FO.patch
 
-	epatch "${FILESDIR}"/UPSTREAM-anv-expose-VK_EXT_queue_family_foreign-on-A.patch
-	epatch "${FILESDIR}"/UPSTREAM-intel-limit-shader-geometry-on-BDW-GT1.patch
+	eapply "${FILESDIR}"/UPSTREAM-anv-expose-VK_EXT_queue_family_foreign-on-A.patch
+	eapply "${FILESDIR}"/UPSTREAM-intel-limit-shader-geometry-on-BDW-GT1.patch
+	eapply "${FILESDIR}"/BACKPORT-anv-fix-AHB-leak-upon-exportable-allocation.patch
 	default
 }
 
 src_configure() {
+	sanitizers-setup-env
 	cros_optimize_package_for_speed
 
 	if use cheets; then
@@ -293,9 +288,8 @@ multilib_src_configure() {
 		$(use cheets && echo "-Ddri-search-path=/system/$(get_libdir)/dri:/system/vendor/$(get_libdir)/dri")
 		-Dgallium-va=false
 		-Dgallium-vdpau=false
-		-Dgallium-xvmc=false
 		-Dgallium-omx=disabled
-		-Dgallum-xa=false
+		-Dgallium-xa=false
 		-Dasm=false
 		-Dglx=disabled
 		-Ddri3=false
@@ -376,25 +370,6 @@ multilib_src_install() {
 	# Glew includes
 	rm -f "${D}"/usr/include/GL/{glew,glxew,wglew}.h \
 		|| die "Removing glew includes failed."
-
-	# Move libGL and others from /usr/lib to /usr/lib/opengl/blah/lib
-	# because user can eselect desired GL provider.
-	ebegin "Moving libGL and friends for dynamic switching"
-		dodir /usr/$(get_libdir)/opengl/${OPENGL_DIR}/{lib,extensions,include}
-		local x
-		for x in "${D}"/usr/$(get_libdir)/libGL.{la,a,so*}; do
-			if [ -f ${x} -o -L ${x} ]; then
-				mv -f "${x}" "${D}"/usr/$(get_libdir)/opengl/${OPENGL_DIR}/lib \
-					|| die "Failed to move ${x}"
-			fi
-		done
-		for x in "${D}"/usr/include/GL/{gl.h,glx.h,glext.h,glxext.h}; do
-			if [ -f ${x} -o -L ${x} ]; then
-				mv -f "${x}" "${D}"/usr/$(get_libdir)/opengl/${OPENGL_DIR}/include \
-					|| die "Failed to move ${x}"
-			fi
-		done
-	eend $?
 
 	dodir /usr/$(get_libdir)/dri
 	insinto "/usr/$(get_libdir)/dri/"
@@ -481,16 +456,6 @@ multilib_src_install_all() {
 	# Set driconf option to enable S3TC hardware decompression
 	insinto "/etc/"
 	doins "${FILESDIR}"/drirc
-}
-
-pkg_postinst() {
-	if use cheets; then
-		return
-	fi
-
-	# Switch to the xorg implementation.
-	echo
-	eselect opengl set --use-old ${OPENGL_DIR}
 }
 
 # $1 - VIDEO_CARDS flag

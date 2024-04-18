@@ -1,0 +1,2171 @@
+commit 451de63b574dd106e042fd18f28f5c954670674c
+Author: Dave Mielke <Dave@Mielke.cc>
+Date:   Tue May 23 13:47:25 2023 -0400
+
+    Imlement the DotPad braille driver.
+    
+    DotPad: Allow for a text display with 80 columns.
+    
+    DotPad: Add the panfn4 key table.
+    
+    DotPad: Pressing both panning keys together should perform the expected actions.
+    
+    Update places that need to know that the DotPad is supported.
+    
+    DotPad: If the number of function keys isn't specified then assume 4.
+    
+    DotPad: Implement multiline support on the graphic display.
+    
+    DotPad: If the text display is being used then set the cell size.
+    
+    DotPad: Post-development cleanup.
+    
+    Add endBrailleMessages().
+    
+    The DotPad needs to be in the USB autodetect list.
+
+diff --git a/Android/Gradle/app/src/main/res/values/braille-driver.xml b/Android/Gradle/app/src/main/res/values/braille-driver.xml
+index ca81e8f3a..8a63c6cbd 100644
+--- a/Android/Gradle/app/src/main/res/values/braille-driver.xml
++++ b/Android/Gradle/app/src/main/res/values/braille-driver.xml
+@@ -16,6 +16,7 @@
+   <string name="BRAILLE_DRIVER_LABEL_cb" translatable="false">CombiBraille</string>
+   <string name="BRAILLE_DRIVER_LABEL_ce" translatable="false">Cebra</string>
+   <string name="BRAILLE_DRIVER_LABEL_cn" translatable="false">Canute</string>
++  <string name="BRAILLE_DRIVER_LABEL_dp" translatable="false">DotPad</string>
+   <string name="BRAILLE_DRIVER_LABEL_ec" translatable="false">EcoBraille</string>
+   <string name="BRAILLE_DRIVER_LABEL_eu" translatable="false">EuroBraille</string>
+   <string name="BRAILLE_DRIVER_LABEL_fa" translatable="false">FrankAudiodata</string>
+@@ -56,6 +57,7 @@
+     <item>@string/BRAILLE_DRIVER_LABEL_cb</item>
+     <item>@string/BRAILLE_DRIVER_LABEL_ce</item>
+     <item>@string/BRAILLE_DRIVER_LABEL_cn</item>
++    <item>@string/BRAILLE_DRIVER_LABEL_dp</item>
+     <item>@string/BRAILLE_DRIVER_LABEL_ec</item>
+     <item>@string/BRAILLE_DRIVER_LABEL_eu</item>
+     <item>@string/BRAILLE_DRIVER_LABEL_fa</item>
+@@ -97,6 +99,7 @@
+     <item>cb</item>
+     <item>ce</item>
+     <item>cn</item>
++    <item>dp</item>
+     <item>ec</item>
+     <item>eu</item>
+     <item>fa</item>
+diff --git a/Android/Gradle/app/src/main/res/xml/usb_devices.xml b/Android/Gradle/app/src/main/res/xml/usb_devices.xml
+index 713736c85..8d4c2fa2a 100644
+--- a/Android/Gradle/app/src/main/res/xml/usb_devices.xml
++++ b/Android/Gradle/app/src/main/res/xml/usb_devices.xml
+@@ -15,6 +15,13 @@
+   <!-- MDV [all models] -->
+   <usb-device vendor-id="1027" product-id="24577" />
+ 
++  <!-- Device: 0403:6010 -->
++  <!-- Generic Identifier -->
++  <!-- Vendor: Future Technology Devices International, Ltd -->
++  <!-- Product: FT2232C/D/H Dual UART/FIFO IC -->
++  <!-- DotPad [all models] -->
++  <usb-device vendor-id="1027" product-id="24592" />
++
+   <!-- Device: 0403:DE58 -->
+   <!-- Hedo [MobilLine] -->
+   <usb-device vendor-id="1027" product-id="56920" />
+diff --git a/Autostart/AppStream/org.a11y.brltty.metainfo.xml b/Autostart/AppStream/org.a11y.brltty.metainfo.xml
+index d3c2fae5e..1ee731cde 100644
+--- a/Autostart/AppStream/org.a11y.brltty.metainfo.xml
++++ b/Autostart/AppStream/org.a11y.brltty.metainfo.xml
+@@ -50,6 +50,13 @@
+     <!-- MDV [all models] -->
+     <modalias>usb:v0403p6001*</modalias>
+ 
++    <!-- Device: 0403:6010 -->
++    <!-- Generic Identifier -->
++    <!-- Vendor: Future Technology Devices International, Ltd -->
++    <!-- Product: FT2232C/D/H Dual UART/FIFO IC -->
++    <!-- DotPad [all models] -->
++    <modalias>usb:v0403p6010*</modalias>
++
+     <!-- Device: 0403:DE58 -->
+     <!-- Hedo [MobilLine] -->
+     <modalias>usb:v0403pDE58*</modalias>
+diff --git a/Autostart/Hotplug/brltty.usermap b/Autostart/Hotplug/brltty.usermap
+index 36a116812..16e7164c0 100644
+--- a/Autostart/Hotplug/brltty.usermap
++++ b/Autostart/Hotplug/brltty.usermap
+@@ -30,6 +30,13 @@
+ # MDV [all models]
+ brltty 0x0003 0x0403 0x6001
+ 
++# Device: 0403:6010
++# Generic Identifier
++# Vendor: Future Technology Devices International, Ltd
++# Product: FT2232C/D/H Dual UART/FIFO IC
++# DotPad [all models]
++brltty 0x0003 0x0403 0x6010
++
+ # Device: 0403:DE58
+ # Hedo [MobilLine]
+ brltty 0x0003 0x0403 0xde58
+diff --git a/Documents/Manual-BRLTTY/English/braille-drivers.sgml b/Documents/Manual-BRLTTY/English/braille-drivers.sgml
+index 1cc8718df..9daafb239 100644
+--- a/Documents/Manual-BRLTTY/English/braille-drivers.sgml
++++ b/Documents/Manual-BRLTTY/English/braille-drivers.sgml
+@@ -46,6 +46,7 @@ Cebra
+   |20/40/60/80/100/120/140@
+ CombiBraille
+   |25/45/85@
++DotPad@
+ EcoBraille
+   |20/40/80@
+ EuroBraille
+diff --git a/Documents/Manual-BRLTTY/English/driver-codes.sgml b/Documents/Manual-BRLTTY/English/driver-codes.sgml
+index 0d746d428..0e84ac5e7 100644
+--- a/Documents/Manual-BRLTTY/English/driver-codes.sgml
++++ b/Documents/Manual-BRLTTY/English/driver-codes.sgml
+@@ -11,6 +11,7 @@ bn|BrailleNote@
+ cb|CombiBraille@
+ ce|Cebra@
+ cn|Canute@
++dp|DotPad@
+ ec|EcoBraille@
+ en|eSpeak-NG@
+ es|eSpeak@
+diff --git a/Documents/Manual-BRLTTY/French/braille-drivers.sgml b/Documents/Manual-BRLTTY/French/braille-drivers.sgml
+index 1cc8718df..9daafb239 100644
+--- a/Documents/Manual-BRLTTY/French/braille-drivers.sgml
++++ b/Documents/Manual-BRLTTY/French/braille-drivers.sgml
+@@ -46,6 +46,7 @@ Cebra
+   |20/40/60/80/100/120/140@
+ CombiBraille
+   |25/45/85@
++DotPad@
+ EcoBraille
+   |20/40/80@
+ EuroBraille
+diff --git a/Documents/Manual-BRLTTY/French/driver-codes.sgml b/Documents/Manual-BRLTTY/French/driver-codes.sgml
+index 0d746d428..0e84ac5e7 100644
+--- a/Documents/Manual-BRLTTY/French/driver-codes.sgml
++++ b/Documents/Manual-BRLTTY/French/driver-codes.sgml
+@@ -11,6 +11,7 @@ bn|BrailleNote@
+ cb|CombiBraille@
+ ce|Cebra@
+ cn|Canute@
++dp|DotPad@
+ ec|EcoBraille@
+ en|eSpeak-NG@
+ es|eSpeak@
+diff --git a/Documents/braille-driver.csv b/Documents/braille-driver.csv
+index 337d34033..b0d5310a4 100644
+--- a/Documents/braille-driver.csv
++++ b/Documents/braille-driver.csv
+@@ -11,6 +11,7 @@
+ "cb","CombiBraille","","","25/45/85"
+ "ce","Cebra","","","20/40/60/80/100/120/140"
+ "cn","Canute","","","360 (40x9)"
++"dp","DotPad","","",""
+ "ec","EcoBraille","","","20/40/80"
+ "eu","EuroBraille","","","AzerBraille, Clio, Esys, Iris, NoteBraille, Scriba"
+ "fa","FrankAudiodata","","","B2K84"
+diff --git a/Documents/brltty.1.in b/Documents/brltty.1.in
+index 1f74c1ad7..aa3cc104c 100644
+--- a/Documents/brltty.1.in
++++ b/Documents/brltty.1.in
+@@ -732,6 +732,9 @@ Cebra
+ .B cn
+ Canute
+ .TP 4
++.B dp
++DotPad
++.TP 4
+ .B ec
+ EcoBraille
+ .TP 4
+diff --git a/Documents/brltty.conf.in b/Documents/brltty.conf.in
+index c8cbda759..42abec6ab 100644
+--- a/Documents/brltty.conf.in
++++ b/Documents/brltty.conf.in
+@@ -66,6 +66,7 @@
+ #braille-driver	cb	# CombiBraille
+ #braille-driver	ce	# Cebra
+ #braille-driver	cn	# Canute
++#braille-driver	dp	# DotPad
+ #braille-driver	ec	# EcoBraille
+ #braille-driver	eu	# EuroBraille
+ #braille-driver	fa	# FrankAudiodata
+@@ -295,6 +296,9 @@
+ #braille-parameters bm:Protocol=default # [default,escape,hid1,hid2,ht,pb]
+ #braille-parameters bm:VarioKeys=no # [no,yes]
+ 
++# DotPad Braille Driver Parameters
++#brailledd-parameters dp:Display=default # [default,text,graphic]
++
+ # EuroBraille Braille Driver Parameters
+ #braille-parameters eu:Protocol= # [auto,azerbraille,clio,eurobraille,notebraille,pupibraille,scriba,esys,esytime,iris,esysiris]
+ 
+diff --git a/Drivers/Braille/DotPad/Makefile.in b/Drivers/Braille/DotPad/Makefile.in
+new file mode 100644
+index 000000000..2f219e28d
+--- /dev/null
++++ b/Drivers/Braille/DotPad/Makefile.in
+@@ -0,0 +1,28 @@
++###############################################################################
++# BRLTTY - A background process providing access to the console screen (when in
++#          text mode) for a blind person using a refreshable braille display.
++#
++# Copyright (C) 1995-2023 by The BRLTTY Developers.
++#
++# BRLTTY comes with ABSOLUTELY NO WARRANTY.
++#
++# This is free software, placed under the terms of the
++# GNU Lesser General Public License, as published by the Free Software
++# Foundation; either version 2.1 of the License, or (at your option) any
++# later version. Please see the file LICENSE-LGPL for details.
++#
++# Web Page: http://brltty.app/
++#
++# This software is maintained by Dave Mielke <dave@mielke.cc>.
++###############################################################################
++
++DRIVER_CODE = dp
++DRIVER_NAME = DotPad
++DRIVER_USAGE = 
++DRIVER_VERSION = 
++DRIVER_DEVELOPERS = Dave Mielke <dave@mielke.cc>
++include $(SRC_TOP)braille.mk
++
++braille.$O:
++	$(CC) $(BRL_CFLAGS) -c $(SRC_DIR)/braille.c
++
+diff --git a/Drivers/Braille/DotPad/braille.c b/Drivers/Braille/DotPad/braille.c
+new file mode 100644
+index 000000000..8df83e244
+--- /dev/null
++++ b/Drivers/Braille/DotPad/braille.c
+@@ -0,0 +1,1179 @@
++/*
++ * BRLTTY - A background process providing access to the console screen (when in
++ *          text mode) for a blind person using a refreshable braille display.
++ *
++ * Copyright (C) 1995-2023 by The BRLTTY Developers.
++ *
++ * BRLTTY comes with ABSOLUTELY NO WARRANTY.
++ *
++ * This is free software, placed under the terms of the
++ * GNU Lesser General Public License, as published by the Free Software
++ * Foundation; either version 2.1 of the License, or (at your option) any
++ * later version. Please see the file LICENSE-LGPL for details.
++ *
++ * Web Page: http://brltty.app/
++ *
++ * This software is maintained by Dave Mielke <dave@mielke.cc>.
++ */
++
++#include "prologue.h"
++
++#include <string.h>
++#include <errno.h>
++
++#include "log.h"
++#include "strfmt.h"
++#include "bitfield.h"
++#include "parse.h"
++
++#define BRL_STATUS_FIELDS sfTime, sfSpace, sfCursorAndWindowColumn3, sfSpace, sfCursorAndWindowRow2, sfSpace, sfScreenNumber, sfSpace, sfStateLetter
++#define BRL_HAVE_STATUS_CELLS
++
++typedef enum {
++  PARM_DISPLAY,
++} DP_DriverParameter;
++
++#define BRLPARMS "display"
++#include "brl_driver.h"
++#include "brldefs-dp.h"
++
++#define PROBE_RETRY_LIMIT 2
++#define PROBE_INPUT_TIMEOUT 1000
++
++#define GRAPHIC_HORIZONTAL_SPACING 1
++#define GRAPHIC_VERTICAL_SPACING 2
++
++#define KEY_ENTRY(s,t,k,n) {.value = {.group=DP_GRP_##s, .number=DP_##t##_##k}, .name=n}
++#define SCROLL_KEY_ENTRY(k,n) KEY_ENTRY(ScrollKeys, SCL, k, n)
++#define KEYBOARD_KEY_ENTRY(k,n) KEY_ENTRY(PerkinsKeys, KBD, k, n)
++#define PANNING_KEY_ENTRY(k,n) KEY_ENTRY(PerkinsKeys, PAN, k, n)
++#define NAVIGATION_KEY_ENTRY(k,n) KEY_ENTRY(PerkinsKeys, NAV, k, n)
++
++BEGIN_KEY_NAME_TABLE(scroll)
++  SCROLL_KEY_ENTRY(LEFT_PREV, "LeftPrev"),
++  SCROLL_KEY_ENTRY(LEFT_NEXT, "LeftNext"),
++  SCROLL_KEY_ENTRY(RIGHT_PREV, "RightPrev"),
++  SCROLL_KEY_ENTRY(RIGHT_NEXT, "RightNext"),
++END_KEY_NAME_TABLE
++
++BEGIN_KEY_NAME_TABLE(keyboard)
++  KEYBOARD_KEY_ENTRY(DOT1, "Dot1"),
++  KEYBOARD_KEY_ENTRY(DOT2, "Dot2"),
++  KEYBOARD_KEY_ENTRY(DOT3, "Dot3"),
++  KEYBOARD_KEY_ENTRY(DOT4, "Dot4"),
++  KEYBOARD_KEY_ENTRY(DOT5, "Dot5"),
++  KEYBOARD_KEY_ENTRY(DOT6, "Dot6"),
++  KEYBOARD_KEY_ENTRY(DOT7, "Dot7"),
++  KEYBOARD_KEY_ENTRY(DOT8, "Dot8"),
++
++  KEYBOARD_KEY_ENTRY(SPACE, "Space"),
++  KEYBOARD_KEY_ENTRY(SHIFT_LEFT, "LeftShift"),
++  KEYBOARD_KEY_ENTRY(SHIFT_RIGHT, "RightShift"),
++  KEYBOARD_KEY_ENTRY(CONTROL_LEFT, "LeftControl"),
++  KEYBOARD_KEY_ENTRY(CONTROL_RIGHT, "RightControl"),
++END_KEY_NAME_TABLE
++
++BEGIN_KEY_NAME_TABLE(panning)
++  PANNING_KEY_ENTRY(LEFT, "PanLeft"),
++  PANNING_KEY_ENTRY(RIGHT, "PanRight"),
++END_KEY_NAME_TABLE
++
++BEGIN_KEY_NAME_TABLE(navigation)
++  NAVIGATION_KEY_ENTRY(CENTER, "NavCenter"),
++  NAVIGATION_KEY_ENTRY(LEFT, "NavLeft"),
++  NAVIGATION_KEY_ENTRY(RIGHT, "NavRight"),
++  NAVIGATION_KEY_ENTRY(UP, "NavUp"),
++  NAVIGATION_KEY_ENTRY(DOWN, "NavDown"),
++END_KEY_NAME_TABLE
++
++BEGIN_KEY_NAME_TABLE(function)
++  KEY_GROUP_ENTRY(DP_GRP_FunctionKeys, "FunctionKey"),
++END_KEY_NAME_TABLE
++
++BEGIN_KEY_NAME_TABLE(routing)
++  KEY_GROUP_ENTRY(DP_GRP_RoutingKeys, "RoutingKey"),
++END_KEY_NAME_TABLE
++
++BEGIN_KEY_NAME_TABLES(all)
++  KEY_NAME_TABLE(scroll),
++  KEY_NAME_TABLE(keyboard),
++  KEY_NAME_TABLE(panning),
++  KEY_NAME_TABLE(navigation),
++  KEY_NAME_TABLE(routing),
++  KEY_NAME_TABLE(function),
++END_KEY_NAME_TABLES
++
++BEGIN_KEY_NAME_TABLES(panfn4)
++  KEY_NAME_TABLE(panning),
++  KEY_NAME_TABLE(function),
++END_KEY_NAME_TABLES
++
++DEFINE_KEY_TABLE(all)
++DEFINE_KEY_TABLE(panfn4)
++
++BEGIN_KEY_TABLE_LIST
++  &KEY_TABLE_DEFINITION(all),
++  &KEY_TABLE_DEFINITION(panfn4),
++END_KEY_TABLE_LIST
++
++typedef struct {
++  unsigned char *cells;
++  unsigned char destination;
++} ExternalRowEntry;
++
++typedef struct {
++  unsigned char *cells;
++
++  const ExternalRowEntry *upperRow;
++  const ExternalRowEntry *lowerRow;
++
++  unsigned char upperShift;
++  unsigned char lowerShift;
++
++  unsigned char upperMask;
++  unsigned char lowerMask;
++
++  unsigned char hasChanged;
++} InternalRowEntry;
++
++struct BrailleDataStruct {
++  DP_BoardInformation boardInformation;
++  unsigned char firmwareVersion[8];
++  unsigned char deviceName[10];
++  const KeyNameEntry *keyNameTable[7];
++
++  struct {
++    unsigned char scroll[4];
++    unsigned char perkins[4];
++    unsigned char routing[8];
++    unsigned char function[4];
++  } keys;
++
++  struct {
++    unsigned char destination;
++    unsigned char refreshTime;
++
++    unsigned char horizontalSpacing;
++    unsigned char verticalSpacing;
++
++    unsigned char cellWidth;
++    unsigned char cellHeight;
++
++    unsigned char externalColumns;
++    unsigned char externalRows;
++
++    unsigned char internalColumns;
++    unsigned char internalRows;
++  } display;
++
++  struct {
++    unsigned char *externalCells;
++    ExternalRowEntry *externalRows;
++
++    unsigned char *internalCells;
++    InternalRowEntry *internalRows;
++
++    unsigned char *statusCells;
++  } arrays;;
++};
++
++static void
++setExternalDisplayProperties (BrailleDisplay *brl, const DP_DisplayDescriptor *display) {
++  {
++    unsigned char dotsPerCell = brl->data->boardInformation.dotsPerCell;
++
++    unsigned char *width = &brl->data->display.cellWidth;
++    unsigned char *height = &brl->data->display.cellHeight;
++
++    switch (dotsPerCell) {
++      default:
++        logMessage(LOG_WARNING, "unexpected dots per cell: %u", dotsPerCell);
++        /* fall through */
++      case DP_DPC_8:
++        *width = 2;
++        *height = 4;
++        break;
++
++      case DP_DPC_6:
++        *width = 2;
++        *height = 3;
++        break;
++    }
++  }
++
++  brl->data->display.refreshTime = display->refreshTime;
++  brl->data->display.externalColumns = display->columnCount;
++  brl->data->display.externalRows = display->rowCount;
++}
++
++static unsigned char
++toInternalDimension (unsigned char externalCount, unsigned char externalDots, unsigned char internalDots, unsigned char internalSpacing) {
++  return (((externalCount * externalDots) - internalDots) / (internalDots + internalSpacing)) + 1;
++}
++
++static void
++setInternalDisplayProperties (BrailleDisplay *brl) {
++  brl->data->display.internalColumns = toInternalDimension(
++    brl->data->display.externalColumns,
++    brl->data->display.cellWidth,
++    2, brl->data->display.horizontalSpacing
++  );
++
++  brl->data->display.internalRows = toInternalDimension(
++    brl->data->display.externalRows,
++    brl->data->display.cellHeight,
++    4, brl->data->display.verticalSpacing
++  );
++
++  logMessage(LOG_CATEGORY(BRAILLE_DRIVER),
++    "display properties: ghsp:%u gvsp:%u cell:%ux%u disp:%ux%u core:%ux%u",
++    brl->data->display.horizontalSpacing, brl->data->display.verticalSpacing,
++    brl->data->display.cellWidth, brl->data->display.cellHeight,
++    brl->data->display.externalColumns, brl->data->display.externalRows,
++    brl->data->display.internalColumns, brl->data->display.internalRows
++  );
++
++  brl->textColumns = brl->data->display.internalColumns;
++  brl->textRows = brl->data->display.internalRows;
++}
++
++static void
++useTextDisplay (BrailleDisplay *brl) {
++  logMessage(LOG_CATEGORY(BRAILLE_DRIVER), "using text display");
++
++  brl->data->display.destination = 0;
++  brl->data->display.horizontalSpacing = 0;
++  brl->data->display.verticalSpacing = 0;
++
++  setExternalDisplayProperties(brl, &brl->data->boardInformation.text);
++  setInternalDisplayProperties(brl);
++
++  brl->cellSize = brl->data->display.cellWidth * brl->data->display.cellHeight;
++}
++
++static void
++useGraphicDisplay (BrailleDisplay *brl) {
++  logMessage(LOG_CATEGORY(BRAILLE_DRIVER), "using graphic display");
++
++  if (brl->data->boardInformation.features & DP_HAS_TEXT_DISPLAY) {
++    brl->data->display.destination = brl->data->boardInformation.text.rowCount;
++  } else {
++    brl->data->display.destination = 1;
++  }
++
++  brl->data->display.horizontalSpacing = GRAPHIC_HORIZONTAL_SPACING;
++  brl->data->display.verticalSpacing = GRAPHIC_VERTICAL_SPACING;
++
++  setExternalDisplayProperties(brl, &brl->data->boardInformation.graphic);
++  setInternalDisplayProperties(brl);
++
++  if (brl->data->boardInformation.features & DP_HAS_TEXT_DISPLAY) {
++    brl->statusColumns = brl->data->boardInformation.text.columnCount;
++    brl->statusRows = 1;
++  }
++}
++
++static int
++selectDisplay (BrailleDisplay *brl, const char *parameter) {
++  typedef struct {
++    const char *name; // must be first
++    void (*useDisplay) (BrailleDisplay *brl);
++    unsigned char featureBit;
++  } ChoiceEntry;
++
++  static const ChoiceEntry choiceTable[] = {
++    { .name = "default" },
++
++    { .name = "text",
++      .useDisplay = useTextDisplay,
++      .featureBit = DP_HAS_TEXT_DISPLAY,
++    },
++
++    { .name = "graphic",
++      .useDisplay = useGraphicDisplay,
++      .featureBit = DP_HAS_GRAPHIC_DISPLAY,
++    },
++
++    { .name = NULL }
++  };
++
++  unsigned char features = brl->data->boardInformation.features;
++  unsigned int choiceIndex;
++
++  if (validateChoiceEx(&choiceIndex, parameter, choiceTable, sizeof(choiceTable[0]))) {
++    const ChoiceEntry *choice = &choiceTable[choiceIndex];
++
++    if (features & choice->featureBit) {
++      choice->useDisplay(brl);
++      return 1;
++    }
++
++    if (choice->featureBit) {
++      logMessage(LOG_WARNING, "no %s display", choice->name);
++    }
++  } else {
++    logMessage(LOG_WARNING, "invalid display setting: %s", parameter);
++  }
++
++  if (features & DP_HAS_GRAPHIC_DISPLAY) {
++    useGraphicDisplay(brl);
++  } else if (features & DP_HAS_TEXT_DISPLAY) {
++    useTextDisplay(brl);
++  } else {
++    logMessage(LOG_WARNING, "no supported display");
++    return 0;
++  }
++
++  return 1;
++}
++
++static int
++processParameters (BrailleDisplay *brl, char **parameters) {
++  if (!selectDisplay(brl, parameters[PARM_DISPLAY])) return 0;
++  return 1;
++}
++
++static ExternalRowEntry *
++getExternalRow (BrailleDisplay *brl, unsigned int index) {
++  return &brl->data->arrays.externalRows[index];
++}
++
++static void
++initializeExternalRows (BrailleDisplay *brl) {
++  unsigned char *cells = brl->data->arrays.externalCells;
++  unsigned char destination = brl->data->display.destination;
++
++  for (unsigned int index=0; index<brl->data->display.externalRows; index+=1) {
++    ExternalRowEntry *row = getExternalRow(brl, index);
++
++    row->cells = cells;
++    cells += brl->data->display.externalColumns;
++
++    row->destination = destination;
++    destination += 1;
++  }
++}
++
++static InternalRowEntry *
++getInternalRow (BrailleDisplay *brl, unsigned int index) {
++  return &brl->data->arrays.internalRows[index];
++}
++
++static void
++initializeInternalRows (BrailleDisplay *brl) {
++  unsigned char *cells = brl->data->arrays.internalCells + brl->data->display.verticalSpacing;
++
++  const unsigned char cellHeight = brl->data->display.cellHeight;
++  const unsigned char rowHeight = cellHeight + brl->data->display.verticalSpacing;
++  const unsigned char cellMask = (1 << cellHeight) - 1;
++
++  for (unsigned int index=0; index<brl->data->display.internalRows; index+=1) {
++    InternalRowEntry *row = getInternalRow(brl, index);
++
++    row->cells = cells;
++    cells += brl->data->display.internalColumns;
++
++    {
++      unsigned char offset = rowHeight * index;
++      row->upperRow = getExternalRow(brl, (offset / cellHeight));
++      row->upperShift = offset % cellHeight;
++      row->upperMask = (cellMask << row->upperShift) & cellMask;
++      row->upperMask |= row->upperMask << 4;
++
++      offset += 3;
++      row->lowerRow = getExternalRow(brl, (offset / cellHeight));
++      row->lowerShift = cellHeight - (offset % cellHeight) - 1;
++      row->lowerMask = cellMask >> row->lowerShift;
++      row->lowerMask |= row->lowerMask << 4;
++    }
++
++    row->hasChanged = 1;
++  }
++}
++
++static int
++makeArrays (BrailleDisplay *brl) {
++  if ((brl->data->arrays.externalCells = calloc(brl->data->display.externalRows, brl->data->display.externalColumns))) {
++    if ((brl->data->arrays.internalCells = calloc(brl->data->display.internalRows, brl->data->display.internalColumns))) {
++      if ((brl->data->arrays.externalRows = malloc(ARRAY_SIZE(brl->data->arrays.externalRows, brl->data->display.externalRows)))) {
++        if ((brl->data->arrays.internalRows = malloc(ARRAY_SIZE(brl->data->arrays.internalRows, brl->data->display.internalRows)))) {
++          int statusCellsAllocated = !brl->statusColumns;
++
++          if (!statusCellsAllocated) {
++            if ((brl->data->arrays.statusCells = calloc(brl->statusColumns, 1))) {
++              statusCellsAllocated = 1;
++            }
++          }
++
++          if (statusCellsAllocated) {
++            initializeExternalRows(brl);
++            initializeInternalRows(brl);
++            return 1;
++          }
++
++          free(brl->data->arrays.internalRows);
++        }
++
++        free(brl->data->arrays.externalRows);
++      }
++
++      free(brl->data->arrays.internalCells);
++    }
++
++    free(brl->data->arrays.externalCells);
++  }
++
++  logMallocError();
++  return 0;
++}
++
++static void
++deallocateArrays (BrailleDisplay *brl) {
++  free(brl->data->arrays.statusCells);
++
++  free(brl->data->arrays.internalRows);
++  free(brl->data->arrays.internalCells);
++
++  free(brl->data->arrays.externalRows);
++  free(brl->data->arrays.externalCells);
++}
++
++static uint16_t
++getUint16 (const unsigned char bytes[2]) {
++  union {
++    const unsigned char *ofBytes;
++    const uint16_t *ofUint16;
++  } address;
++
++  address.ofBytes = bytes;
++  return getBigEndian16(*address.ofUint16);
++}
++
++static void
++putUint16 (unsigned char bytes[2], uint16_t value) {
++  union {
++    unsigned char *ofBytes;
++    uint16_t *ofUint16;
++  } address;
++
++  address.ofBytes = bytes;
++  putBigEndian16(address.ofUint16, value);
++}
++
++static unsigned char
++makePacketChecksum (const DP_Packet *packet) {
++  unsigned char checksum = 0XA5;
++
++  {
++    const unsigned char *byte = &packet->fields.destination;
++    const unsigned char *end = byte + getUint16(packet->fields.length) - 1;
++    while (byte < end) checksum ^= *byte++;
++  }
++
++  return checksum;
++}
++
++static int
++writePacket (BrailleDisplay *brl, const DP_Packet *packet) {
++  size_t size = getUint16(packet->fields.length);
++  size += &packet->fields.destination - packet->bytes;
++
++  unsigned int type = getUint16(packet->fields.command) << 8;
++  type |= packet->fields.destination;
++
++  return writeBrailleMessage(brl, NULL, type, packet, size);
++}
++
++static int
++writeRequest (BrailleDisplay *brl, uint16_t command, uint8_t destination, const void *data, size_t size) {
++  if (!data) size = 0;
++  DP_Packet packet;
++
++  packet.fields.sync[0] = DP_PSB_SYNC1;
++  packet.fields.sync[1] = DP_PSB_SYNC2;
++
++  packet.fields.destination = destination;
++  putUint16(packet.fields.command, command);
++  packet.fields.seq = 0;
++
++  uint8_t *checksum = mempcpy(packet.fields.data, data, size);
++  uint16_t length = (checksum - &packet.fields.destination) + 1;
++  putUint16(packet.fields.length, length);
++  *checksum = makePacketChecksum(&packet);
++
++  return writePacket(brl, &packet);
++}
++
++static int
++verifyPacketChecksum (const DP_Packet *packet, unsigned char received) {
++  unsigned char expected = makePacketChecksum(packet);
++  if (received == expected) return 1;
++
++  logMessage(LOG_WARNING,
++    "checksum mismatch: Received:%02X Expected:%02X",
++    received, expected
++  );
++
++  return 0;
++}
++
++static int
++verifyPacketLength (const DP_Packet *packet, const BrailleDisplay *brl) {
++  uint16_t received = getUint16(packet->fields.length);
++  uint16_t command = getUint16(packet->fields.command);
++  uint16_t expected = 5;
++
++  switch (command) {
++    case DP_RSP_FIRMWARE_VERSION:
++      expected += sizeof(brl->data->firmwareVersion);
++      break;
++
++    case DP_RSP_DEVICE_NAME:
++      expected += sizeof(brl->data->deviceName);
++      break;
++
++    case DP_RSP_BOARD_INFORMATION:
++      expected += sizeof(brl->data->boardInformation);
++      break;
++
++    case DP_RSP_DISPLAY_LINE:
++      expected += 1;
++      break;
++
++    case DP_NTF_DISPLAY_LINE:
++      expected += 1;
++      break;
++
++    case DP_NTF_KEYS_SCROLL:
++      expected += sizeof(brl->data->keys.scroll);
++      break;
++
++    case DP_NTF_KEYS_PERKINS:
++      expected += sizeof(brl->data->keys.perkins);
++      break;
++
++    case DP_NTF_KEYS_ROUTING:
++      expected += sizeof(brl->data->keys.routing);
++      break;
++
++    case DP_NTF_KEYS_FUNCTION:
++      expected += sizeof(brl->data->keys.function);
++      break;
++
++    case DP_NTF_ERROR:
++      expected += 1;
++      break;
++  }
++
++  if (received != expected) {
++    logMessage(LOG_WARNING,
++      "length mismatch (command %04X): Received:%u Expected:%u",
++      getUint16(packet->fields.command), received, expected
++    );
++  }
++
++  return 1;
++}
++
++static BraillePacketVerifierResult
++verifyPacket (
++  BrailleDisplay *brl,
++  unsigned char *bytes, size_t size,
++  size_t *length, void *data
++) {
++  unsigned char byte = bytes[size-1];
++
++  switch (size) {
++    case 1:
++      if (byte != DP_PSB_SYNC1) return BRL_PVR_INVALID;
++      *length = 4;
++      break;
++
++    case 2:
++      if (byte != DP_PSB_SYNC2) return BRL_PVR_INVALID;
++      break;
++
++    case 4:
++      *length += getUint16(&bytes[2]);
++      break;
++
++    default:
++      break;
++  }
++
++  if (size == *length) {
++    const void *packet = bytes;
++    verifyPacketChecksum(packet, byte);
++    verifyPacketLength(packet, brl);
++  }
++
++  return BRL_PVR_INCLUDE;
++}
++
++static size_t
++readPacket (BrailleDisplay *brl, void *packet, size_t size) {
++  return readBraillePacket(brl, NULL, packet, size, verifyPacket, NULL);
++}
++
++static int
++writeCells (BrailleDisplay *brl, unsigned char destination, const unsigned char *cells, unsigned int count) {
++  unsigned char data[1 + count];
++  unsigned char *byte = data;
++
++  *byte++ = 0;
++  byte = mempcpy(byte, cells, count);
++
++  return writeRequest(brl, DP_REQ_DISPLAY_LINE, destination, data, (byte - data));
++}
++
++static int
++writeStatusCells (BrailleDisplay *brl) {
++  return writeCells(brl, 0, brl->data->arrays.statusCells, brl->statusColumns);
++}
++
++static int
++brl_writeStatus (BrailleDisplay *brl, const unsigned char *cells) {
++  translateOutputCells(brl->data->arrays.statusCells, cells, brl->statusColumns);
++  return writeStatusCells(brl);
++}
++
++static int
++writeExternalRow (BrailleDisplay *brl, const ExternalRowEntry *row) {
++  return writeCells(brl, row->destination, row->cells, brl->data->display.externalColumns);
++}
++
++static int
++refreshCells (BrailleDisplay *brl) {
++  const ExternalRowEntry *row = brl->data->arrays.externalRows;
++  const ExternalRowEntry *end = row + brl->data->display.externalRows;
++
++  while (row < end) {
++    if (!writeExternalRow(brl, row)) return 0;
++    row += 1;
++  }
++
++  if (!brl->statusColumns) return 1;
++  return writeStatusCells(brl);
++}
++
++static unsigned int
++getExternalCellOffset (BrailleDisplay *brl, unsigned int index) {
++  return index * (brl->data->display.cellWidth + brl->data->display.horizontalSpacing);
++}
++
++static unsigned char
++getExternalCell (BrailleDisplay *brl, const ExternalRowEntry *row, unsigned int index) {
++  unsigned int offset = getExternalCellOffset(brl, index);
++  index = offset / 2;
++  unsigned char cell = row->cells[index];
++
++  if (offset % 2) {
++    cell >>= 4;
++    cell |= row->cells[index + 1] << 4;
++  }
++
++  return cell;
++}
++
++static void
++putExternalCell (BrailleDisplay *brl, const ExternalRowEntry *row, unsigned int index, unsigned char cell) {
++  unsigned int offset = getExternalCellOffset(brl, index);
++  index = offset / 2;
++
++  if (offset % 2) {
++    unsigned char *dots = &row->cells[index];
++    *dots &= 0X0F;
++    *dots |= cell << 4;
++
++    dots += 1;
++    *dots &= 0XF0;
++    *dots |= cell >> 4;
++  } else {
++    row->cells[index] = cell;
++  }
++}
++
++static int
++writeInternalCells (BrailleDisplay *brl, const InternalRowEntry *internalRow, unsigned int from, unsigned int to) {
++  int upperUpdated = 0;
++  int lowerUpdated = 0;
++
++  while (from < to) {
++    unsigned char newCell = translateOutputCell(internalRow->cells[from]);
++
++    {
++      const ExternalRowEntry *upperRow = internalRow->upperRow;
++      unsigned char upperCell = getExternalCell(brl, upperRow, from);
++      unsigned char changedDots = (upperCell ^ (newCell << internalRow->upperShift)) & internalRow->upperMask;
++
++      if (changedDots) {
++        putExternalCell(brl, upperRow, from, (upperCell ^ changedDots));
++        upperUpdated = 1;
++      }
++    }
++
++    if (internalRow->lowerRow != internalRow->upperRow) {
++      const ExternalRowEntry *lowerRow = internalRow->lowerRow;
++      unsigned char lowerCell = getExternalCell(brl, lowerRow, from);
++      unsigned char changedDots = (lowerCell ^ (newCell >> internalRow->lowerShift)) & internalRow->lowerMask;
++
++      if (changedDots) {
++        putExternalCell(brl, lowerRow, from, (lowerCell ^ changedDots));
++        lowerUpdated = 1;
++      }
++    }
++
++    from += 1;
++  }
++
++  if (upperUpdated) {
++    if (!writeExternalRow(brl, internalRow->upperRow)) {
++      return 0;
++    }
++  }
++
++  if (lowerUpdated) {
++    if (!writeExternalRow(brl, internalRow->lowerRow)) {
++      return 0;
++    }
++  }
++
++  return 1;
++}
++
++static int
++brl_writeWindow (BrailleDisplay *brl, const wchar_t *text) {
++  unsigned char *cells = brl->buffer;
++  unsigned char rowLength = brl->data->display.internalColumns;
++
++  for (unsigned int rowIndex=0; rowIndex<brl->data->display.internalRows; rowIndex+=1) {
++    InternalRowEntry *row = getInternalRow(brl, rowIndex);
++
++    unsigned int from;
++    unsigned int to;
++
++    int rowHasChanged = cellsHaveChanged(
++      row->cells, cells, rowLength,
++      &from, &to, &row->hasChanged
++    );
++
++    if (rowHasChanged) {
++      if (!writeInternalCells(brl, row, from, to)) {
++        return 0;
++      }
++    }
++
++    cells += rowLength;
++  }
++
++  return 1;
++}
++
++static int
++getDataSize (const DP_Packet *packet) {
++  return getUint16(packet->fields.length)
++       - 1 // checksum
++       - (packet->fields.data - &packet->fields.destination) // header
++       ;
++}
++
++static void
++reportRequestError (unsigned char code) {
++  static const char *const reasons[] = {
++    [DP_ERR_LENGTH]    = "unexpected length",
++    [DP_ERR_COMMAND]   = "unrecognized command",
++    [DP_ERR_CHECKSUM]  = "incorrect checksum",
++    [DP_ERR_PARAMETER] = "invalid parameter",
++    [DP_ERR_TIMEOUT]   = "read timed out",
++  };
++
++  const char *reason = NULL;
++  if (code < ARRAY_COUNT(reasons)) reason = reasons[code];
++  if (!reason) reason = "unknown problem";
++
++  logMessage(LOG_WARNING,
++    "request rejected by device: %u (%s)",
++    code, reason
++  );
++}
++
++static void
++reportDisplayError (unsigned char code) {
++  static const char *const reasons[] = {
++    [DP_DRC_ACK]      = "positive acknowledgement",
++    [DP_DRC_NACK]     = "negative acknowledgement",
++    [DP_DRC_WAIT]     = "wait",
++    [DP_DRC_CHECKSUM] = "incorrect checksum",
++  };
++
++  const char *reason = NULL;
++  if (code < ARRAY_COUNT(reasons)) reason = reasons[code];
++  if (!reason) reason = "unknown problem";
++
++  logMessage(LOG_WARNING,
++    "display rejected by device: %u (%s)",
++    code, reason
++  );
++}
++
++static void
++saveField (
++  const DP_Packet *packet, const char *label,
++  unsigned char *field, int fieldSize
++) {
++  int dataSize = getDataSize(packet);
++
++  if (dataSize > fieldSize) dataSize = fieldSize;
++  memcpy(field, packet->fields.data, dataSize);
++  while (dataSize < fieldSize) field[dataSize++] = ' ';
++
++  logMessage(LOG_CATEGORY(BRAILLE_DRIVER),
++    "%s: %.*s", label, fieldSize, field
++  );
++}
++
++static unsigned char
++reverseByteBits (unsigned char fromByte) {
++  unsigned char toByte = 0;
++
++  unsigned char fromBit = 0X80;
++  unsigned char toBit = 0X01;
++
++  while (fromBit) {
++    if (fromByte & fromBit) toByte |= toBit;
++    fromBit >>= 1;
++    toBit <<= 1;
++  }
++
++  return toByte;
++}
++
++static int
++updateKeyGroup (
++  BrailleDisplay *brl, const DP_Packet *packet, KeyGroup keyGroup,
++  unsigned char *array, size_t arraySize
++) {
++  int dataSize = getDataSize(packet);
++
++  if (dataSize > 0) {
++    unsigned char data[arraySize];
++    if (dataSize > arraySize) dataSize = arraySize;
++
++    for (int i=0; i<dataSize; i+=1) {
++      data[i] = reverseByteBits(packet->fields.data[i]);
++    }
++
++    while (dataSize < arraySize) {
++      data[dataSize++] = 0;
++    }
++
++    if (!enqueueUpdatedKeyGroup(brl, (arraySize * 8), data, array, keyGroup)) {
++      return 0;
++    }
++  }
++
++  return 1;
++}
++
++static int
++brl_readCommand (BrailleDisplay *brl, KeyTableCommandContext context) {
++  DP_Packet packet;
++  size_t size;
++
++  while ((size = readPacket(brl, packet.bytes, sizeof(packet)))) {
++    switch (getUint16(packet.fields.command)) {
++      case DP_RSP_FIRMWARE_VERSION: {
++        saveField(
++          &packet, "Firmware Version",
++          brl->data->firmwareVersion,
++          sizeof(brl->data->firmwareVersion)
++        );
++
++        acknowledgeBrailleMessage(brl);
++        continue;
++      }
++
++      case DP_RSP_DEVICE_NAME: {
++        saveField(
++          &packet, "Device Name",
++          brl->data->deviceName,
++          sizeof(brl->data->deviceName)
++        );
++
++        acknowledgeBrailleMessage(brl);
++        continue;
++      }
++
++      case DP_RSP_DISPLAY_LINE: {
++        unsigned char code = packet.fields.data[0];
++
++        if (code != DP_DRC_ACK) {
++          reportDisplayError(code);
++          acknowledgeBrailleMessage(brl);
++        }
++
++        continue;
++      }
++
++      case DP_NTF_DISPLAY_LINE:
++        acknowledgeBrailleMessage(brl);
++        continue;
++
++      case DP_NTF_KEYS_SCROLL: {
++        updateKeyGroup(
++          brl, &packet, DP_GRP_ScrollKeys,
++          brl->data->keys.scroll,
++          sizeof(brl->data->keys.scroll)
++        );
++
++        continue;
++      }
++
++      case DP_NTF_KEYS_PERKINS: {
++        updateKeyGroup(
++          brl, &packet, DP_GRP_PerkinsKeys,
++          brl->data->keys.perkins,
++          sizeof(brl->data->keys.perkins)
++        );
++
++        continue;
++      }
++
++      case DP_NTF_KEYS_ROUTING: {
++        updateKeyGroup(
++          brl, &packet, DP_GRP_RoutingKeys,
++          brl->data->keys.routing,
++          sizeof(brl->data->keys.routing)
++        );
++
++        continue;
++      }
++
++      case DP_NTF_KEYS_FUNCTION: {
++        updateKeyGroup(
++          brl, &packet, DP_GRP_FunctionKeys,
++          brl->data->keys.function,
++          sizeof(brl->data->keys.function)
++        );
++
++        continue;
++      }
++
++      case DP_NTF_ERROR: {
++        reportRequestError(packet.fields.data[0]);
++        acknowledgeBrailleMessage(brl);
++        continue;
++      }
++
++      default:
++        break;
++    }
++
++    logUnexpectedPacket(packet.bytes, size);
++  }
++
++  return (errno == EAGAIN)? EOF: BRL_CMD_RESTARTBRL;
++}
++
++static const KeyNameEntry **
++makeKeyNameTable (BrailleDisplay *brl) {
++  typedef struct {
++    const char *type;
++    const KeyNameEntry *keyNames;
++    unsigned char featureBit;
++  } OptionalKeysDescriptor;
++
++  static const OptionalKeysDescriptor optionalKeysTable[] = {
++    { .type = "scroll",
++      .keyNames = KEY_NAME_TABLE(scroll),
++      // not actually used
++    },
++
++    { .type = "keyboard",
++      .keyNames = KEY_NAME_TABLE(keyboard),
++      .featureBit = DP_HAS_PERKINS_KEYS,
++    },
++
++    { .type = "panning",
++      .keyNames = KEY_NAME_TABLE(panning),
++      .featureBit = DP_HAS_PANNING_KEYS,
++    },
++
++    { .type = "navigation",
++      .keyNames = KEY_NAME_TABLE(navigation),
++      .featureBit = DP_HAS_NAVIGATION_KEYS,
++    },
++
++    { .type = "routing",
++      .keyNames = KEY_NAME_TABLE(routing),
++      .featureBit = DP_HAS_ROUTING_KEYS,
++    },
++
++    { .type = "function",
++      .keyNames = KEY_NAME_TABLE(function),
++      .featureBit = DP_HAS_FUNCTION_KEYS,
++    },
++  };
++
++  const KeyNameEntry **names = brl->data->keyNameTable;
++  const OptionalKeysDescriptor *okd = optionalKeysTable;
++  const OptionalKeysDescriptor *end = okd + ARRAY_COUNT(optionalKeysTable);
++
++  while (okd < end) {
++    if (brl->data->boardInformation.features & okd->featureBit) {
++      char log[0X40];
++      STR_BEGIN(log, sizeof(log));
++      STR_PRINTF("has");
++
++      if (okd->featureBit == DP_HAS_FUNCTION_KEYS) {
++        STR_PRINTF(" %u", brl->data->boardInformation.functionKeyCount);
++      }
++
++      STR_PRINTF(" %s keys", okd->type);
++      STR_END;
++      logMessage(LOG_CATEGORY(BRAILLE_DRIVER), "%s", log);
++
++      *names++ = okd->keyNames;
++    }
++
++    okd += 1;
++  }
++
++  *names = LAST_KEY_NAME_TABLE;
++  return brl->data->keyNameTable;
++}
++
++static void
++setKeyTable (BrailleDisplay *brl) {
++  const KeyTableDefinition *ktd = &KEY_TABLE_DEFINITION(all);
++  brl->keyBindings = ktd->bindings;
++  brl->keyNames = makeKeyNameTable(brl);
++}
++
++static int
++connectResource (BrailleDisplay *brl, const char *identifier) {
++  static const SerialParameters serialParameters = {
++    SERIAL_DEFAULT_PARAMETERS,
++    .baud = 115200,
++  };
++
++  BEGIN_USB_CHANNEL_DEFINITIONS
++    { /* all models */
++      .vendor=0X0403, .product=0X6010,
++      .configuration=1, .interface=0, .alternative=0,
++      .inputEndpoint=1, .outputEndpoint=2,
++      .serial=&serialParameters
++    },
++  END_USB_CHANNEL_DEFINITIONS
++
++  GioDescriptor descriptor;
++  gioInitializeDescriptor(&descriptor);
++
++  descriptor.serial.parameters = &serialParameters;
++
++  descriptor.usb.channelDefinitions = usbChannelDefinitions;
++//descriptor.usb.options.readyDelay = 3000;
++
++  if (connectBrailleResource(brl, identifier, &descriptor, NULL)) {
++    return 1;
++  }
++
++  return 0;
++}
++
++static int
++writeIdentifyRequest (BrailleDisplay *brl) {
++  return writeRequest(brl, DP_REQ_BOARD_INFORMATION, 0, NULL, 0);
++}
++
++static BrailleResponseResult
++isIdentityResponse (BrailleDisplay *brl, const void *packet, size_t size) {
++  const DP_Packet *response = packet;
++
++  if (getUint16(response->fields.command) != DP_RSP_BOARD_INFORMATION) {
++    return BRL_RSP_UNEXPECTED;
++  }
++
++  memcpy(
++    &brl->data->boardInformation, response->fields.data,
++    sizeof(brl->data->boardInformation)
++  );
++
++  {
++    DP_BoardInformation *info = &brl->data->boardInformation;
++
++    if (info->features & DP_HAS_FUNCTION_KEYS) {
++      if (!info->functionKeyCount) {
++        info->functionKeyCount = 4;
++      }
++    }
++  }
++
++  logBytes(LOG_CATEGORY(BRAILLE_DRIVER),
++    "Board Information",
++    &brl->data->boardInformation,
++    sizeof(brl->data->boardInformation)
++  );
++
++  acknowledgeBrailleMessage(brl);
++  return BRL_RSP_DONE;
++}
++
++static int
++brl_construct (BrailleDisplay *brl, char **parameters, const char *device) {
++  if ((brl->data = malloc(sizeof(*brl->data)))) {
++    memset(brl->data, 0, sizeof(*brl->data));
++
++    if (connectResource(brl, device)) {
++      DP_Packet response;
++
++      int probed = probeBrailleDisplay(
++        brl, PROBE_RETRY_LIMIT, NULL, PROBE_INPUT_TIMEOUT,
++        writeIdentifyRequest, readPacket,
++        &response, sizeof(response),
++        isIdentityResponse
++      );
++
++      if (probed) {
++        if (processParameters(brl, parameters)) {
++          if (makeArrays(brl)) {
++            brl->acknowledgements.missing.timeout = (brl->data->display.refreshTime * 100) + 1000;
++
++            if (writeRequest(brl, DP_REQ_FIRMWARE_VERSION, 0, NULL, 0)) {
++              if (writeRequest(brl, DP_REQ_DEVICE_NAME, 0, NULL, 0)) {
++                setKeyTable(brl);
++
++                MAKE_OUTPUT_TABLE(
++                  DP_DSP_DOT1, DP_DSP_DOT2, DP_DSP_DOT3, DP_DSP_DOT4,
++                  DP_DSP_DOT5, DP_DSP_DOT6, DP_DSP_DOT7, DP_DSP_DOT8
++                );
++
++                brl->refreshBrailleDisplay = refreshCells;
++                return 1;
++              }
++            }
++
++            deallocateArrays(brl);
++          }
++        }
++      }
++
++      disconnectBrailleResource(brl, NULL);
++    }
++
++    free(brl->data);
++  } else {
++    logMallocError();
++  }
++
++  return 0;
++}
++
++static void
++brl_destruct (BrailleDisplay *brl) {
++  endBrailleMessages(brl);
++  disconnectBrailleResource(brl, NULL);
++
++  deallocateArrays(brl);
++  free(brl->data);
++}
+diff --git a/Drivers/Braille/DotPad/brldefs-dp.h b/Drivers/Braille/DotPad/brldefs-dp.h
+new file mode 100644
+index 000000000..5267c0286
+--- /dev/null
++++ b/Drivers/Braille/DotPad/brldefs-dp.h
+@@ -0,0 +1,172 @@
++/*
++ * BRLTTY - A background process providing access to the console screen (when in
++ *          text mode) for a blind person using a refreshable braille display.
++ *
++ * Copyright (C) 1995-2023 by The BRLTTY Developers.
++ *
++ * BRLTTY comes with ABSOLUTELY NO WARRANTY.
++ *
++ * This is free software, placed under the terms of the
++ * GNU Lesser General Public License, as published by the Free Software
++ * Foundation; either version 2.1 of the License, or (at your option) any
++ * later version. Please see the file LICENSE-LGPL for details.
++ *
++ * Web Page: http://brltty.app/
++ *
++ * This software is maintained by Dave Mielke <dave@mielke.cc>.
++ */
++
++#ifndef BRLTTY_INCLUDED_DP_BRLDEFS
++#define BRLTTY_INCLUDED_DP_BRLDEFS
++
++#define DP_MAXIMUM_TEXT_COLUMNS 80
++
++typedef enum {
++  DP_REQ_FIRMWARE_VERSION  = 0X0000,
++  DP_RSP_FIRMWARE_VERSION  = 0X0001,
++
++  DP_REQ_DEVICE_NAME       = 0X0100,
++  DP_RSP_DEVICE_NAME       = 0X0101,
++
++  DP_REQ_BOARD_INFORMATION = 0X0110,
++  DP_RSP_BOARD_INFORMATION = 0X0111,
++
++  DP_REQ_DISPLAY_LINE      = 0X0200,
++  DP_RSP_DISPLAY_LINE      = 0X0201,
++  DP_NTF_DISPLAY_LINE      = 0X0202,
++
++  DP_REQ_DISPLAY_CURSOR    = 0X0210,
++  DP_RSP_DISPLAY_CURSOR    = 0X0211,
++  DP_NTF_DISPLAY_CURSOR    = 0X0212,
++
++  DP_NTF_KEYS_SCROLL        = 0X0302,
++  DP_NTF_KEYS_PERKINS      = 0X0312,
++  DP_NTF_KEYS_ROUTING      = 0X0322,
++  DP_NTF_KEYS_FUNCTION     = 0X0332,
++
++  DP_NTF_ERROR             = 0X9902,
++} DP_Command;
++
++typedef enum {
++  DP_HAS_GRAPHIC_DISPLAY = 0X80,
++  DP_HAS_TEXT_DISPLAY     = 0X40,
++  DP_HAS_PERKINS_KEYS     = 0X20,
++  DP_HAS_ROUTING_KEYS     = 0X10,
++  DP_HAS_NAVIGATION_KEYS  = 0X08,
++  DP_HAS_PANNING_KEYS     = 0X04,
++  DP_HAS_FUNCTION_KEYS    = 0X02,
++} DP_Features;
++
++typedef enum {
++  DP_DPC_6 = 0,
++  DP_DPC_8 = 1,
++} DP_DotsPerCell;
++
++typedef struct {
++  unsigned char rowCount; // 1, 2
++  unsigned char columnCount; // 12, 14, 15, 16, 20, 24, 26, 28, 30, 32, 36, 40
++  unsigned char dividedLine;
++  unsigned char refreshTime; // 100ms
++} DP_DisplayDescriptor;
++
++typedef struct {
++  unsigned char features;
++  unsigned char dotsPerCell; // 0:6, 1:8
++  unsigned char distanceBetweenPins; // 0.1mm
++  unsigned char functionKeyCount;
++
++  DP_DisplayDescriptor text;
++  DP_DisplayDescriptor graphic;
++} DP_BoardInformation;
++
++typedef enum {
++  DP_DSP_DOT1 = 0X01,
++  DP_DSP_DOT2 = 0X02,
++  DP_DSP_DOT3 = 0X04,
++  DP_DSP_DOT4 = 0X10,
++  DP_DSP_DOT5 = 0X20,
++  DP_DSP_DOT6 = 0X40,
++  DP_DSP_DOT7 = 0X08,
++  DP_DSP_DOT8 = 0X80,
++} DP_DisplayDots;
++
++typedef enum {
++  DP_DRC_ACK      = 0,
++  DP_DRC_NACK     = 1,
++  DP_DRC_WAIT     = 2,
++  DP_DRC_CHECKSUM = 3,
++} DP_DisplayResponseCode;
++
++typedef enum {
++  DP_SCL_LEFT_NEXT     = 28,
++  DP_SCL_LEFT_PREV     = 29,
++  DP_SCL_RIGHT_NEXT    = 30,
++  DP_SCL_RIGHT_PREV    = 31,
++} DP_ScrollKey;
++
++typedef enum {
++  DP_KBD_DOT7          =  0,
++  DP_KBD_DOT3          =  1,
++  DP_KBD_DOT2          =  2,
++  DP_KBD_DOT1          =  3,
++  DP_KBD_DOT4          =  4,
++  DP_KBD_DOT5          =  5,
++  DP_KBD_DOT6          =  6,
++  DP_KBD_DOT8          =  7,
++
++  DP_KBD_SPACE         =  8,
++  DP_KBD_SHIFT_LEFT    =  9,
++  DP_KBD_CONTROL_LEFT  = 10,
++  DP_KBD_SHIFT_RIGHT   = 11,
++  DP_KBD_CONTROL_RIGHT = 12,
++  DP_PAN_LEFT          = 13,
++  DP_PAN_RIGHT         = 14,
++
++  DP_NAV_CENTER        = 16,
++  DP_NAV_UP            = 17,
++  DP_NAV_RIGHT         = 18,
++  DP_NAV_DOWN          = 19,
++  DP_NAV_LEFT          = 20,
++} DP_PerkinsKey;
++
++typedef enum {
++  DP_GRP_ScrollKeys,
++  DP_GRP_PerkinsKeys,
++  DP_GRP_FunctionKeys,
++  DP_GRP_RoutingKeys,
++} DP_KeyGroup;
++
++typedef enum {
++  DP_ERR_LENGTH    = 1,
++  DP_ERR_COMMAND   = 2,
++  DP_ERR_CHECKSUM  = 3,
++  DP_ERR_PARAMETER = 4,
++  DP_ERR_TIMEOUT   = 5,
++} DP_ErrorCode;
++
++typedef enum {
++  DP_PSB_SYNC1 = 0XAA,
++  DP_PSB_SYNC2 = 0X55,
++} DP_PacketSyncByte;
++
++typedef enum {
++  DP_SEQ_TEXT = 0X80,
++} DP_PacketSeqFlag;
++
++typedef struct {
++  unsigned char sync[2];
++  unsigned char length[2]; // big endian
++  unsigned char destination;
++  unsigned char command[2]; // big endian
++  unsigned char seq;
++
++  unsigned char data[DP_MAXIMUM_TEXT_COLUMNS + 1];
++  // includes one-byte trailing checksum
++} DP_PacketFields;
++
++typedef union {
++  unsigned char bytes[sizeof(DP_PacketFields)];
++  DP_PacketFields fields;
++} DP_Packet;
++
++#endif /* BRLTTY_INCLUDED_DP_BRLDEFS */ 
+diff --git a/Drivers/Braille/DotPad/reldeps.mk b/Drivers/Braille/DotPad/reldeps.mk
+new file mode 100644
+index 000000000..ef050159c
+--- /dev/null
++++ b/Drivers/Braille/DotPad/reldeps.mk
+@@ -0,0 +1,30 @@
++# Dependencies for braille.$O:
++braille.$O: $(SRC_DIR)/braille.c
++braille.$O: $(SRC_TOP)Headers/prologue.h
++braille.$O: $(BLD_TOP)config.h
++braille.$O: $(BLD_TOP)forbuild.h
++braille.$O: $(SRC_TOP)Headers/log.h
++braille.$O: $(SRC_TOP)Headers/strfmt.h
++braille.$O: $(SRC_TOP)Headers/strfmth.h
++braille.$O: $(SRC_TOP)Headers/bitfield.h
++braille.$O: $(SRC_TOP)Headers/parse.h
++braille.$O: $(SRC_TOP)Headers/async_types_handle.h
++braille.$O: $(SRC_TOP)Headers/async_types_io.h
++braille.$O: $(SRC_TOP)Headers/brl_base.h
++braille.$O: $(SRC_TOP)Headers/brl_cmds.h
++braille.$O: $(SRC_TOP)Headers/brl_dots.h
++braille.$O: $(SRC_TOP)Headers/brl_driver.h
++braille.$O: $(SRC_TOP)Headers/brl_types.h
++braille.$O: $(SRC_TOP)Headers/brl_utils.h
++braille.$O: $(SRC_TOP)Headers/cmd_enqueue.h
++braille.$O: $(SRC_TOP)Headers/driver.h
++braille.$O: $(SRC_TOP)Headers/gio_types.h
++braille.$O: $(SRC_TOP)Headers/hid_types.h
++braille.$O: $(SRC_TOP)Headers/io_generic.h
++braille.$O: $(SRC_TOP)Headers/ktb_types.h
++braille.$O: $(SRC_TOP)Headers/queue.h
++braille.$O: $(SRC_TOP)Headers/serial_types.h
++braille.$O: $(SRC_TOP)Headers/status_types.h
++braille.$O: $(SRC_TOP)Headers/usb_types.h
++braille.$O: $(SRC_DIR)/brldefs-dp.h
++
+diff --git a/Headers/brl_base.h b/Headers/brl_base.h
+index 16e9b83cf..9376cd8de 100644
+--- a/Headers/brl_base.h
++++ b/Headers/brl_base.h
+@@ -126,6 +126,7 @@ extern int writeBrailleMessage (
+ );
+ 
+ extern int acknowledgeBrailleMessage (BrailleDisplay *brl);
++extern void endBrailleMessages (BrailleDisplay *brl);
+ 
+ typedef struct {
+   size_t *input;
+diff --git a/Programs/bluetooth_names.c b/Programs/bluetooth_names.c
+index 753063ac7..d157fb57f 100644
+--- a/Programs/bluetooth_names.c
++++ b/Programs/bluetooth_names.c
+@@ -113,6 +113,9 @@ const BluetoothNameEntry bluetoothNameTable[] = {
+   // Baum: Conny
+   BLUETOOTH_NAME_ENTRY("Conny", "bm"),
+ 
++  // DotPad
++  BLUETOOTH_NAME_ENTRY("DotPad", "dp"),
++
+   // HandyTech: Easy Braille
+   BLUETOOTH_NAME_ENTRY("Easy Braille EBR", "ht"),
+ 
+diff --git a/Programs/brl_base.c b/Programs/brl_base.c
+index 71f5f61e7..12b966ea7 100644
+--- a/Programs/brl_base.c
++++ b/Programs/brl_base.c
+@@ -279,6 +279,14 @@ deallocateBrailleMessage (BrailleMessage *msg) {
+   free(msg);
+ }
+ 
++static void
++cancelBrailleMessageAlarm (BrailleDisplay *brl) {
++  if (brl->acknowledgements.alarm) {
++    asyncCancelRequest(brl->acknowledgements.alarm);
++    brl->acknowledgements.alarm = NULL;
++  }
++}
++
+ static void setBrailleMessageAlarm (BrailleDisplay *brl);
+ 
+ static int
+@@ -306,11 +314,7 @@ writeNextBrailleMessage (BrailleDisplay *brl) {
+     }
+   }
+ 
+-  if (brl->acknowledgements.alarm) {
+-    asyncCancelRequest(brl->acknowledgements.alarm);
+-    brl->acknowledgements.alarm = NULL;
+-  }
+-
++  cancelBrailleMessageAlarm(brl);
+   return ok;
+ }
+ 
+@@ -410,6 +414,16 @@ writeBrailleMessage (
+   return 0;
+ }
+ 
++void
++endBrailleMessages (BrailleDisplay *brl) {
++  cancelBrailleMessageAlarm(brl);
++
++  if (brl->acknowledgements.messages) {
++    deallocateQueue(brl->acknowledgements.messages);
++    brl->acknowledgements.messages = NULL;
++  }
++}
++
+ int
+ getBrailleReportSize (BrailleDisplay *brl, unsigned char identifier, HidReportSize *size) {
+   return gioGetHidReportSize(brl->gioEndpoint, identifier, size);
+diff --git a/Programs/config.c b/Programs/config.c
+index 60fbc3e3f..5a8cfc5e6 100644
+--- a/Programs/config.c
++++ b/Programs/config.c
+@@ -136,7 +136,7 @@ static const char *const *const autodetectableBrailleDrivers_serial =
+ 
+ static const char *const *const autodetectableBrailleDrivers_USB =
+   NULL_TERMINATED_STRING_ARRAY(
+-    "al", "bm", "bn", "cn", "eu", "fs", "hd", "hm", "ht", "hw", "ic", "mt", "pg", "pm", "sk", "vo"
++    "al", "bm", "bn", "cn", "dp", "eu", "fs", "hd", "hm", "ht", "hw", "ic", "mt", "pg", "pm", "sk", "vo"
+   );
+ 
+ static const char *const *const autodetectableBrailleDrivers_Bluetooth =
+diff --git a/Programs/usb_adapters.c b/Programs/usb_adapters.c
+index 4f1c4040e..7dd4bf13a 100644
+--- a/Programs/usb_adapters.c
++++ b/Programs/usb_adapters.c
+@@ -27,6 +27,12 @@ const UsbSerialAdapter usbSerialAdapterTable[] = {
+     .operations = &usbSerialOperations_FTDI_FT8U232AM
+   },
+ 
++  { /* DotPad */
++    .vendor=0X0403, .product=0X6010,
++    .generic = 1,
++    .operations = &usbSerialOperations_FTDI_FT232BM
++  },
++
+   { /* Hedo MobilLine */
+     .vendor=0X0403, .product=0XDE58,
+     .operations = &usbSerialOperations_FTDI_FT232BM
+diff --git a/Programs/usb_devices.c b/Programs/usb_devices.c
+index 5c077a2de..a0e2c2b45 100644
+--- a/Programs/usb_devices.c
++++ b/Programs/usb_devices.c
+@@ -39,6 +39,13 @@ const UsbDeviceEntry usbDeviceTable[] = {
+ // MDV [all models]
+ USB_DEVICE_ENTRY(0X0403, 0X6001, "at", "ce", "hd", "hm", "ht", "md"),
+ 
++// Device: 0403:6010
++// Generic Identifier
++// Vendor: Future Technology Devices International, Ltd
++// Product: FT2232C/D/H Dual UART/FIFO IC
++// DotPad [all models]
++USB_DEVICE_ENTRY(0X0403, 0X6010, "dp"),
++
+ // Device: 0403:DE58
+ // Hedo [MobilLine]
+ USB_DEVICE_ENTRY(0X0403, 0XDE58, "hd"),
+diff --git a/README b/README
+index adc62cf3e..285a4026f 100644
+--- a/README
++++ b/README
+@@ -166,6 +166,7 @@ The following braille displays are supported:
+ -  Canute [360 (40x9)]
+ -  Cebra [20/40/60/80/100/120/140]
+ -  CombiBraille [25/45/85]
++-  DotPad
+ -  EcoBraille [20/40/80]
+ -  EuroBraille [AzerBraille, Clio, Esys, Iris, NoteBraille, Scriba]
+ -  FrankAudiodata [B2K84]
+diff --git a/Tables/Input/dp/all.ktb b/Tables/Input/dp/all.ktb
+new file mode 100644
+index 000000000..3ea712548
+--- /dev/null
++++ b/Tables/Input/dp/all.ktb
+@@ -0,0 +1,44 @@
++###############################################################################
++# BRLTTY - A background process providing access to the console screen (when in
++#          text mode) for a blind person using a refreshable braille display.
++#
++# Copyright (C) 1995-2023 by The BRLTTY Developers.
++#
++# BRLTTY comes with ABSOLUTELY NO WARRANTY.
++#
++# This is free software, placed under the terms of the
++# GNU Lesser General Public License, as published by the Free Software
++# Foundation; either version 2.1 of the License, or (at your option) any
++# later version. Please see the file LICENSE-LGPL for details.
++#
++# Web Page: http://brltty.app/
++#
++# This software is maintained by Dave Mielke <dave@mielke.cc>.
++###############################################################################
++
++title DotPad
++
++ifKey RightNext
++include scroll.kti
++endIf
++
++ifKey Space
++include keyboard.kti
++endIf
++
++ifKey PanLeft
++include panning.kti
++endIf
++
++ifKey NavCenter
++include navigation.kti
++endIf
++
++ifKey RoutingKey
++include routing.kti
++endIf
++
++ifKey FunctionKey
++include function.kti
++endIf
++
+diff --git a/Tables/Input/dp/function.kti b/Tables/Input/dp/function.kti
+new file mode 100644
+index 000000000..e6758d3a3
+--- /dev/null
++++ b/Tables/Input/dp/function.kti
+@@ -0,0 +1,39 @@
++###############################################################################
++# BRLTTY - A background process providing access to the console screen (when in
++#          text mode) for a blind person using a refreshable braille display.
++#
++# Copyright (C) 1995-2023 by The BRLTTY Developers.
++#
++# BRLTTY comes with ABSOLUTELY NO WARRANTY.
++#
++# This is free software, placed under the terms of the
++# GNU Lesser General Public License, as published by the Free Software
++# Foundation; either version 2.1 of the License, or (at your option) any
++# later version. Please see the file LICENSE-LGPL for details.
++#
++# Web Page: http://brltty.app/
++#
++# This software is maintained by Dave Mielke <dave@mielke.cc>.
++###############################################################################
++
++bind FunctionKey.1 LNUP:TOP
++bind FunctionKey.4 LNDN:BOT
++
++bind FunctionKey.2 PRDIFLN:ATTRUP
++bind FunctionKey.3 NXDIFLN:ATTRDN
++
++bind FunctionKey.1+FunctionKey.2 PRPROMPT:HELP
++bind FunctionKey.2+FunctionKey.4 NXPROMPT
++
++bind FunctionKey.3+FunctionKey.1 PRPGRPH
++bind FunctionKey.3+FunctionKey.4 NXPGRPH:LEARN
++
++bind FunctionKey.1+FunctionKey.4 HOME:BACK
++bind FunctionKey.2+FunctionKey.3 TIME:PREFMENU
++
++context menu
++bind FunctionKey.1 MENU_PREV_ITEM:MENU_FIRST_ITEM
++bind FunctionKey.2 MENU_PREV_SETTING:PREFLOAD
++bind FunctionKey.3 MENU_NEXT_SETTING:PREFSAVE
++bind FunctionKey.4 MENU_NEXT_ITEM:MENU_LAST_ITEM
++
+diff --git a/Tables/Input/dp/keyboard.kti b/Tables/Input/dp/keyboard.kti
+new file mode 100644
+index 000000000..f4d7f67e2
+--- /dev/null
++++ b/Tables/Input/dp/keyboard.kti
+@@ -0,0 +1,30 @@
++###############################################################################
++# BRLTTY - A background process providing access to the console screen (when in
++#          text mode) for a blind person using a refreshable braille display.
++#
++# Copyright (C) 1995-2023 by The BRLTTY Developers.
++#
++# BRLTTY comes with ABSOLUTELY NO WARRANTY.
++#
++# This is free software, placed under the terms of the
++# GNU Lesser General Public License, as published by the Free Software
++# Foundation; either version 2.1 of the License, or (at your option) any
++# later version. Please see the file LICENSE-LGPL for details.
++#
++# Web Page: http://brltty.app/
++#
++# This software is maintained by Dave Mielke <dave@mielke.cc>.
++###############################################################################
++
++map Space SPACE
++map Dot1 DOT1
++map Dot2 DOT2
++map Dot3 DOT3
++map Dot4 DOT4
++map Dot5 DOT5
++map Dot6 DOT6
++map Dot7 DOT7
++map Dot8 DOT8
++
++assign chord Space+
++include ../chords.kti
+diff --git a/Tables/Input/dp/navigation.kti b/Tables/Input/dp/navigation.kti
+new file mode 100644
+index 000000000..ae3948376
+--- /dev/null
++++ b/Tables/Input/dp/navigation.kti
+@@ -0,0 +1,24 @@
++###############################################################################
++# BRLTTY - A background process providing access to the console screen (when in
++#          text mode) for a blind person using a refreshable braille display.
++#
++# Copyright (C) 1995-2023 by The BRLTTY Developers.
++#
++# BRLTTY comes with ABSOLUTELY NO WARRANTY.
++#
++# This is free software, placed under the terms of the
++# GNU Lesser General Public License, as published by the Free Software
++# Foundation; either version 2.1 of the License, or (at your option) any
++# later version. Please see the file LICENSE-LGPL for details.
++#
++# Web Page: http://brltty.app/
++#
++# This software is maintained by Dave Mielke <dave@mielke.cc>.
++###############################################################################
++
++bind NavLeft FWINLT:LNBEG
++bind NavRight FWINRT:LNEND
++bind NavUp LNUP:TOP
++bind NavDown LNDN:BOT
++bind NavCenter HOME:BACK
++
+diff --git a/Tables/Input/dp/panfn4.ktb b/Tables/Input/dp/panfn4.ktb
+new file mode 100644
+index 000000000..5778c0def
+--- /dev/null
++++ b/Tables/Input/dp/panfn4.ktb
+@@ -0,0 +1,22 @@
++###############################################################################
++# BRLTTY - A background process providing access to the console screen (when in
++#          text mode) for a blind person using a refreshable braille display.
++#
++# Copyright (C) 1995-2023 by The BRLTTY Developers.
++#
++# BRLTTY comes with ABSOLUTELY NO WARRANTY.
++#
++# This is free software, placed under the terms of the
++# GNU Lesser General Public License, as published by the Free Software
++# Foundation; either version 2.1 of the License, or (at your option) any
++# later version. Please see the file LICENSE-LGPL for details.
++#
++# Web Page: http://brltty.app/
++#
++# This software is maintained by Dave Mielke <dave@mielke.cc>.
++###############################################################################
++
++title DotPad with Panning Keys and 4 Function Keys
++
++include panning.kti
++include function.kti
+diff --git a/Tables/Input/dp/panning.kti b/Tables/Input/dp/panning.kti
+new file mode 100644
+index 000000000..0f873df00
+--- /dev/null
++++ b/Tables/Input/dp/panning.kti
+@@ -0,0 +1,30 @@
++###############################################################################
++# BRLTTY - A background process providing access to the console screen (when in
++#          text mode) for a blind person using a refreshable braille display.
++#
++# Copyright (C) 1995-2023 by The BRLTTY Developers.
++#
++# BRLTTY comes with ABSOLUTELY NO WARRANTY.
++#
++# This is free software, placed under the terms of the
++# GNU Lesser General Public License, as published by the Free Software
++# Foundation; either version 2.1 of the License, or (at your option) any
++# later version. Please see the file LICENSE-LGPL for details.
++#
++# Web Page: http://brltty.app/
++#
++# This software is maintained by Dave Mielke <dave@mielke.cc>.
++###############################################################################
++
++bind PanLeft FWINLT:LNBEG
++bind PanRight FWINRT:LNEND
++
++# A short press of both panning keys is expected to refresh the whole display.
++# A long press of both panning keys is imlemented internally;
++# it gives haptic feedback regarding how charged the battery is.
++bind PanLeft+PanRight REFRESH:NOOP
++
++context menu
++bind PanLeft FWINLT:MENU_PREV_LEVEL
++bind PanRight FWINRT:PREFMENU
++
+diff --git a/Tables/Input/dp/routing.kti b/Tables/Input/dp/routing.kti
+new file mode 100644
+index 000000000..72c4e99f1
+--- /dev/null
++++ b/Tables/Input/dp/routing.kti
+@@ -0,0 +1,20 @@
++###############################################################################
++# BRLTTY - A background process providing access to the console screen (when in
++#          text mode) for a blind person using a refreshable braille display.
++#
++# Copyright (C) 1995-2023 by The BRLTTY Developers.
++#
++# BRLTTY comes with ABSOLUTELY NO WARRANTY.
++#
++# This is free software, placed under the terms of the
++# GNU Lesser General Public License, as published by the Free Software
++# Foundation; either version 2.1 of the License, or (at your option) any
++# later version. Please see the file LICENSE-LGPL for details.
++#
++# Web Page: http://brltty.app/
++#
++# This software is maintained by Dave Mielke <dave@mielke.cc>.
++###############################################################################
++
++bind RoutingKey ROUTE
++
+diff --git a/Tables/Input/dp/scroll.kti b/Tables/Input/dp/scroll.kti
+new file mode 100644
+index 000000000..8792d43dc
+--- /dev/null
++++ b/Tables/Input/dp/scroll.kti
+@@ -0,0 +1,24 @@
++###############################################################################
++# BRLTTY - A background process providing access to the console screen (when in
++#          text mode) for a blind person using a refreshable braille display.
++#
++# Copyright (C) 1995-2023 by The BRLTTY Developers.
++#
++# BRLTTY comes with ABSOLUTELY NO WARRANTY.
++#
++# This is free software, placed under the terms of the
++# GNU Lesser General Public License, as published by the Free Software
++# Foundation; either version 2.1 of the License, or (at your option) any
++# later version. Please see the file LICENSE-LGPL for details.
++#
++# Web Page: http://brltty.app/
++#
++# This software is maintained by Dave Mielke <dave@mielke.cc>.
++###############################################################################
++
++bind LeftPrev LNUP:TOP
++bind LeftNext LNDN:BOT
++
++bind RightPrev FWINLT:LNBEG
++bind RightNext FWINRT:LNEND
++
+diff --git a/Tools/updusbdevs b/Tools/updusbdevs
+index 84b0eadc4..c12b859c2 100755
+--- a/Tools/updusbdevs
++++ b/Tools/updusbdevs
+@@ -691,6 +691,11 @@ set genericDevices [makeGenericDeviceTable {
+       "FT232 USB-Serial (UART) IC"
+    }
+ 
++   {  0X0403 0X6010
++      "Future Technology Devices International, Ltd"
++      "FT2232C/D/H Dual UART/FIFO IC"
++   }
++
+    {  0X10C4 0XEA60
+       "Cygnal Integrated Products, Inc."
+       "CP210x UART Bridge / myAVR mySmartUSB light"
+diff --git a/Windows/libusb-1.0.inf b/Windows/libusb-1.0.inf
+index 7d3494d0d..89048e92a 100644
+--- a/Windows/libusb-1.0.inf
++++ b/Windows/libusb-1.0.inf
+@@ -44,6 +44,12 @@ HKR,,Icon,,-20
+ ; Product: FT232 USB-Serial (UART) IC
+ "LibUSB-1.0: Albatross [all models], Cebra [all models], HIMS [Sync Braille], HandyTech [FTDI chip], Hedo [MobilLine], MDV [all models]"=LIBUSB_DEV, USB\VID_0403&PID_6001
+ 
++; Device: 0403:6010
++; Generic Identifier
++; Vendor: Future Technology Devices International, Ltd
++; Product: FT2232C/D/H Dual UART/FIFO IC
++"LibUSB-1.0: DotPad [all models]"=LIBUSB_DEV, USB\VID_0403&PID_6010
++
+ ; Device: 0403:DE58
+ "LibUSB-1.0: Hedo [MobilLine]"=LIBUSB_DEV, USB\VID_0403&PID_DE58
+ 
+@@ -418,6 +424,12 @@ HKR,,Icon,,-20
+ ; Product: FT232 USB-Serial (UART) IC
+ "LibUSB-1.0: Albatross [all models], Cebra [all models], HIMS [Sync Braille], HandyTech [FTDI chip], Hedo [MobilLine], MDV [all models]"=LIBUSB_DEV, USB\VID_0403&PID_6001
+ 
++; Device: 0403:6010
++; Generic Identifier
++; Vendor: Future Technology Devices International, Ltd
++; Product: FT2232C/D/H Dual UART/FIFO IC
++"LibUSB-1.0: DotPad [all models]"=LIBUSB_DEV, USB\VID_0403&PID_6010
++
+ ; Device: 0403:DE58
+ "LibUSB-1.0: Hedo [MobilLine]"=LIBUSB_DEV, USB\VID_0403&PID_DE58
+ 
+diff --git a/Windows/libusb.inf b/Windows/libusb.inf
+index 651c27912..486a53572 100644
+--- a/Windows/libusb.inf
++++ b/Windows/libusb.inf
+@@ -119,6 +119,12 @@ ServiceBinary  = %12%\libusb0_x64.sys
+ ; Product: FT232 USB-Serial (UART) IC
+ "LibUSB-Win32: Albatross [all models], Cebra [all models], HIMS [Sync Braille], HandyTech [FTDI chip], Hedo [MobilLine], MDV [all models]"=LIBUSB_DEV, USB\VID_0403&PID_6001
+ 
++; Device: 0403:6010
++; Generic Identifier
++; Vendor: Future Technology Devices International, Ltd
++; Product: FT2232C/D/H Dual UART/FIFO IC
++"LibUSB-Win32: DotPad [all models]"=LIBUSB_DEV, USB\VID_0403&PID_6010
++
+ ; Device: 0403:DE58
+ "LibUSB-Win32: Hedo [MobilLine]"=LIBUSB_DEV, USB\VID_0403&PID_DE58
+ 
+@@ -493,6 +499,12 @@ ServiceBinary  = %12%\libusb0_x64.sys
+ ; Product: FT232 USB-Serial (UART) IC
+ "LibUSB-Win32: Albatross [all models], Cebra [all models], HIMS [Sync Braille], HandyTech [FTDI chip], Hedo [MobilLine], MDV [all models]"=LIBUSB_DEV, USB\VID_0403&PID_6001
+ 
++; Device: 0403:6010
++; Generic Identifier
++; Vendor: Future Technology Devices International, Ltd
++; Product: FT2232C/D/H Dual UART/FIFO IC
++"LibUSB-Win32: DotPad [all models]"=LIBUSB_DEV, USB\VID_0403&PID_6010
++
+ ; Device: 0403:DE58
+ "LibUSB-Win32: Hedo [MobilLine]"=LIBUSB_DEV, USB\VID_0403&PID_DE58
+ 
+diff --git a/Windows/winusb.inf b/Windows/winusb.inf
+index 28f36a2a8..5d9034871 100644
+--- a/Windows/winusb.inf
++++ b/Windows/winusb.inf
+@@ -29,6 +29,12 @@ DriverVer = %DriverDate%,%DriverVersion%
+ ; Product: FT232 USB-Serial (UART) IC
+ "winusb: Albatross [all models], Cebra [all models], HIMS [Sync Braille], HandyTech [FTDI chip], Hedo [MobilLine], MDV [all models]"=USB_Install, USB\VID_0403&PID_6001
+ 
++; Device: 0403:6010
++; Generic Identifier
++; Vendor: Future Technology Devices International, Ltd
++; Product: FT2232C/D/H Dual UART/FIFO IC
++"winusb: DotPad [all models]"=USB_Install, USB\VID_0403&PID_6010
++
+ ; Device: 0403:DE58
+ "winusb: Hedo [MobilLine]"=USB_Install, USB\VID_0403&PID_DE58
+ 
+@@ -403,6 +409,12 @@ DriverVer = %DriverDate%,%DriverVersion%
+ ; Product: FT232 USB-Serial (UART) IC
+ "winusb: Albatross [all models], Cebra [all models], HIMS [Sync Braille], HandyTech [FTDI chip], Hedo [MobilLine], MDV [all models]"=USB_Install, USB\VID_0403&PID_6001
+ 
++; Device: 0403:6010
++; Generic Identifier
++; Vendor: Future Technology Devices International, Ltd
++; Product: FT2232C/D/H Dual UART/FIFO IC
++"winusb: DotPad [all models]"=USB_Install, USB\VID_0403&PID_6010
++
+ ; Device: 0403:DE58
+ "winusb: Hedo [MobilLine]"=USB_Install, USB\VID_0403&PID_DE58
+ 
+diff --git a/configure.ac b/configure.ac
+index af6ec5208..70e9aa467 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -1601,6 +1601,7 @@ BRLTTY_BRAILLE_DRIVER([bn], [BrailleNote])
+ BRLTTY_BRAILLE_DRIVER([cb], [CombiBraille])
+ BRLTTY_BRAILLE_DRIVER([ce], [Cebra])
+ BRLTTY_BRAILLE_DRIVER([cn], [Canute])
++BRLTTY_BRAILLE_DRIVER([dp], [DotPad])
+ BRLTTY_BRAILLE_DRIVER([ec], [EcoBraille])
+ BRLTTY_BRAILLE_DRIVER([eu], [EuroBraille])
+ BRLTTY_BRAILLE_DRIVER([fa], [FrankAudiodata])

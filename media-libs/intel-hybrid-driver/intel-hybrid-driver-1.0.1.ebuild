@@ -1,9 +1,9 @@
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=5
+EAPI="7"
 
-inherit autotools eutils
+inherit autotools flag-o-matic
 
 DESCRIPTION="Intel hybrid driver provides support for WebM project VPx codecs. GPU acceleration
 is provided via media kernels executed on Intel GEN GPUs.  The hybrid driver provides the CPU
@@ -18,9 +18,8 @@ KEYWORDS="-* amd64 x86"
 RDEPEND="x11-libs/libva
 	x11-libs/libdrm
 	media-libs/cmrt"
-
-DEPEND="${RDEPEND}
-	virtual/pkgconfig"
+DEPEND="${RDEPEND}"
+BDEPEND="virtual/pkgconfig"
 
 PATCHES=(
 	"${FILESDIR}/${P}-respect-wayland-configure-flags.patch"
@@ -29,12 +28,16 @@ PATCHES=(
 )
 
 src_prepare() {
-	epatch "${PATCHES[@]}"
+	default
 	eautoreconf
 }
 
 src_configure() {
 	cros_optimize_package_for_speed
+	# This codebase uses the `register` keyword, which is not accepted by
+	# ISO C++17. Clang warns about this, but otherwise accepts it without
+	# issue.
+	append-cxxflags -Wno-register
 
 	# Explicitly restrict configuration for Ozone/Freon.
 	econf \
@@ -45,5 +48,5 @@ src_configure() {
 
 src_install() {
 	default
-	prune_libtool_files
+	find "${ED}" -name '*.la' -delete || die
 }

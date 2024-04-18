@@ -1,7 +1,7 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2.
 
-EAPI=6
+EAPI=7
 
 # 6ba98ff60144f60aba589b4d6121689528fbae76 is the current version as of Nov 12, 2019.
 # ACVPTool in this version supports the algorithms needed by cr50 for FIPS testing.

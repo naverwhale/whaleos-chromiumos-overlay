@@ -1,8 +1,8 @@
 http://bugs.gentoo.org/511752
 http://sourceware.org/ml/libffi-discuss/2014/msg00059.html
 
---- include/ffi.h.in
-+++ include/ffi.h.in
+--- a/include/ffi.h.in
++++ b/include/ffi.h.in
 @@ -221,7 +221,7 @@ typedef struct {
  #endif
  } ffi_cif;

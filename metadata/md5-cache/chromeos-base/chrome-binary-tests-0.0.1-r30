@@ -1,0 +1,11 @@
+DEFINED_PHASES=install
+DEPEND=chromeos-base/chromeos-chrome:= vaapi? ( x11-libs/libva:= )
+DESCRIPTION=Install Chromium binary tests to test image
+EAPI=7
+HOMEPAGE=http://www.chromium.org
+IUSE=vaapi v4l2_codec
+KEYWORDS=*
+LICENSE=BSD-Google
+RDEPEND=chromeos-base/gestures chromeos-base/libevdev dev-libs/expat dev-libs/libffi media-libs/fontconfig media-libs/libsync media-libs/minigbm sys-apps/dbus sys-libs/libcap x11-libs/libdrm x11-libs/libxkbcommon
+SLOT=0/0.0.1-r30
+_md5_=ad9045ff0a560b7f367e854b7e8c9ad6

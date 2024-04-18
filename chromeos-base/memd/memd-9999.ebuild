@@ -1,4 +1,4 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -9,7 +9,8 @@ CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_SUBTREE="${CROS_RUST_SUBDIR} common-mk"
 CROS_WORKON_INCREMENTAL_BUILD=1
-CROS_WORKON_OUTOFTREE_BUILD=1
+# We don't use CROS_WORKON_OUTOFTREE_BUILD here since project's Cargo.toml is
+# using "provided by ebuild" macro which supported by cros-rust.
 
 inherit cros-workon cros-rust
 
@@ -20,20 +21,19 @@ LICENSE="BSD-Google"
 KEYWORDS="~*"
 IUSE="+seccomp"
 
-DEPEND="chromeos-base/system_api:=
+DEPEND="
+	cros_host? ( dev-libs/protobuf:= )
+	dev-rust/third-party-crates-src:=
+	chromeos-base/system_api:=
+	dev-rust/libchromeos:=
 	sys-apps/dbus:=
-	>=dev-rust/chrono-0.4.2:= <dev-rust/chrono-0.5.0
-	>=dev-rust/dbus-0.6.1:= <dev-rust/dbus-0.7.0
-	=dev-rust/env_logger-0.6*:=
-	>=dev-rust/libc-0.2.44:= <dev-rust/libc-0.3.0
-	>=dev-rust/log-0.4.5:= <dev-rust/log-0.5.0
-	>=dev-rust/protobuf-2.3:= <dev-rust/protobuf-3.0
-	>=dev-rust/protoc-rust-2.3:= <dev-rust/protoc-rust-3
-	=dev-rust/syslog-4*:=
-	=dev-rust/tempfile-3*:=
-	>=dev-rust/time-0.1.40:= <dev-rust/time-0.2.0
-	"
+"
 RDEPEND="sys-apps/dbus"
+
+BDEPEND="
+	dev-libs/protobuf
+	chromeos-base/minijail
+"
 
 src_install() {
 	# cargo doesn't know how to install cross-compiled binaries.  It will

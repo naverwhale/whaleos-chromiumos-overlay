@@ -1,1 +1,0 @@
-wireless-regdb-20210421.ebuild

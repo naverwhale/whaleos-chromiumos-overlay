@@ -1,5 +1,26 @@
-set noparent
 include chromiumos/overlays/portage-stable:/eclass/OWNERS
 
-per-file cros-kernel2.eclass = file:/OWNERS.kernel
-per-file libchrome-version.eclass = file:aosp/platform/external/libchrome:/OWNERS
+per-file cros-firmware.eclass = file:chromiumos/platform/firmware:/OWNERS
+per-file cros-kernel.eclass = file:chromiumos/owners:v1:/kernel/OWNERS.build
+per-file cros-kernel2.eclass = file:chromiumos/owners:v1:/kernel/OWNERS.build
+per-file libchrome-version.eclass = file:chromiumos/platform/libchrome:/OWNERS
+per-file libchrome-version.eclass = chromeos-ci-prod@chromeos-bot.iam.gserviceaccount.com
+per-file mode-fw-dlc.eclass = file:chromiumos/platform2:/modemfwd/OWNERS
+
+# For cros-rust.eclass, primarily intended for simple toolchain-related flag
+# flips, etc. For cros-rustc.eclass, the toolchain team owns this very directly.
+per-file cros-rust*.eclass = file:/chromiumos/third_party/toolchain-utils:/OWNERS.toolchain
+
+# Only borealis engineers own shader cache eclasses
+per-file borealis-shader-cache-dlc.eclass = file:chromiumos/platform2:/shadercached/OWNERS
+per-file borealis-shader-cache-dlc-prebuilt.eclass = file:chromiumos/platform2:/shadercached/OWNERS
+
+per-file tast-bundle.eclass = file:chromiumos/platform/tast:/OWNERS
+per-file tast-bundle-data.eclass = file:chromiumos/platform/tast:/OWNERS
+
+per-file cros-factory.eclass = file:chromiumos/platform/factory:/OWNERS
+per-file cros-factory-board.eclass = file:chromiumos/platform/factory:/OWNERS
+
+# For DLC related files.
+per-file dlc-prebuilt.eclass = file:chromiumos/owners:v1:/platform/OWNERS.dlc
+per-file dlc.eclass = file:chromiumos/owners:v1:/platform/OWNERS.dlc

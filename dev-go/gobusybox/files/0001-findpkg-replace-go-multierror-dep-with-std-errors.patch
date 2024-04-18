@@ -1,0 +1,86 @@
+From 7795e244eb49653756ea7ed6d3803f96076c9ecf Mon Sep 17 00:00:00 2001
+From: Adrian Ratiu <adrian.ratiu@collabora.com>
+Date: Tue, 22 Aug 2023 14:13:58 +0300
+Subject: [PATCH] findpkg: replace go-multierror dep with std errors
+
+Starting with Go 1.20, the std lib errors package supports
+go-multierror functionality, so we can drop the dependency.
+
+Upstream-Status: In progress [https://github.com/u-root/gobusybox/pull/97]
+
+Signed-off-by: Adrian Ratiu <adrian.ratiu@collabora.com>
+---
+ src/go.mod                     | 3 +--
+ src/pkg/bb/findpkg/BUILD.bazel | 1 -
+ src/pkg/bb/findpkg/bb.go       | 6 +++---
+ 3 files changed, 4 insertions(+), 6 deletions(-)
+
+diff --git a/src/go.mod b/src/go.mod
+index ac45eaa..0170b06 100644
+--- a/src/github.com/u-root/gobusybox/src/go.mod
++++ b/src/github.com/u-root/gobusybox/src/go.mod
+@@ -1,10 +1,9 @@
+ module github.com/u-root/gobusybox/src
+ 
+-go 1.13
++go 1.20
+ 
+ require (
+ 	github.com/google/goterm v0.0.0-20200907032337-555d40f16ae2
+-	github.com/hashicorp/go-multierror v1.1.1
+ 	github.com/u-root/uio v0.0.0-20210528151154-e40b768296a7
+ 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3
+ 	golang.org/x/sys v0.0.0-20211019181941-9d821ace8654
+diff --git a/src/pkg/bb/findpkg/BUILD.bazel b/src/pkg/bb/findpkg/BUILD.bazel
+index d1615c8..c9cb5e9 100644
+--- a/src/github.com/u-root/gobusybox/src/pkg/bb/findpkg/BUILD.bazel
++++ b/src/github.com/u-root/gobusybox/src/pkg/bb/findpkg/BUILD.bazel
+@@ -8,7 +8,6 @@ go_library(
+     deps = [
+         "//src/pkg/bb/bbinternal",
+         "//src/pkg/golang",
+-        "@com_github_hashicorp_go_multierror//:go-multierror",
+         "@com_github_u_root_uio//ulog",
+         "@org_golang_x_tools//go/packages",
+     ],
+diff --git a/src/pkg/bb/findpkg/bb.go b/src/pkg/bb/findpkg/bb.go
+index b9d3a50..a6dc073 100644
+--- a/src/github.com/u-root/gobusybox/src/pkg/bb/findpkg/bb.go
++++ b/src/github.com/u-root/gobusybox/src/pkg/bb/findpkg/bb.go
+@@ -7,6 +7,7 @@
+ package findpkg
+ 
+ import (
++	"errors"
+ 	"fmt"
+ 	"os"
+ 	"path"
+@@ -14,7 +15,6 @@ import (
+ 	"sort"
+ 	"strings"
+ 
+-	"github.com/hashicorp/go-multierror"
+ 	"github.com/u-root/gobusybox/src/pkg/bb/bbinternal"
+ 	"github.com/u-root/gobusybox/src/pkg/golang"
+ 	"github.com/u-root/uio/ulog"
+@@ -137,7 +137,7 @@ func addPkg(l ulog.Logger, plist []*packages.Package, p *packages.Package) ([]*p
+ 	if len(p.Errors) > 0 {
+ 		var merr error
+ 		for _, e := range p.Errors {
+-			merr = multierror.Append(merr, e)
++			merr = errors.Join(merr, e)
+ 		}
+ 		return plist, fmt.Errorf("failed to add package %v for errors: %v", p, merr)
+ 	} else if len(p.GoFiles) > 0 {
+@@ -324,7 +324,7 @@ func checkEligibility(l ulog.Logger, pkgs []*packages.Package) ([]*packages.Pack
+ 			// we're not returning early because we want to give
+ 			// the user as much information as possible.
+ 			for _, e := range p.Errors {
+-				merr = multierror.Append(merr, fmt.Errorf("package %s: %w", p.PkgPath, e))
++				merr = errors.Join(merr, fmt.Errorf("package %s: %w", p.PkgPath, e))
+ 			}
+ 		}
+ 	}
+-- 
+2.41.0
+

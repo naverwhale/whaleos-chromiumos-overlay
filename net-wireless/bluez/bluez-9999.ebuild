@@ -26,6 +26,8 @@ HOMEPAGE="http://www.bluez.org/"
 LICENSE="GPL-2 LGPL-2.1"
 KEYWORDS="~*"
 IUSE="asan bluez-next bluez-upstream cups debug fuzzer hid2hci systemd readline bt_deprecated_tools"
+IUSE="${IUSE} bluez_default_conn_int"		# b/219537522
+IUSE="${IUSE} bluez_disallow_bqr"		# b/231741170
 REQUIRED_USE="?? ( bluez-next bluez-upstream )"
 
 CDEPEND="
@@ -46,7 +48,7 @@ RDEPEND="${CDEPEND}
 	!net-wireless/bluez-utils
 "
 BDEPEND="${CDEPEND}
-	dev-util/pkgconfig:=
+	dev-python/docutils
 	sys-devel/flex:=
 "
 
@@ -126,12 +128,12 @@ src_install() {
 	dobin "${FILESDIR}/get_bluetooth_device_class.sh"
 	dobin "${FILESDIR}/start_bluetoothd.sh"
 	dobin "${FILESDIR}/start_bluetoothlog.sh"
+	dobin "${FILESDIR}/set_bluetooth_coredump.sh"
 
 	# Install init scripts.
 	if use systemd; then
 		systemd_dounit "${FILESDIR}/bluetoothd.service"
 		systemd_enable_service system-services.target bluetoothd.service
-		systemd_dotmpfilesd "${FILESDIR}/bluetoothd-directories.conf"
 	else
 		insinto /etc/init
 		newins "${FILESDIR}/${PN}-upstart.conf" bluetoothd.conf
@@ -140,6 +142,7 @@ src_install() {
 
 	# Install tmpfiles.d config
 	dotmpfiles "${FILESDIR}/bluetoothlog-directories.conf"
+	dotmpfiles "${FILESDIR}/tmpfiles.d/bluez.conf"
 
 	# Install D-Bus config
 	insinto /etc/dbus-1/system.d
@@ -149,10 +152,25 @@ src_install() {
 	udev_dorules "${FILESDIR}/99-uhid.rules"
 	udev_dorules "${FILESDIR}/99-ps3-gamepad.rules"
 	udev_dorules "${FILESDIR}/99-bluetooth-quirks.rules"
+	udev_dorules "${FILESDIR}/99-bluetooth-devcoredump.rules"
 
 	# Install the config files.
+	cp "${FILESDIR}/main.conf" main.conf || die
+	# Some boards require the default LE connection intervals, so remove the
+	# Min/Max ConnectionInterval overrides.
+	if use bluez_default_conn_int; then
+		sed -i 's/MinConnectionInterval/#MinConnectionInterval/g' main.conf
+		sed -i 's/MaxConnectionInterval/#MaxConnectionInterval/g' main.conf
+	fi
+
+	# Temporary fix for b/231741170: don't enable BQR on specific platforms
+	# to prevent device can't suspend issue.
+	if use bluez_disallow_bqr; then
+		sed -i 's/#DisallowBQR/DisallowBQR/g' main.conf
+	fi
+
 	insinto "/etc/bluetooth"
-	doins "${FILESDIR}/main.conf"
+	doins main.conf
 	doins "${FILESDIR}/input.conf"
 
 	# Install the fuzzer binaries.
@@ -170,9 +188,7 @@ src_install() {
 	find "${D}" -name "*.la" -delete
 }
 
-pkg_postinst() {
+pkg_preinst() {
 	enewuser "bluetooth" "218"
 	enewgroup "bluetooth" "218"
-
-	udev_reload
 }

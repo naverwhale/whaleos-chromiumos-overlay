@@ -1,85 +1,113 @@
-# Copyright 1999-2018 Gentoo Authors
+# Copyright 2023 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
 
-inherit cmake-utils flag-o-matic unpacker
+inherit cmake flag-o-matic git-r3
 
-DESCRIPTION="Intel OpenVino Toolkit"
+DESCRIPTION="Intel OpenVino Toolkit with VPUX support"
 HOMEPAGE="https://github.com/openvinotoolkit/openvino"
-GIT_HASH="a4a1bff1cc5a6b22f806adac8845d2806772dacd"
-GIT_SHORT_HASH=${GIT_HASH::8}
-
-# This tarball needs to be manually created due to the use of submodules. Downloading
-#   -> https://github.com/openvinotoolkit/openvino/archive/${GIT_HASH}.tar.gz
-# wouldn't work because it will not contain the submodules.
-#
-# Steps to reproduce tarball:
-# $ git clone https://github.com/openvinotoolkit/openvino.git
-# $ cd openvino
-# $ git checkout ${GIT_HASH}
-# $ git submodule init
-# $ git submodule update
-# $ rm -rf .git
-# $ cd ..
-# $ tar -Jcvf intel-openvino-${GIT_SHORT_HASH}.tar.xz openvino
-
-SRC_URI="gs://chromeos-localmirror/distfiles/intel-openvino-${GIT_SHORT_HASH}.tar.xz"
+SRC_URI="gs://chromeos-localmirror/distfiles/$P-files.tar.xz"
 
 LICENSE="Apache-2.0"
 KEYWORDS="-* amd64"
 IUSE="+clang"
 SLOT="0"
 
-S="${WORKDIR}/openvino"
-
 RDEPEND="
-	chromeos-base/intel-gnalib
+	dev-libs/protobuf
+	dev-cpp/gflags
 "
 
 DEPEND="
 	${RDEPEND}
 "
 
+CMAKE_BUILD_TYPE="Release"
+
+src_unpack() {
+	EGIT_REPO_URI="https://github.com/openvinotoolkit/openvino.git" \
+	EGIT_CHECKOUT_DIR="${S}" \
+	EGIT_COMMIT="2022.3.0" \
+	git-r3_src_unpack
+
+	EGIT_REPO_URI="https://github.com/openvinotoolkit/npu_plugin" \
+	EGIT_CHECKOUT_DIR="${S}/../npu_plugin" \
+	EGIT_COMMIT="vpu_chrome_alpha_rc1" \
+	git-r3_src_unpack
+}
+
 src_prepare() {
-	eapply "${FILESDIR}/0001-Disable-samples.patch"
+	eapply "${FILESDIR}/0001-Enable-build-for-ChromeOS.patch"
+	eapply "${FILESDIR}/0002-Fix-OpenVINO-2022.3.0-compile-issues.patch"
+	eapply "${FILESDIR}/0001-Build-legacy-as-static-lib.patch"
+	eapply "${FILESDIR}/0003-Install-libs-ChromeOS.patch"
+	eapply "${FILESDIR}/0001-Remove-OpenCV-dependency.patch"
+
 	cros_enable_cxx_exceptions
 	eapply_user
-	cmake-utils_src_prepare
+	unpack ${DISTDIR}/$P-files.tar.xz
+	unpack ${S}/vpux-plugin-lfs-files.tar.gz
+	cp -r "${S}"/act_shave_bin/*.elf "${S}"/../npu_plugin/sw_runtime_kernels/kernels/prebuild/act_shave_bin
+	cp "${S}/profiling-0-37XX-MVN.bin" "${S}/../npu_plugin/tests/lit/VPUX37XX/data"
+	cp "${S}/profiling-0-37XX-PLL-10.bin" "${S}/../npu_plugin/tests/lit/VPUX37XX/data"
+	cp "${S}/profiling-0-37XX.bin" "${S}/../npu_plugin/tests/lit/VPUX37XX/data"
+	cp "${S}/vpu_2_0.vpunn" "${S}/../npu_plugin/thirdparty/vpucostmodel/models"
+	cp "${S}/vpu_2_7.vpunn" "${S}/../npu_plugin/thirdparty/vpucostmodel/models"
+	cmake_src_prepare
 }
 
 src_configure() {
 	cros_enable_cxx_exceptions
-	append-flags "-frtti -msse4.2"
-	CPPFLAGS="-I${S}/ngraph/src -I${S}/inference_engine/ngraph_ops ${CPPFLAGS}"
-	CMAKE_BUILD_TYPE="Release"
+	append-flags "-Wno-undef -frtti -fvisibility=default -Wno-macro-redefined -D__CHROMIUMOS__ -Wno-unqualified-std-cast-call"
 
 	local mycmakeargs=(
 		-DCMAKE_BUILD_TYPE=Release
-		-DENABLE_CLDNN=OFF
-		-DENABLE_GNA=ON
-		-DGNA_LIBRARY_VERSION=GNA2
-		-DENABLE_NGRAPH=OFF
+		-DCMAKE_INSTALL_PREFIX="/usr/local/"
+		-DTARGET_OS_NAME="CHROMIUMOS"
+		-DENABLE_OV_TF_FRONTEND=OFF
+		-DENABLE_OV_ONNX_FRONTEND=OFF
+		-DENABLE_OV_PADDLE_FRONTEND=OFF
+		-DENABLE_INTEL_GPU=OFF
+		-DENABLE_INTEL_GNA=OFF
+		-DENABLE_INTEL_MYRIAD_COMMON=OFF
+		-DENABLE_MULTI=OFF
+		-DENABLE_AUTO=OFF
+		-DDNNL_ENABLE_WORKLOAD="INFERENCE"
+		-DENABLE_NCC_STYLE=OFF
 		-DTHREADING=SEQ
-		-DENABLE_MKL_DNN=OFF
-		-DGNA_DIR="gna"
-		-DTARGET_OS="CHROMEOS"
+		-DENABLE_PYTHON=OFF
 		-DENABLE_OPENCV=OFF
-		-DENABLE_SAMPLES=OFF
-		-DCMAKE_INSTALL_PREFIX="/usr/local"
-		-DBUILD_SHARED_LIBS=ON
 	)
-
-	cmake-utils_src_configure
+	cmake_src_configure
 }
 
 src_install() {
-	cmake-utils_src_install
+	cmake_src_install
 
-	dolib.so "${D}"/usr/local/deployment_tools/inference_engine/lib/intel64/libinference_engine.so
-	dolib.so "${D}"/usr/local/deployment_tools/inference_engine/lib/intel64/libinference_engine_nn_builder.so
-	dolib.so "${D}"/usr/local/deployment_tools/inference_engine/lib/intel64/libinference_engine_preproc.so
-	dolib.so "${D}"/usr/local/deployment_tools/inference_engine/lib/intel64/libGNAPlugin.so
-	dolib.so "${D}"/usr/local/deployment_tools/inference_engine/lib/intel64/libinference_engine_c_api.so
-	dolib.so "${D}"/usr/local/deployment_tools/inference_engine/lib/intel64/plugins.xml
+	cd "${S}"/../npu_plugin || die
+	eapply "${FILESDIR}/0001-NPU-Plugin-Remove-opencv-depdendency.patch"
+	mkdir "${S}"/../npu_plugin/build || die
+	cd "${S}"/../npu_plugin/build || die
+	append-flags "-frtti -Wno-error,-Wno-dtor-name -I"${S}"/samples/cpp/common/format_reader -w"
+	cmake -DInferenceEngineDeveloperPackage_DIR=${BUILD_DIR} \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DTARGET_OS_NAME="CHROMIUMOS" \
+		-DENABLE_DEVELOPER_BUILD=ON ..
+	emake
+
+	exeinto /usr/local/bin
+	doexe ${S}/bin/intel64/${CMAKE_BUILD_TYPE}/hello_query_device
+	doexe ${S}/bin/intel64/${CMAKE_BUILD_TYPE}/benchmark_app
+	doexe ${S}/bin/intel64/${CMAKE_BUILD_TYPE}/hello_classification
+	doexe ${S}/bin/intel64/${CMAKE_BUILD_TYPE}/classification_sample_async
+	doexe ${S}/bin/intel64/${CMAKE_BUILD_TYPE}/speech_sample
+	doexe ${S}/bin/intel64/${CMAKE_BUILD_TYPE}/compile_tool
+
+	into /usr/local
+	dolib.so ${S}/bin/intel64/${CMAKE_BUILD_TYPE}/libformat_reader.so
+	dolib.so ${S}/bin/intel64/${CMAKE_BUILD_TYPE}/libvpux_mlir_compiler.so
+	dolib.so ${S}/bin/intel64/${CMAKE_BUILD_TYPE}/libvpux_level_zero_backend.so
+	dolib.so ${S}/bin/intel64/${CMAKE_BUILD_TYPE}/libopenvino_intel_vpux_plugin.so
+	dolib.so ${FILESDIR}/plugins.xml
 }

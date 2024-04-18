@@ -1,0 +1,64 @@
+From f021034e76e57ebef0345d2bd497f42252d2decb Mon Sep 17 00:00:00 2001
+From: Sergey Senozhatsky <senozhatsky@chromium.org>
+Date: Thu, 14 May 2020 18:01:43 +0200
+Subject: [PATCH] BACKPORT: media: videobuf2: add
+ V4L2_FLAG_MEMORY_NON_CONSISTENT flag
+
+By setting or clearing V4L2_FLAG_MEMORY_NON_CONSISTENT flag
+user-space should be able to set or clear queue's NON_CONSISTENT
+->dma_attrs. Queue's ->dma_attrs are passed to the underlying
+allocator in __vb2_buf_mem_alloc(), so thus user-space is able
+to request vb2 buffer's memory to be either consistent (coherent)
+or non-consistent.
+
+The patch set also adds a corresponding capability flag:
+fill_buf_caps() reports V4L2_BUF_CAP_SUPPORTS_MMAP_CACHE_HINTS
+when queue supports user-space cache management hints. Note,
+however, that MMAP_CACHE_HINTS capability only valid when the
+queue is used for memory MMAP-ed streaming I/O.
+
+Signed-off-by: Sergey Senozhatsky <senozhatsky@chromium.org>
+Signed-off-by: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Signed-off-by: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
+(cherry picked from commit ac53503ee38a1ffbc47c7cca6cbfc48ba9c65c5e)
+
+Conflicts:
+   Documentation/media/uapi/v4l/buffer.rst
+   Documentation/media/uapi/v4l/vidioc-reqbufs.rst
+   drivers/media/v4l2-core/videobuf2-v4l2.c
+
+Non-uAPI changes dropped.
+
+BUG=b:278157861
+TEST=Check header
+
+Change-Id: I3553fb8abe42f23dfdab788a2cd9192bde9bd6ff
+Signed-off-by: Chen-Yu Tsai <wenst@chromium.org>
+---
+ include/uapi/linux/videodev2.h | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index 37862bfda4b1..32d454df89ab 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -182,6 +182,8 @@ enum v4l2_memory {
+ 	V4L2_MEMORY_DMABUF           = 4,
+ };
+ 
++#define V4L2_FLAG_MEMORY_NON_CONSISTENT		(1 << 0)
++
+ /* see also http://vektor.theorem.ca/graphics/ycbcr/ */
+ enum v4l2_colorspace {
+ 	/*
+@@ -862,6 +864,7 @@ struct v4l2_requestbuffers {
+ #define V4L2_BUF_CAP_SUPPORTS_REQUESTS			(1 << 3)
+ #define V4L2_BUF_CAP_SUPPORTS_ORPHANED_BUFS		(1 << 4)
+ #define V4L2_BUF_CAP_SUPPORTS_M2M_HOLD_CAPTURE_BUF	(1 << 5)
++#define V4L2_BUF_CAP_SUPPORTS_MMAP_CACHE_HINTS		(1 << 6)
+ 
+ /**
+  * struct v4l2_plane - plane info for multi-planar buffers
+-- 
+2.40.1.606.ga4b1b128d6-goog
+

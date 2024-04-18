@@ -1,0 +1,27 @@
+Force enable NnApiDelegate for ChromeOS.
+
+diff --git a/tensorflow/lite/BUILD b/tensorflow/lite/BUILD
+index 65fc731b48f..0f905a3ae53 100644
+--- a/tensorflow/lite/BUILD
++++ b/tensorflow/lite/BUILD
+@@ -533,6 +533,8 @@ cc_library_with_tflite(
+         "//tensorflow/lite/core/api",
+         "//tensorflow/lite/core/api:verifier",
+         "//tensorflow/lite/core/c:common",
++        "//tensorflow/lite/delegates/nnapi:nnapi_delegate",
++        "//tensorflow/lite/nnapi:nnapi_implementation",
+         "//tensorflow/lite/experimental/resource",
+         "//tensorflow/lite/internal:signature_def",
+         "//tensorflow/lite/profiling:root_profiler",
+diff --git a/tensorflow/lite/tools/evaluation/utils.h b/tensorflow/lite/tools/evaluation/utils.h
+index af57c1c1189..b40f6d4b127 100644
+--- a/tensorflow/lite/tools/evaluation/utils.h
++++ b/tensorflow/lite/tools/evaluation/utils.h
+@@ -27,6 +27,7 @@ limitations under the License.
+ #define TFLITE_SUPPORTS_NNAPI_DELEGATE 1
+ #define TFLITE_SUPPORTS_GPU_DELEGATE 1
+ #elif defined(CL_DELEGATE_NO_GL)
++#define TFLITE_SUPPORTS_NNAPI_DELEGATE 1
+ #define TFLITE_SUPPORTS_GPU_DELEGATE 1
+ #endif  // defined(__ANDROID__)
+ #endif  // TFLITE_WITH_STABLE_ABI

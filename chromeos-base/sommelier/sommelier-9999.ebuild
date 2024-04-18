@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="7"
@@ -14,7 +14,7 @@ PLATFORM_SUBDIR="vm_tools/sommelier"
 inherit cros-workon platform
 
 DESCRIPTION="A Wayland compositor for use in CrOS VMs"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/vm_tools/sommelier"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/vm_tools/sommelier"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
@@ -51,11 +51,20 @@ DEPEND="
 	dev-util/ninja
 "
 
+BDEPEND="
+	${COMMON_DEPEND}
+	dev-python/jinja
+"
+
 src_install() {
+	platform_src_install
+
 	dobin "${OUT}"/sommelier
 
-	# fuzzer_component_id is unknown/unlisted
-	platform_fuzzer_install "${S}"/OWNERS "${OUT}"/sommelier_wayland_fuzzer
+	# TODO(sidereal) This fuzzer isn't useful without a re-design
+	# of sommelier's error handling and memory management. Disable
+	# it for now.
+	# platform_fuzzer_install "${S}"/OWNERS "${OUT}"/sommelier_wayland_fuzzer
 }
 
 platform_pkg_test() {
@@ -73,9 +82,10 @@ platform_pkg_test() {
 		elog "Skipping meson tests on non-x86 platform"
 	else
 		meson tmp_build_dir -Dgamepad=true -Dtracing=true -Dcommit_loop_fix=true \
+				-Dblack_screen_fix=true -Dwith_tests=true \
 				|| die "Failed to configure meson build"
 		ninja -C tmp_build_dir || die "Failed to build sommelier with meson"
 		[ -f tmp_build_dir/sommelier ] || die "Target 'sommelier' was not built by meson"
-		ninja -C tmp_build_dir test || die "Tests failed"
+		platform_test "run" tmp_build_dir/sommelier_test || die "Tests failed"
 	fi
 }

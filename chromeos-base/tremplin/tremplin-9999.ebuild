@@ -1,4 +1,4 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -23,8 +23,8 @@ KEYWORDS="~*"
 IUSE=""
 
 COMMON_DEPEND="
-	app-emulation/lxd:0
 	app-emulation/lxd:4
+	app-emulation/lxd:5
 "
 
 DEPEND="
@@ -34,10 +34,9 @@ DEPEND="
 	dev-go/go-libaudit:=
 	dev-go/go-sys:=
 	dev-go/grpc:=
-	dev-go/kobject:=
 	dev-go/netlink:=
 	dev-go/vsock:=
-	dev-go/yaml:=
+	dev-go/yaml:0
 "
 
 RDEPEND="${COMMON_DEPEND}"

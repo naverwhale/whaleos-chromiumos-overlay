@@ -1,4 +1,4 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2012 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="7"
@@ -16,19 +16,21 @@ SLOT="0"
 KEYWORDS="~*"
 IUSE="+cros_ec_utils detachable device_tree +interactive_recovery"
 IUSE="${IUSE} legacy_firmware_ui -mtd +power_management"
-IUSE="${IUSE} physical_presence_power physical_presence_recovery"
-IUSE="${IUSE} unibuild +oobe_config"
+IUSE="${IUSE} unibuild +oobe_config no_factory_flow"
+IUSE="${IUSE} nvme ufs"
+IUSE="${IUSE} cr50_onboard ti50_onboard tpm"
 
 # Build Targets
 TARGETS_IUSE="
 	factory_netboot_ramfs
 	factory_shim_ramfs
-	hypervisor_ramfs
 	recovery_ramfs
 	minios_ramfs
+	flexor_ramfs
 "
-IUSE+=" ${TARGETS_IUSE}"
-REQUIRED_USE="|| ( ${TARGETS_IUSE} )"
+IUSE="${IUSE} test ${TARGETS_IUSE}"
+# Allow absence of the build target when running tests via cros_run_unit_tests.
+REQUIRED_USE="|| ( test ${TARGETS_IUSE} )"
 
 # Packages required for building recovery initramfs.
 RECOVERY_DEPENDS="
@@ -43,23 +45,36 @@ RECOVERY_DEPENDS="
 	"
 
 MINIOS_DEPENDS="
+	app-shells/bash
+	chromeos-base/chromeos-installer
+	chromeos-base/common-assets
+	chromeos-base/factory_installer
+	chromeos-base/minijail
 	chromeos-base/minios
+	chromeos-base/screen-capture-utils
+	chromeos-base/update-utils
+	chromeos-base/vboot_reference
+	chromeos-base/vpd
 	dev-util/strace
+	net-firewall/iptables
 	net-misc/curl
 	net-misc/dhcp
 	net-misc/dhcpcd
 	net-wireless/wpa_supplicant-cros
-	chromeos-base/minijail
-	chromeos-base/chromeos-installer
-	chromeos-base/factory_installer
-	chromeos-base/common-assets
-	chromeos-base/vboot_reference
-	chromeos-base/vpd
+	nvme? ( sys-apps/nvme-cli )
+	sys-apps/coreutils
 	sys-apps/flashrom
 	sys-apps/pv
 	virtual/assets
 	virtual/chromeos-regions
 	"
+
+FLEXOR_DEPENDS="
+	app-shells/bash
+	chromeos-base/chromeos-installer
+	chromeos-base/common-assets
+	chromeos-base/flexor
+"
 
 # Packages required for building factory installer shim initramfs.
 FACTORY_SHIM_DEPENDS="
@@ -80,6 +95,7 @@ FACTORY_NETBOOT_DEPENDS="
 	chromeos-base/chromeos-storage-info
 	chromeos-base/ec-utils
 	chromeos-base/factory_installer
+	ufs? ( chromeos-base/factory_ufs )
 	chromeos-base/vboot_reference
 	chromeos-base/vpd
 	dev-libs/openssl:0=
@@ -92,7 +108,6 @@ FACTORY_NETBOOT_DEPENDS="
 	sys-apps/coreutils
 	sys-apps/flashrom
 	sys-apps/iproute2
-	sys-apps/mosys
 	sys-apps/util-linux
 	sys-fs/dosfstools
 	sys-fs/e2fsprogs
@@ -100,32 +115,24 @@ FACTORY_NETBOOT_DEPENDS="
 	virtual/udev
 	"
 
-# Packages required for building hypervisor initramfs.
-HYPERVISOR_DEPENDS="
-	chromeos-base/crosvm
-	chromeos-base/sirenia
-	virtual/linux-sources
-	"
-
 DEPEND="
-	factory_netboot_ramfs? ( ${FACTORY_NETBOOT_DEPENDS} )
-	factory_shim_ramfs? ( ${FACTORY_SHIM_DEPENDS} )
+	!no_factory_flow? (
+		factory_netboot_ramfs? ( ${FACTORY_NETBOOT_DEPENDS} )
+		factory_shim_ramfs? ( ${FACTORY_SHIM_DEPENDS} )
+	)
 	recovery_ramfs? ( ${RECOVERY_DEPENDS} )
-	hypervisor_ramfs? ( ${HYPERVISOR_DEPENDS} )
 	minios_ramfs? ( ${MINIOS_DEPENDS} )
+	flexor_ramfs? ( ${FLEXOR_DEPENDS} )
 	sys-apps/busybox[-make-symlinks]
 	sys-fs/lvm2
-	virtual/chromeos-bsp-initramfs
 	chromeos-base/chromeos-init
 	sys-apps/frecon-lite
 	power_management? ( chromeos-base/power_manager )
 	unibuild? ( chromeos-base/chromeos-config )
-	chromeos-base/chromeos-config-tools"
+	chromeos-base/chromeos-config-tools
+"
 
 RDEPEND=""
-
-BDEPEND="
-	hypervisor_ramfs? ( chromeos-base/sirenia-tools )"
 
 src_prepare() {
 	export BUILD_LIBRARY_DIR="${CHROOT_SOURCE_ROOT}/src/scripts/build_library"
@@ -141,40 +148,58 @@ src_compile() {
 	local deps=()
 	use mtd && deps+=(/usr/bin/cgpt)
 	if use factory_netboot_ramfs; then
-		use power_management && deps+=(/usr/bin/backlight_tool)
+		if ! use no_factory_flow; then
+			use power_management && deps+=(/usr/bin/backlight_tool)
+		fi
 	fi
 
 	local targets=()
 	for target in ${TARGETS_IUSE}; do
 		use "${target}" && targets+=("${target%_ramfs}")
 	done
-	einfo "Building targets: ${targets[*]}"
+	einfo "Building targets: ${targets[*]:-(only running tests)}"
 
-	local physical_presence
-	if use physical_presence_power ; then
-		physical_presence="power"
-	elif use physical_presence_recovery ; then
-		physical_presence="recovery"
-	else
-		physical_presence="keyboard"
+	if [[ ${#targets[@]} -gt 0 ]]; then
+		local tpm_type="default"
+		if use cr50_onboard || use ti50_onboard; then
+			tpm_type="cros"
+		elif use tpm; then
+			tpm_type="infineon"
+		fi
+		emake SYSROOT="${SYSROOT}" \
+			BOARD="$(get_current_board_with_variant)" \
+			DETACHABLE="$(usex detachable 1 0)" \
+			INCLUDE_ECTOOL="$(usex cros_ec_utils 1 0)" \
+			INCLUDE_FACTORY_UFS="$(usex ufs 1 0)" \
+			FACTORY_TPM_SCRIPT="${tpm_type}" \
+			INCLUDE_FIT_PICKER="$(usex device_tree 1 0)" \
+			INCLUDE_NVME_CLI="$(usex nvme 1 0)" \
+			LEGACY_UI="$(usex legacy_firmware_ui 1 0)" \
+			LIBDIR="$(get_libdir)" \
+			LOCALE_LIST="${RECOVERY_LOCALES:-}" \
+			OOBE_CONFIG="$(usex oobe_config 1 0)" \
+			OUTPUT_DIR="${WORKDIR}" EXTRA_BIN_DEPS="${deps[*]}" \
+			UNIBUILD="$(usex unibuild 1 0)" \
+			"${targets[@]}"
 	fi
+}
 
-	emake SYSROOT="${SYSROOT}" BOARD="$(get_current_board_with_variant)" \
-		INCLUDE_FIT_PICKER="$(usex device_tree 1 0)" \
-		INCLUDE_ECTOOL="$(usex cros_ec_utils 1 0)" \
-		DETACHABLE="$(usex detachable 1 0)" \
-		LEGACY_UI="$(usex legacy_firmware_ui 1 0)" \
-		UNIBUILD="$(usex unibuild 1 0)" \
-		OOBE_CONFIG="$(usex oobe_config 1 0)" \
-		PHYSICAL_PRESENCE="${physical_presence}" \
-		OUTPUT_DIR="${WORKDIR}" EXTRA_BIN_DEPS="${deps[*]}" \
-		LOCALE_LIST="${RECOVERY_LOCALES}" "${targets[@]}"
+src_test() {
+	local targets=()
+	for target in ${TARGETS_IUSE}; do
+		use "${target}" && targets+=("${target%_ramfs}_check")
+	done
+	einfo "Testing targets: ${targets[*]}"
+
+	if [[ ${#targets[@]} -gt 0 ]]; then
+		emake SYSROOT="${SYSROOT}" "${targets[@]}"
+	fi
 }
 
 src_install() {
 	insinto /var/lib/initramfs
 	for target in ${TARGETS_IUSE}; do
 		use "${target}" &&
-			doins "${WORKDIR}/${target}.cpio.xz"
+			doins "${WORKDIR}/${target}.cpio"
 	done
 }

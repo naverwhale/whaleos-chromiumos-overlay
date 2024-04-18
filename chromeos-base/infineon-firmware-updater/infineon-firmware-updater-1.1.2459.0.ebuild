@@ -1,8 +1,8 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-EAPI="5"
+EAPI="7"
 
 inherit eutils toolchain-funcs
 
@@ -25,18 +25,21 @@ DEPEND="${RDEPEND}"
 
 S="${WORKDIR}"
 
-src_prepare() {
-	epatch "${FILESDIR}"/makefile-fixes.patch
-	epatch "${FILESDIR}"/unlimited-log-file-size.patch
-	epatch "${FILESDIR}"/dry-run-option.patch
-	epatch "${FILESDIR}"/change_default_password.patch
-	epatch "${FILESDIR}"/retry-send-on-ebusy.patch
-	epatch "${FILESDIR}"/ignore-error-on-complete-option.patch
-	epatch "${FILESDIR}"/update-type-ownerauth.patch
-	epatch "${FILESDIR}"/openssl-1.1.patch
-}
+PATCHES=(
+	"${FILESDIR}"/makefile-fixes.patch
+	"${FILESDIR}"/unlimited-log-file-size.patch
+	"${FILESDIR}"/dry-run-option.patch
+	"${FILESDIR}"/change_default_password.patch
+	"${FILESDIR}"/retry-send-on-ebusy.patch
+	"${FILESDIR}"/ignore-error-on-complete-option.patch
+	"${FILESDIR}"/update-type-ownerauth.patch
+	"${FILESDIR}"/openssl-1.1.patch
+	"${FILESDIR}"/wno-error.patch
+)
 
 src_configure() {
+	# Disable -Wstrict-prototypes, b/230345382.
+	append-flags -Wno-strict-prototypes
 	tc-export AR CC
 }
 

@@ -2,9 +2,9 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header: /var/cvsroot/gentoo-x86/dev-python/python-uinput/python-uinput-0.10.2.ebuild,v 1.1 2014/07/28 07:05:21 jlec Exp $
 
-EAPI=6
+EAPI=7
 
-PYTHON_COMPAT=(python{2_7,3_4,3_5,3_6})
+PYTHON_COMPAT=( python3_{6..9} )
 
 inherit distutils-r1
 
@@ -17,7 +17,10 @@ SLOT="0"
 KEYWORDS="*"
 IUSE=""
 
-DEPEND="virtual/udev"
+DEPEND="
+	${PYTHON_DEPS}
+	virtual/udev
+"
 RDEPEND="${DEPEND}"
 
 python_prepare_all() {

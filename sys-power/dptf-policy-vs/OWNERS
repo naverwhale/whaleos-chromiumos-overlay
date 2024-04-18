@@ -1,3 +1,1 @@
-brian.bian@intel.com
-sze.ling.yeap@intel.com
-karthikeyan.a.p@intel.com
+include chromiumos/overlays/chromiumos-overlay:/sys-power/dptf/OWNERS

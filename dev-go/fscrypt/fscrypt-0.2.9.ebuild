@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -24,8 +24,14 @@ IUSE=""
 RESTRICT="binchecks strip"
 
 DEPEND="
+	dev-go/cli
 	dev-go/crypto
+	dev-go/errors
+	dev-go/go-tools
 	dev-go/go-sys
-	sys-libs/pam:=
+	dev-go/golint
+	dev-go/misspell
+	dev-go/protobuf-legacy-api
+	dev-go/staticcheck
 "
 RDEPEND="${DEPEND}"

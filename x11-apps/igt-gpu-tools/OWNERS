@@ -1,0 +1,2 @@
+include chromiumos/platform/graphics:/OWNERS.graphics
+chromeos-ci-prod@chromeos-bot.iam.gserviceaccount.com

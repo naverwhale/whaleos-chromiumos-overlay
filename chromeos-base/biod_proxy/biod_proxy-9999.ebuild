@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -13,7 +13,7 @@ PLATFORM_SUBDIR="biod/biod_proxy"
 inherit cros-workon platform
 
 DESCRIPTION="DBus Proxy Library for Biometrics Daemon for Chromium OS"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/biod/README.md"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/biod/README.md"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
@@ -21,16 +21,9 @@ KEYWORDS="~*"
 RDEPEND=""
 
 DEPEND="
-	chromeos-base/libbrillo:=
 	chromeos-base/system_api:=
 "
 
-src_install() {
-	dolib.so "${OUT}"/lib/libbiod_proxy.so
-	insinto /usr/include/biod/biod_proxy/
-	doins ./*.h
-}
-
 platform_pkg_test() {
-	platform_test "run" "${OUT}/biod_proxy_test_runner"
+	platform test_all
 }

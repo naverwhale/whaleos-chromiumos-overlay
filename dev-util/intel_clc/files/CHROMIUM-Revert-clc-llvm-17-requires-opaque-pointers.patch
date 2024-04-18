@@ -1,0 +1,29 @@
+Potential upstream issue:
+https://github.com/KhronosGroup/SPIRV-LLVM-Translator/issues/2153
+
+From c0b4c391d804c88f9edafaf63c31ae03b6daa2c2 Mon Sep 17 00:00:00 2001
+From: Matt Turner <msturner@google.com>
+Date: Thu, 28 Sep 2023 17:14:46 +0000
+Subject: [PATCH] Revert "clc: llvm 17 requires opaque pointers."
+
+This reverts commit fb5ecbb4fe9d9f58afee341116def699f3bb8341.
+---
+ src/compiler/clc/clc_helpers.cpp | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/compiler/clc/clc_helpers.cpp b/src/compiler/clc/clc_helpers.cpp
+index 0daf06f1e7c..92ee9af320b 100644
+--- a/src/compiler/clc/clc_helpers.cpp
++++ b/src/compiler/clc/clc_helpers.cpp
+@@ -785,7 +785,7 @@ clc_compile_to_llvm_module(LLVMContext &llvm_ctx,
+ #else
+       "-finclude-default-header",
+ #endif
+-#if LLVM_VERSION_MAJOR >= 15 && LLVM_VERSION_MAJOR < 17
++#if LLVM_VERSION_MAJOR >= 15
+       "-no-opaque-pointers",
+ #endif
+       // Add a default CL compiler version. Clang will pick the last one specified
+-- 
+2.39.2
+

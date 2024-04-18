@@ -1,0 +1,12 @@
+BDEPEND=dev-vcs/git app-misc/jq
+DEFINED_PHASES=info install setup unpack
+DESCRIPTION=Firmware images from the upstream linux-firmware repo that are built into the kernel binary
+EAPI=7
+IUSE=builtin_fw_amdgpu_carrizo builtin_fw_amdgpu_dimgrey_cavefish builtin_fw_amdgpu_gc_10_3_7 builtin_fw_amdgpu_gc_11_0_1 builtin_fw_amdgpu_gc_11_0_4 builtin_fw_amdgpu_green_sardine builtin_fw_amdgpu_navy_flounder builtin_fw_amdgpu_picasso builtin_fw_amdgpu_raven2 builtin_fw_amdgpu_renoir builtin_fw_amdgpu_sienna_cichlid builtin_fw_amdgpu_stoney builtin_fw_amdgpu_vega12 builtin_fw_amdgpu_yellow_carp builtin_fw_intel_mtl_i915 cros_host cros_workon_tree_afac61a88c2cd232b6dcf664f6bb97f8fb47c44f
+KEYWORDS=*
+LICENSE=builtin_fw_amdgpu_carrizo? ( LICENSE.amdgpu ) builtin_fw_amdgpu_dimgrey_cavefish? ( LICENSE.amdgpu ) builtin_fw_amdgpu_gc_10_3_7? ( LICENSE.amdgpu ) builtin_fw_amdgpu_gc_11_0_1? ( LICENSE.amdgpu ) builtin_fw_amdgpu_gc_11_0_4? ( LICENSE.amdgpu ) builtin_fw_amdgpu_green_sardine? ( LICENSE.amdgpu ) builtin_fw_amdgpu_navy_flounder? ( LICENSE.amdgpu ) builtin_fw_amdgpu_picasso? ( LICENSE.amdgpu ) builtin_fw_amdgpu_raven2? ( LICENSE.amdgpu ) builtin_fw_amdgpu_renoir? ( LICENSE.amdgpu ) builtin_fw_amdgpu_sienna_cichlid? ( LICENSE.amdgpu ) builtin_fw_amdgpu_stoney? ( LICENSE.amdgpu ) builtin_fw_amdgpu_vega12? ( LICENSE.amdgpu ) builtin_fw_amdgpu_yellow_carp? ( LICENSE.amdgpu ) builtin_fw_intel_mtl_i915? ( LICENSE.i915 )
+PROPERTIES=live
+RDEPEND=!<sys-kernel/linux-firmware-0.0.1-r708
+SLOT=0/0.0.1-r10
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=26610c463d59c4aa769679ea4780ff1b

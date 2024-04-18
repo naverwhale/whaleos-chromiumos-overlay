@@ -6,4 +6,4 @@ KEYWORDS=*
 LICENSE=metapackage
 RDEPEND=chromeos-base/chromeos-firewall-init
 SLOT=0
-_md5_=25ca1f026263ae3dc9ec6ba7d5b06519
+_md5_=25f88039dac86d3be05ec5219d17b69c

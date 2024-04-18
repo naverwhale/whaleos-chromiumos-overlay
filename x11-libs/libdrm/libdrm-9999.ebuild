@@ -4,14 +4,14 @@
 EAPI="7"
 EGIT_REPO_URI="https://gitlab.freedesktop.org/mesa/drm.git"
 if [[ ${PV} != *9999* ]]; then
-	CROS_WORKON_COMMIT="9cef5dee3cd817728c83aeb3c2010c1954e4c402"
-	CROS_WORKON_TREE="25ac2f44628d93835f86f30b10d797a652f34cea"
+	CROS_WORKON_COMMIT="98e1db501173303e58ef6a1def94ab7a2d84afc1"
+	CROS_WORKON_TREE="65944b520fba0db4e309bd8250c5ac400f8003f0"
 fi
 CROS_WORKON_PROJECT="chromiumos/third_party/libdrm"
 CROS_WORKON_EGIT_BRANCH="upstream/master"
 CROS_WORKON_MANUAL_UPREV="1"
 
-inherit meson cros-workon
+inherit cros-workon flag-o-matic meson
 
 DESCRIPTION="X.Org libdrm library"
 HOMEPAGE="http://dri.freedesktop.org/"
@@ -27,13 +27,12 @@ if [[ ${PV} = *9999* ]]; then
 else
 	KEYWORDS="*"
 fi
-VIDEO_CARDS="amdgpu exynos freedreno intel nouveau omap radeon vc4 vmware"
+VIDEO_CARDS="amdgpu freedreno intel nouveau omap radeon vc4 vmware"
 for card in ${VIDEO_CARDS}; do
 	IUSE_VIDEO_CARDS+=" video_cards_${card}"
 done
 
-IUSE="${IUSE_VIDEO_CARDS} libkms manpages +udev"
-REQUIRED_USE="video_cards_exynos? ( libkms )"
+IUSE="${IUSE_VIDEO_CARDS} manpages +udev"
 RESTRICT="test" # see bug #236845
 
 RDEPEND="dev-libs/libpthread-stubs
@@ -57,23 +56,22 @@ src_prepare() {
 }
 
 src_configure() {
+	append-lfs-flags
 	cros_optimize_package_for_speed
 
 	local emesonargs=(
 		-Dinstall-test-programs=true
-		$(meson_use video_cards_amdgpu amdgpu)
-		$(meson_use video_cards_exynos exynos-experimental-api)
-		$(meson_use video_cards_freedreno freedreno)
-		$(meson_use video_cards_intel intel)
-		$(meson_use video_cards_nouveau nouveau)
-		$(meson_use video_cards_omap omap-experimental-api)
-		$(meson_use video_cards_radeon radeon)
-		$(meson_use video_cards_vc4 vc4)
-		$(meson_use video_cards_vmware vmwgfx)
-		$(meson_use libkms)
-		$(meson_use manpages man-pages)
+		$(meson_feature video_cards_amdgpu amdgpu)
+		$(meson_feature video_cards_freedreno freedreno)
+		$(meson_feature video_cards_intel intel)
+		$(meson_feature video_cards_nouveau nouveau)
+		$(meson_feature video_cards_omap omap)
+		$(meson_feature video_cards_radeon radeon)
+		$(meson_feature video_cards_vc4 vc4)
+		$(meson_feature video_cards_vmware vmwgfx)
+		$(meson_feature manpages man-pages)
 		$(meson_use udev)
-		-Dcairo-tests=false
+		-Dcairo-tests=disabled
 	)
 	meson_src_configure
 }

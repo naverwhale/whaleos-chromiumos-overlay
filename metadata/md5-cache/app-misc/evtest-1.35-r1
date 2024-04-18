@@ -1,0 +1,12 @@
+BDEPEND=virtual/pkgconfig app-text/docbook-xml-dtd:4.5 >=app-portage/elt-patches-20170815 || ( >=sys-devel/automake-1.16.5-r1:1.16 >=sys-devel/automake-1.15.1-r2:1.15 ) >=sys-devel/autoconf-2.69 >=sys-devel/libtool-2.4
+DEFINED_PHASES=prepare
+DESCRIPTION=A test program for capturing input device events.
+EAPI=7
+HOMEPAGE=https://gitlab.freedesktop.org/libevdev/evtest/
+IUSE=+xml
+KEYWORDS=*
+LICENSE=GPL-2
+SLOT=0
+SRC_URI=https://gitlab.freedesktop.org/libevdev/evtest/-/archive/evtest-1.35/evtest-evtest-1.35.tar.gz -> evtest-1.35.tar.gz
+_eclasses_=autotools	9adb87822e85056674b476e1090a72ae	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	ad475baa777c9978fa035216c8264a10	libtool	f143db5a74ccd9ca28c1234deffede96	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=a5f365242eb472b6d0e239c5f68a0645

@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
@@ -9,4 +9,4 @@
 # at the same time as revving the ebuild to a known version value, editing this
 # version can be useful.
 
-echo 0.0.2
+echo 0.0.3

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
@@ -19,7 +19,7 @@ die() {
 main() {
 	local magic="$1"
 	local obj_file_abspath="$2"
-	local obj_file_relpath="${obj_file_abspath#${INSTALL_MOD_PATH}}"
+	local obj_file_relpath="${obj_file_abspath#"${INSTALL_MOD_PATH}"}"
 	local debug_file_relpath="usr/lib/debug/${obj_file_relpath}.debug"
 	local debug_file_abspath="${INSTALL_MOD_PATH}/${debug_file_relpath}"
 
@@ -40,15 +40,18 @@ main() {
 	# specify this script when building modules, but better safe
 	# than sorry.
 	if [[ "${obj_file_abspath}" == "${obj_file_relpath}" ]]; then
-		exec ${CROSS_COMPILE}strip --strip-debug "${obj_file_abspath}"
+		exec ${REAL_STRIP} --strip-debug "${obj_file_abspath}"
 	fi
 
 	# Follow the recipe from the objcopy man page to split the debug.
 	mkdir -p "${debug_file_abspath%/*}"
-	${CROSS_COMPILE}objcopy --only-keep-debug \
-		"${obj_file_abspath}" "${debug_file_abspath}" || die
-	${CROSS_COMPILE}strip --strip-debug "${obj_file_abspath}" || die
-	${CROSS_COMPILE}objcopy --add-gnu-debuglink=${debug_file_abspath} \
+	# Copy the full binary as debug file and do not perform any stripping.
+	# This is needed so that consumers of debug files can correctly symbolize
+	# kernel module addresses.
+	# More details: https://yaqs.corp.google.com/eng/q/8514249709102039040
+	cp "${obj_file_abspath}" "${debug_file_abspath}" || die
+	${REAL_STRIP} --strip-debug "${obj_file_abspath}" || die
+	${OBJCOPY} --add-gnu-debuglink="${debug_file_abspath}" \
 		"${obj_file_abspath}" || die
 }
 

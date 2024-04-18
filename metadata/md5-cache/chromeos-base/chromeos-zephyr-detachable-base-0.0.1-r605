@@ -1,0 +1,14 @@
+BDEPEND=dev-vcs/git app-misc/jq chromeos-base/chromeos-config-host:= chromeos-base/zephyr-build-tools dev-python/docopt dev-python/pykwalify dev-util/ninja
+DEFINED_PHASES=compile info install setup unpack
+DEPEND=has_chromeos_config_bsp? ( chromeos-base/chromeos-config-bsp:= ) has_chromeos_config_bsp_private? ( chromeos-base/chromeos-config-bsp-private:= ) has_chromeos_config_bsp_baseboard? ( chromeos-base/chromeos-config-bsp-baseboard:= ) has_chromeos_config_bsp_baseboard_private? ( chromeos-base/chromeos-config-bsp-baseboard-private:= ) unibuild? ( chromeos-base/chromeos-config:= )
+DESCRIPTION=Zephyr based firmware for detachable base
+EAPI=7
+IUSE=cros_host cros_workon_tree_7536949066b3e46dded2aecad7afcda6f9033c58_4c58fc2c75df13f743549b82d5e613162f02bc05 has_chromeos_config_bsp has_chromeos_config_bsp_private has_chromeos_config_bsp_baseboard has_chromeos_config_bsp_baseboard_private unibuild unibuild
+KEYWORDS=*
+LICENSE=Apache-2.0 BSD-Google
+PROPERTIES=live
+RDEPEND=has_chromeos_config_bsp? ( chromeos-base/chromeos-config-bsp:= ) has_chromeos_config_bsp_private? ( chromeos-base/chromeos-config-bsp-private:= ) has_chromeos_config_bsp_baseboard? ( chromeos-base/chromeos-config-bsp-baseboard:= ) has_chromeos_config_bsp_baseboard_private? ( chromeos-base/chromeos-config-bsp-baseboard-private:= ) unibuild? ( chromeos-base/chromeos-config:= )
+REQUIRED_USE=unibuild
+SLOT=0/0.0.1-r605
+_eclasses_=coreboot-sdk	1efddc614766ee0bfb78bdd47a602396	cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-unibuild	94ba1b876f001e1859d822211bb80291	cros-workon	247d4700539e27bc12026f785ec53757	cros-zephyr-utils	a52523df000e0e75944643ab8e116428	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	python-any-r1	54a3178500786b0a7ede4a23b7f2a6ad	python-utils-r1	76252008070e69454f51fa80c07638c9	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=74cdc20a3ebc2c630b6d0e4d9ca35ebd

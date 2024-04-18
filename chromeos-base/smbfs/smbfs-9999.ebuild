@@ -1,4 +1,4 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -15,15 +15,16 @@ PLATFORM_SUBDIR="smbfs"
 inherit cros-workon platform user
 
 DESCRIPTION="FUSE filesystem to mount SMB shares."
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/smbfs/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/smbfs/"
 
 LICENSE="BSD-Google"
 SLOT="0/0"
 KEYWORDS="~*"
 
 COMMON_DEPEND="
-	=sys-fs/fuse-2.9*:=
+	dev-libs/protobuf:=
 	net-fs/samba:=
+	=sys-fs/fuse-2.9*:=
 "
 
 RDEPEND="${COMMON_DEPEND}"
@@ -31,6 +32,10 @@ DEPEND="
 	${COMMON_DEPEND}
 	chromeos-base/system_api:=
 	chromeos-base/libpasswordprovider:=
+"
+
+BDEPEND="
+	chromeos-base/chromeos-dbus-bindings
 "
 
 pkg_setup() {
@@ -42,10 +47,9 @@ pkg_setup() {
 }
 
 src_install() {
-	dosbin "${OUT}"/smbfs
+	platform_src_install
 
-	insinto /usr/share/policy
-	newins seccomp_filters/smbfs-seccomp-"${ARCH}".policy smbfs-seccomp.policy
+	dosbin "${OUT}"/smbfs
 
 	local daemon_store="/etc/daemon-store/smbfs"
 	dodir "${daemon_store}"

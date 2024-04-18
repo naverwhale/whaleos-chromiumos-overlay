@@ -1,5 +1,6 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
-# Distributed under the terms of the GNU General Public License v2
+# Copyright 2022 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
 
 EAPI=7
 
@@ -15,11 +16,11 @@ PLATFORM_SUBDIR="attestation"
 inherit cros-workon libchrome platform user
 
 DESCRIPTION="Attestation service for Chromium OS"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/attestation/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/attestation/"
 
-LICENSE="Apache-2.0"
+LICENSE="BSD-Google"
 KEYWORDS="~*"
-IUSE="generic_tpm2 test tpm tpm_dynamic tpm2"
+IUSE="cr50_onboard generic_tpm2 profiling test ti50_onboard tpm tpm_dynamic tpm2 tpm2_simulator"
 
 REQUIRED_USE="
 	tpm_dynamic? ( tpm tpm2 )
@@ -34,23 +35,31 @@ RDEPEND="
 		chromeos-base/trunks:=
 	)
 	chromeos-base/chaps:=
+	chromeos-base/libhwsec:=[test?]
 	chromeos-base/libhwsec-foundation:=
 	chromeos-base/system_api:=[fuzzer?]
 	>=chromeos-base/metrics-0.0.1-r3152:=
 	chromeos-base/minijail:=
-	chromeos-base/tpm_manager:=
+	chromeos-base/tpm_manager-client:=
 	chromeos-base/attestation-client
+	dev-libs/openssl:0=
+	dev-libs/protobuf:=
 	"
 
 DEPEND="
 	${RDEPEND}
-	test? ( chromeos-base/libhwsec:= )
 	chromeos-base/vboot_reference:=
 	tpm2? (
 		chromeos-base/trunks:=[test?]
 		chromeos-base/chromeos-ec-headers:=
 	)
 	"
+
+BDEPEND="
+	chromeos-base/chromeos-dbus-bindings
+	chromeos-base/minijail
+	dev-libs/protobuf
+"
 
 pkg_preinst() {
 	# Create user and group for attestation.
@@ -61,49 +70,30 @@ pkg_preinst() {
 }
 
 src_install() {
-	insinto /etc/dbus-1/system.d
-	doins server/org.chromium.Attestation.conf
-
-	insinto /etc/init
-	doins server/attestationd.conf
-
-	dosbin "${OUT}"/attestationd
-	dobin "${OUT}"/attestation_client
-
-	insinto /usr/share/policy
-	newins server/attestationd-seccomp-${ARCH}.policy attestationd-seccomp.policy
-
-	insinto /etc/dbus-1/system.d
-	doins pca_agent/server/org.chromium.PcaAgent.conf
-	insinto /etc/init
-	doins pca_agent/server/pca_agentd.conf
-	dosbin "${OUT}"/pca_agentd
-	dobin "${OUT}"/pca_agent_client
-
-	dolib.so "${OUT}"/lib/libattestation.so
+	platform_src_install
 
 	insinto /usr/include/attestation/common
 	doins common/attestation_interface.h
-	doins common/print_attestation_ca_proto.h
-	doins common/print_interface_proto.h
-	doins common/print_keystore_proto.h
+	doins "${OUT}"/gen/attestation/common/print_attestation_ca_proto.h
+	doins "${OUT}"/gen/attestation/common/print_interface_proto.h
+	doins "${OUT}"/gen/attestation/common/print_keystore_proto.h
 
 	# Install the generated dbus-binding for fake pca agent.
 	# It does no harm to install the header even for non-test image build.
 	insinto /usr/include/attestation/pca-agent/dbus_adaptors
 	doins "${OUT}"/gen/include/attestation/pca-agent/dbus_adaptors/org.chromium.PcaAgent.h
 
-	insinto /usr/share/policy
-	newins "pca_agent/server/pca_agentd-seccomp-${ARCH}.policy" pca_agentd-seccomp.policy
+	# Allow specific syscalls for profiling.
+	# TODO (b/242806964): Need a better approach for fixing up the seccomp policy
+	# related issues (i.e. fix with a single function call)
+	if use profiling; then
+		echo -e "\n# Syscalls added for profiling case only.\nmkdir: 1\nftruncate: 1\n" >> \
+		"${D}/usr/share/policy/attestationd-seccomp.policy"
+		echo -e "\n# Syscalls added for profiling case only.\nmkdir: 1\nftruncate: 1\n" >> \
+		"${D}/usr/share/policy/pca_agentd-seccomp.policy"
+	fi
 }
 
 platform_pkg_test() {
-	local tests=(
-		attestation_testrunner
-	)
-
-	local test_bin
-	for test_bin in "${tests[@]}"; do
-		platform_test "run" "${OUT}/${test_bin}"
-	done
+	platform test_all
 }

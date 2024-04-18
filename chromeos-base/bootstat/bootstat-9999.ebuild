@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright 2010 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -13,7 +13,7 @@ PLATFORM_SUBDIR="bootstat"
 inherit cros-workon platform
 
 DESCRIPTION="Chrome OS Boot Time Statistics Utilities"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/bootstat/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/bootstat/"
 SRC_URI=""
 
 LICENSE="BSD-Google"
@@ -31,10 +31,6 @@ RDEPEND="
 DEPEND="
 	${COMMON_DEPEND}
 "
-
-src_install() {
-	platform_install
-}
 
 platform_pkg_test() {
 	platform test_all

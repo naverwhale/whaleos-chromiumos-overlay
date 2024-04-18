@@ -1,0 +1,28 @@
+From 5dc3489bfa2b5fa871060c45d63fcbc19989794a Mon Sep 17 00:00:00 2001
+From: Yunke Cao <yunkec@chromium.org>
+Date: Fri, 4 Aug 2023 11:02:54 +0900
+Subject: [PATCH 2/5] CHROMIUM:media:uvcvideo:support roi coordinate systems
+
+Add the definition of V4L2_CID_UVC_REGION_OF_INTEREST_RECT_RELATIVE.
+
+Signed-off-by: Yunke Cao <yunkec@chromium.org>
+---
+ include/uapi/linux/uvcvideo.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/include/uapi/linux/uvcvideo.h b/include/uapi/linux/uvcvideo.h
+index d669cf2..bb292af 100644
+--- a/include/uapi/linux/uvcvideo.h
++++ b/include/uapi/linux/uvcvideo.h
+@@ -47,6 +47,8 @@
+ #define V4L2_UVC_REGION_OF_INTEREST_AUTO_IMAGE_STABILIZATION	(1 << 6)
+ #define V4L2_UVC_REGION_OF_INTEREST_AUTO_HIGHER_QUALITY		(1 << 7)
+ 
++#define V4L2_CID_UVC_REGION_OF_INTEREST_RECT_RELATIVE	(V4L2_CID_CAMERA_UVC_BASE + 3)
++
+ struct uvc_menu_info {
+ 	__u32 value;
+ 	__u8 name[32];
+-- 
+2.41.0.585.gd2178a4bd4-goog
+

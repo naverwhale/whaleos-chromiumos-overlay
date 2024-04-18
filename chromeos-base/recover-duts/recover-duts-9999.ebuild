@@ -1,15 +1,15 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright 2011 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
 CROS_WORKON_PROJECT="chromiumos/platform/crostestutils"
-CROS_WORKON_LOCALNAME="crostestutils"
+CROS_WORKON_LOCALNAME="platform/crostestutils"
 CROS_WORKON_SUBTREE="recover_duts"
 
 inherit cros-workon
 
 DESCRIPTION="Test tool that recovers bricked Chromium OS test devices"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform/crostestutils/+/master/recover_duts/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform/crostestutils/+/HEAD/recover_duts/"
 
 LICENSE="BSD-Google"
 SLOT="0/0"

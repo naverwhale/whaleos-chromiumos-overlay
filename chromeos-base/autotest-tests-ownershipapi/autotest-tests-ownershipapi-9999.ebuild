@@ -1,10 +1,13 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright 2011 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=5
+EAPI=7
+
+PYTHON_COMPAT=( python3_{8..11} )
+
 CROS_WORKON_PROJECT="chromiumos/third_party/autotest"
 
-inherit cros-workon autotest
+inherit cros-workon autotest python-any-r1
 
 DESCRIPTION="login_OwnershipApi autotest"
 HOMEPAGE="https://chromium.googlesource.com/chromiumos/third_party/autotest/"
@@ -18,7 +21,6 @@ IUSE="+xset +tpmtools"
 IUSE="${IUSE} +autotest"
 
 RDEPEND="${RDEPEND}
-	chromeos-base/autotest-deps-dbus
 	chromeos-base/autotest-deps-policy
 	chromeos-base/chromeos-chrome
 	chromeos-base/telemetry
@@ -28,10 +30,14 @@ RDEPEND="${RDEPEND}
 
 DEPEND="${RDEPEND}"
 
+BDEPEND="
+	dev-python/dbus-python
+	dev-python/pygobject
+"
+
 # The telemetry dependency comes from the chrome.py import in some of the tests.
 IUSE_TESTS="
 	+tests_login_CryptohomeOwnerQuery
-	+tests_login_MultipleSessions
 "
 
 IUSE="${IUSE} ${IUSE_TESTS}"

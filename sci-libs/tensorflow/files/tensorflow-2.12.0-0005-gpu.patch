@@ -1,0 +1,157 @@
+Fix compilation issues related to the GPU delegate.
+
+diff --git a/tensorflow/lite/BUILD b/tensorflow/lite/BUILD
+index 0f905a3ae53..b34b3166ac7 100644
+--- a/tensorflow/lite/BUILD
++++ b/tensorflow/lite/BUILD
+@@ -1308,6 +1308,8 @@ tflite_cc_shared_object(
+         "//conditions:default": [
+             "-Wl,-z,defs",
+             "-Wl,--version-script,$(location //tensorflow/lite:tflite_version_script.lds)",
++            "-lEGL",
++            "-lGLESv2",
+         ],
+     }),
+     per_os_targets = True,
+@@ -1316,6 +1318,7 @@ tflite_cc_shared_object(
+         ":tflite_exported_symbols.lds",
+         ":tflite_version_script.lds",
+         "//tensorflow/lite/kernels:builtin_ops_all_linked",
++        "//tensorflow/lite/delegates/gpu:delegate",
+     ],
+ )
+
+diff --git a/tensorflow/lite/examples/label_image/BUILD b/tensorflow/lite/examples/label_image/BUILD
+index f9d368dfbce..fdfcfa22c96 100644
+--- a/tensorflow/lite/examples/label_image/BUILD
++++ b/tensorflow/lite/examples/label_image/BUILD
+@@ -26,7 +26,10 @@ cc_binary(
+             "-lm",  # some builtin ops, e.g., tanh, need -lm
+             "-Wl,-rpath=/data/local/tmp",  # for hexagon delegate
+         ],
+-        "//conditions:default": [],
++        "//conditions:default": [
++            "-lEGL",
++            "-lGLESv2",
++        ],
+     }),
+     deps = [
+         ":bitmap_helpers",
+@@ -70,7 +73,9 @@ cc_library(
+             "//tensorflow/lite/delegates/gpu:delegate",
+             "//tensorflow/lite/delegates/hexagon:hexagon_delegate",
+         ],
+-        "//conditions:default": [],
++        "//conditions:default": [
++            "//tensorflow/lite/delegates/gpu:delegate",
++        ],
+     }),
+ )
+
+diff --git a/tensorflow/lite/tools/benchmark/BUILD b/tensorflow/lite/tools/benchmark/BUILD
+index 805147d4858..9a27d872924 100644
+--- a/tensorflow/lite/tools/benchmark/BUILD
++++ b/tensorflow/lite/tools/benchmark/BUILD
+@@ -37,7 +37,10 @@ cc_binary(
+             "-lm",  # some builtin ops, e.g., tanh, need -lm
+             "-Wl,--rpath=/data/local/tmp/",  # Hexagon delegate libraries should be in /data/local/tmp
+         ],
+-        "//conditions:default": [],
++        "//conditions:default": [
++            "-lEGL",
++            "-lGLESv2",
++        ],
+     }),
+     tags = ["builder_default_android_arm64"],
+     deps = [
+@@ -200,7 +203,9 @@ cc_library(
+         "//tensorflow:android": [
+             "//tensorflow/lite/delegates/gpu:delegate",
+         ],
+-        "//conditions:default": [],
++        "//conditions:default": [
++            "//tensorflow/lite/delegates/gpu:delegate",
++        ],
+     }),
+ )
+
+diff --git a/tensorflow/lite/tools/delegates/BUILD b/tensorflow/lite/tools/delegates/BUILD
+index 5e7179184cd..b08ed6078ab 100644
+--- a/tensorflow/lite/tools/delegates/BUILD
++++ b/tensorflow/lite/tools/delegates/BUILD
+@@ -85,12 +85,8 @@ cc_library(
+     deps = [
+         ":delegate_provider_hdr",
+         "//tensorflow/lite/tools/evaluation:utils",
++        "//tensorflow/lite/delegates/gpu:delegate",
+     ] + select({
+-        "//tensorflow/lite/delegates/gpu:supports_gpu_delegate": [
+-            "//tensorflow/lite/delegates/gpu:delegate",
+-        ],
+-        "//conditions:default": [],
+-    }) + select({
+         "//tensorflow:ios": [
+             "//tensorflow/lite/delegates/gpu:metal_delegate",
+         ],
+@@ -124,6 +120,7 @@ cc_library(
+     deps = [
+         ":delegate_provider_hdr",
+         "//tensorflow/lite/tools/evaluation:utils",
++        "//tensorflow/lite/delegates/gpu:delegate",
+     ] + select({
+         "//tensorflow:arm_any": [
+             "//tensorflow/lite/delegates/hexagon:hexagon_delegate",
+@@ -148,6 +145,7 @@ cc_library(
+     deps = [
+         ":delegate_provider_hdr",
+         "//tensorflow/lite/tools/evaluation:utils",
++        "//tensorflow/lite/delegates/gpu:delegate",
+     ] + select({
+         "//tensorflow:ios": [
+             "//tensorflow/lite/delegates/coreml:coreml_delegate",
+@@ -168,6 +166,7 @@ cc_library_with_tflite(
+     tflite_deps = [
+         ":delegate_provider_hdr",
+         "//tensorflow/lite/tools/evaluation:utils",
++        "//tensorflow/lite/delegates/gpu:delegate",
+     ],
+     visibility = ["//visibility:public"],
+     alwayslink = 1,
+diff --git a/tensorflow/lite/tools/evaluation/BUILD b/tensorflow/lite/tools/evaluation/BUILD
+index 462337ffa7d..9b82b1da904 100644
+--- a/tensorflow/lite/tools/evaluation/BUILD
++++ b/tensorflow/lite/tools/evaluation/BUILD
+@@ -43,6 +43,7 @@ cc_library_with_stable_tflite_abi(
+     copts = tflite_copts(),
+     non_stable_abi_deps = [
+         "//tensorflow/lite/delegates/nnapi:nnapi_delegate",
++        "//tensorflow/lite/delegates/gpu:delegate",
+     ] + select({
+         "//tensorflow:ios": [
+             "//tensorflow/lite/delegates/coreml:coreml_delegate",
+@@ -51,11 +52,6 @@ cc_library_with_stable_tflite_abi(
+             "//tensorflow/lite/delegates/coreml:coreml_delegate",
+         ],
+         "//conditions:default": [],
+-    }) + select({
+-        "//tensorflow/lite/delegates/gpu:supports_gpu_delegate": [
+-            "//tensorflow/lite/delegates/gpu:delegate",
+-        ],
+-        "//conditions:default": [],
+     }) + select({
+         "//tensorflow:arm_any": [
+             "//tensorflow/lite/delegates/hexagon:hexagon_delegate",
+diff --git a/tensorflow/lite/tools/evaluation/tasks/build_def.bzl b/tensorflow/lite/tools/evaluation/tasks/build_def.bzl
+index 0d71b4436b2..fb99f73d1ba 100644
+--- a/tensorflow/lite/tools/evaluation/tasks/build_def.bzl
++++ b/tensorflow/lite/tools/evaluation/tasks/build_def.bzl
+@@ -10,5 +10,8 @@ def task_linkopts():
+             # Hexagon delegate libraries should be in /data/local/tmp
+             "-Wl,--rpath=/data/local/tmp/",
+         ],
+-        "//conditions:default": [],
++        "//conditions:default": [
++            "-lEGL",
++            "-lGLESv2"
++       ],
+     })

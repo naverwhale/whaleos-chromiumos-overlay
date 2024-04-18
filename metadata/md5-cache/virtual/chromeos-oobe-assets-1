@@ -1,8 +1,0 @@
-DEFINED_PHASES=-
-DESCRIPTION=Chrome OS OOBE assets virtual package
-EAPI=7
-KEYWORDS=*
-LICENSE=metapackage
-RDEPEND=chromeos-base/chromeos-oobe-assets
-SLOT=0
-_md5_=86648e13b57acdfd8231482fba096e1b

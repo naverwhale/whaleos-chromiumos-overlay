@@ -1,0 +1,16 @@
+BDEPEND=dev-vcs/git app-misc/jq chromeos-base/chromeos-config-host:=
+DEFINED_PHASES=compile configure info install setup unpack
+DEPEND=chromeos-base/chromeos-config:= dev-libs/nss:= has_chromeos_config_bsp? ( chromeos-base/chromeos-config-bsp:= ) has_chromeos_config_bsp_private? ( chromeos-base/chromeos-config-bsp-private:= ) has_chromeos_config_bsp_baseboard? ( chromeos-base/chromeos-config-bsp-baseboard:= ) has_chromeos_config_bsp_baseboard_private? ( chromeos-base/chromeos-config-bsp-baseboard-private:= ) unibuild? ( chromeos-base/chromeos-config:= )
+DESCRIPTION=coreboot's libpayload library
+EAPI=7
+HOMEPAGE=http://www.coreboot.org
+IUSE=coreboot-sdk unibuild verbose ti50_onboard vboot_disable_cbfs_integration cros_host cros_workon_tree_01035be5e8e7a2140b280240d494da5641ac551c_004d69667991fed6fdc5c41f706f6d8de5a4116b_ce1f6da62ca5d1480b22c1ddb3049dcfc69c988f_f5eb658e1d333e7a186ac4dea003a6bf29a57daf_d81ce78ca82f241cfc0473b4bd037c9f541a40db_0aa1ed596daf0e1c2011889a39a1e9b7bb31dfd5 asan cfi cfi_diag cfi_recover coverage fuzzer msan thinlto tsan ubsan has_chromeos_config_bsp has_chromeos_config_bsp_private has_chromeos_config_bsp_baseboard has_chromeos_config_bsp_baseboard_private unibuild
+KEYWORDS=*
+LICENSE=GPL-2
+PROPERTIES=live
+RDEPEND=chromeos-base/chromeos-config:= dev-libs/nss:= has_chromeos_config_bsp? ( chromeos-base/chromeos-config-bsp:= ) has_chromeos_config_bsp_private? ( chromeos-base/chromeos-config-bsp-private:= ) has_chromeos_config_bsp_baseboard? ( chromeos-base/chromeos-config-bsp-baseboard:= ) has_chromeos_config_bsp_baseboard_private? ( chromeos-base/chromeos-config-bsp-baseboard-private:= ) unibuild? ( chromeos-base/chromeos-config:= )
+REQUIRED_USE=unibuild coreboot-sdk cfi? ( thinlto ) cfi_diag? ( cfi ) cfi_recover? ( cfi_diag )
+RESTRICT=binchecks strip
+SLOT=0/0.0.1-r4434
+_eclasses_=coreboot-sdk	1efddc614766ee0bfb78bdd47a602396	cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-sanitizers	4504f3661db0fe02309acd3555785cf2	cros-unibuild	94ba1b876f001e1859d822211bb80291	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=4a01e12bbf6b584a5733ea343f64c220

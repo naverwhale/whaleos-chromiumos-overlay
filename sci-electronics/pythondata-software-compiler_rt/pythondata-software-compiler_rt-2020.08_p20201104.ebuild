@@ -1,10 +1,10 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
 
 # python_requires='>=3.5'
-PYTHON_COMPAT=( python3_{5..9} )
+PYTHON_COMPAT=( python3_{6..9} )
 inherit distutils-r1
 
 DESCRIPTION="Python module containing data files for LLVM Compiler RT Module software."

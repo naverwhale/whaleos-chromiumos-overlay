@@ -1,10 +1,9 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-# Check for EAPI 5+
+# Check for EAPI 7+
 case "${EAPI:-0}" in
-5|6|7) ;;
-*) die "unsupported EAPI (${EAPI}) in eclass (${ECLASS})" ;;
+[0123456]) die "unsupported EAPI (${EAPI}) in eclass (${ECLASS})" ;;
 esac
 
 # In order to rebuild packages when config changes happen, we need a
@@ -48,13 +47,7 @@ case "${CATEGORY}/${PN}" in
 		export CROS_UNIBUILD_ECLASS=1
 esac
 
-# Additionally, if we support EAPI=7, let's be proper and add a
-# BDEPEND.
-case "${EAPI}" in
-	7 )
-		BDEPEND="chromeos-base/chromeos-config-host:="
-		;;
-esac
+BDEPEND="chromeos-base/chromeos-config-host:="
 
 # @ECLASS-VARIABLE: UNIBOARD_CROS_CONFIG_DIR
 # @DESCRIPTION:
@@ -76,24 +69,26 @@ UNIBOARD_YAML_DIR="${UNIBOARD_CROS_CONFIG_DIR}/yaml"
 #  This is the installation path to the YAML source file.
 UNIBOARD_YAML_CONFIG="${UNIBOARD_YAML_DIR}/config.yaml"
 
-# @ECLASS-VARIABLE: UNIBOARD_C_CONFIG
+# @FUNCTION: cros-unibuild_assert_slot
+# @INTERNAL
 # @DESCRIPTION:
-#  This is the installation path to the C source file.
-UNIBOARD_C_CONFIG="${UNIBOARD_YAML_DIR}/config.c"
+# chromeos-config-bsp* packages should have a SLOT of 0/${PVR}.  Assert that.
+cros-unibuild_assert_slot() {
+	# shellcheck disable=SC2086
+	if ! has cros-workon ${INHERITED}; then
+		return
+	fi
 
-# @ECLASS-VARIABLE: CROS_CONFIG_TEST_DIR
-# @DESCRIPTION:
-#  Local to install build specific cros_config test files.
-#  These are used for chromeos-config integration testing that verifies
-#  the integrity of the config changes.
-CROS_CONFIG_TEST_DIR="/tmp/chromeos-config"
-
-# @ECLASS-VARIABLE: CROS_CONFIG_BUILD_CONFIG_DUMP_FILE
-# @DESCRIPTION:
-#  Local to install build specific cros_config test files.
-#  These are used for chromeos-config integration testing that verifies
-#  the integrity of the config changes.
-CROS_CONFIG_BUILD_CONFIG_DUMP_FILE="config_dump.json"
+	case "${CATEGORY}/${PN}" in
+		chromeos-base/chromeos-config-bsp* )
+			if [[ "${SLOT}" != "0/${PVR}" ]]; then
+				die "${EBUILD} must have default SLOT from" \
+					" cros-workon.eclass.  Delete the SLOT line."
+			fi
+			;;
+	esac
+}
+cros-unibuild_assert_slot
 
 # @FUNCTION: _find_configs
 # @USAGE: <directory> <extension>
@@ -172,6 +167,10 @@ _install_model_files() {
 install_private_model_files() {
 	[[ $# -eq 0 ]] || die "${FUNCNAME}: takes no arguments"
 
+	# We check SLOT once more, as it may have changed after the eclass
+	# was inherited.
+	cros-unibuild_assert_slot
+
 	_install_model_files "private-"
 }
 
@@ -183,6 +182,10 @@ install_private_model_files() {
 # "<fname>.yaml".
 install_model_files() {
 	[[ $# -eq 0 ]] || die "${FUNCNAME}: takes no arguments"
+
+	# We check SLOT once more, as it may have changed after the eclass
+	# was inherited.
+	cros-unibuild_assert_slot
 
 	_install_model_files ""
 }
@@ -203,18 +206,6 @@ install_generated_config_files() {
 	newins "${FILESDIR}/generated/build_config.json" "config.yaml"
 
 	doins "${FILESDIR}/generated/config.c"
-}
-
-# @FUNCTION: install_private_file_dump
-# @USAGE:
-# @DESCRIPTION:
-# Installs file_dump-private.txt and file_dump-private.sh into
-# $CROS_CONFIG_TEST_DIR.
-install_private_file_dump() {
-	insinto "${CROS_CONFIG_TEST_DIR}"
-	doins "${FILESDIR}/file_dump-private.txt"
-	doins "${FILESDIR}/file_dump-private.sh"
-	chmod 755 "${D}${CROS_CONFIG_TEST_DIR}/file_dump-private.sh"
 }
 
 # @FUNCTION: verify_file_match
@@ -449,6 +440,22 @@ platform_json_install() {
 	insinto "${UNIBOARD_YAML_DIR}"
 	doins "${WORKDIR}/project-config.json"
 }
+
+# @FUNCTION: platform_merged_install
+# @USAGE:
+# @DESCRIPTION:
+# Install project-specific joined.jsonproto files into tmp dir.
+# These files will be available to the Build API as artifacts.
+# Args:
+#   $1: Name of the project being installed
+platform_merged_install() {
+	[[ $# -eq 1 ]] || die "${FUNCNAME}: takes a single argument"
+		einfo "Installing project-specific joined.jsonproto file."
+
+	insinto "/build/share/cros-unibuild/$1/generated"
+	doins "${S}/$1/generated/joined.jsonproto"
+}
+
 
 # @FUNCTION: unibuild_install_files
 # @USAGE: [config_file]

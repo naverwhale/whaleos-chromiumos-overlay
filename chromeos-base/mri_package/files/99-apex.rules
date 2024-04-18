@@ -1,1 +1,0 @@
-KERNEL=="apex_*", MODE="0660", GROUP="apex-access"

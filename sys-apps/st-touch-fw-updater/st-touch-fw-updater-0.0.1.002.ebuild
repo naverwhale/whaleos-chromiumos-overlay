@@ -1,7 +1,7 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # This file is distributed under the terms of the GNU General Public License v2.
 
-EAPI="6"
+EAPI="7"
 
 inherit cros-common.mk flag-o-matic
 
@@ -12,6 +12,12 @@ SRC_URI="https://github.com/stmicroelectronics-acp/st-touch-fw-updater/archive/v
 LICENSE="BSD"
 SLOT="0"
 KEYWORDS="*"
+
+src_prepare() {
+	# TODO: patch the github repo directly & pull those changes in
+	sed -i 's|_FORTIFY_SOURCE=2|_FORTIFY_SOURCE=3|g' "${S}/common.mk" || die
+	default
+}
 
 src_compile() {
 	# FIXME(crbug.com/965691): Remove this when upstream fixes their format

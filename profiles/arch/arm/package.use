@@ -1,8 +1,3 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
-# Use of this source code is governed by a BSD-style license that can be
-# found in the LICENSE file.
-
-# Denis Nikitin <denik@chromium.org> (5 Feb 2021)
-# Enable debug fission on 32-bit targets.
-# Otherwise the unstripped Chrome binary will exceed 4G limit.
-chromeos-base/chromeos-chrome debug_fission
+# Explicitly disable debug_fission flag so that it will not be enabled and
+# break the build in the case that an arm32 board inherits an arm64 board.
+chromeos-base/chromeos-chrome -debug_fission

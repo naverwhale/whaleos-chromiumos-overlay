@@ -1,4 +1,4 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Change this version number when any change is made to configs/files under
@@ -14,6 +14,8 @@ CROS_WORKON_PROJECT=(
 	"chromiumos/third_party/coreboot/blobs"
 	"chromiumos/third_party/coreboot/intel-microcode"
 	"chromiumos/third_party/cbootimage"
+	"chromiumos/third_party/coreboot/libgfxinit"
+	"chromiumos/third_party/coreboot/libhwbase"
 )
 CROS_WORKON_LOCALNAME=(
 	"coreboot"
@@ -23,6 +25,8 @@ CROS_WORKON_LOCALNAME=(
 	"coreboot/3rdparty/blobs"
 	"coreboot/3rdparty/intel-microcode"
 	"cbootimage"
+	"coreboot/3rdparty/libgfxinit"
+	"coreboot/3rdparty/libhwbase"
 )
 CROS_WORKON_DESTDIR=(
 	"${S}"
@@ -32,52 +36,83 @@ CROS_WORKON_DESTDIR=(
 	"${S}/3rdparty/blobs"
 	"${S}/3rdparty/intel-microcode"
 	"${S}/util/nvidia/cbootimage"
+	"${S}/3rdparty/libgfxinit"
+	"${S}/3rdparty/libhwbase"
 )
 
 CROS_WORKON_EGIT_BRANCH=(
 	"chromeos-2016.05"
 	"master"
-	"master"
+	"main"
 	"chromeos"
 	"master"
 	"master"
 	"master"
+	"main"
+	"main"
 )
 
-inherit cros-workon toolchain-funcs cros-unibuild coreboot-sdk
+inherit cros-workon toolchain-funcs cros-unibuild coreboot-sdk cros-sanitizers
 
 DESCRIPTION="coreboot firmware"
 HOMEPAGE="http://www.coreboot.org"
 LICENSE="GPL-2"
 KEYWORDS="~*"
-IUSE="em100-mode fsp memmaps mocktpm quiet-cb rmt vmx mma"
-IUSE="${IUSE} +bmpblk quiet unibuild verbose"
-IUSE="${IUSE} amd_cpu coreboot-sdk chipset_stoneyridge chipset_picasso"
-IUSE="${IUSE} chipset_cezanne"
+
+# SOC
+IUSE="amd_cpu intel_cpu"
+# GSC
+IUSE="${IUSE} mocktpm ti50_onboard vboot_disable_cbfs_integration"
+# AMD chipsets
+IUSE="${IUSE} chipset_cezanne chipset_mendocino chipset_phoenix chipset_stoneyridge"
+# Debug
+IUSE="${IUSE} fw_debug intel_debug intel-compliance-test-mode"
+# Qualcomm ramdump
+IUSE="${IUSE} qualcomm_ramdump"
+# Logging
+IUSE="${IUSE} quiet quiet-cb verbose"
+# Flashrom Emulator
+IUSE="${IUSE} em100-mode"
+# Common libraries
+IUSE="${IUSE} coreboot-sdk"
+IUSE="${IUSE} fsp memmaps mma private_fsp_headers rmt vmx"
+IUSE="${IUSE} unibuild"
+
 # virtual/coreboot-private-files is deprecated. When adding a new board you
 # should add the coreboot-private-files-{board/chipset} ebuilds into the private
 # overlays, and avoid creating virtual packages.
 # See b/178642474
 IUSE="${IUSE} coreboot-private-files-board coreboot-private-files-chipset"
+IUSE="${IUSE} +fsp_gop"
+
+# FPDT - FSP performance data
+IUSE="${IUSE} fsp_perf"
 
 # No pre-unibuild boards build firmware on ToT anymore.  Assume
 # unibuild to keep ebuild clean.
 REQUIRED_USE="unibuild"
+# Make sure we don't use SDK gcc anymore.
+REQUIRED_USE+=" coreboot-sdk"
 
-# coreboot's build system handles stripping the binaries and producing a
-# separate .debug file with the symbols. This flag prevents portage from
-# stripping the .debug symbols
-RESTRICT="strip"
+# Disable binary checks for PIE and relative relocatons.
+# Don't strip to ease remote GDB use (cbfstool strips final binaries anyway).
+# This is only okay because this ebuild only installs files into
+# ${SYSROOT}/firmware, which is not copied to the final system image.
+RESTRICT="binchecks strip"
+
+# Disable warnings for executable stack.
+QA_EXECSTACK="*"
 
 DEPEND="
 	coreboot-private-files-board? ( sys-boot/coreboot-private-files-board:= )
 	coreboot-private-files-chipset? ( sys-boot/coreboot-private-files-chipset:= )
 	virtual/coreboot-private-files
-	bmpblk? ( sys-boot/chromeos-bmpblk:= )
 	chipset_stoneyridge? ( sys-boot/amd-firmware:= )
-	chipset_picasso? ( >=sys-boot/amd-picasso-fsp-0.0.2:= )
 	chipset_cezanne? ( sys-boot/amd-cezanne-fsp:= )
+	chipset_mendocino? ( sys-boot/amd-mendocino-fsp:= )
+	chipset_phoenix? ( sys-boot/amd-phoenix-fsp:= )
 	chromeos-base/chromeos-config:=
+	dev-libs/nss:=
 	"
 
 # While this package is never actually executed, we still need to specify
@@ -87,7 +122,9 @@ DEPEND="
 # because we could have two binary packages installed having been build with
 # different versions of chromeos-config. By specifying the RDEPEND we force
 # the package manager to ensure the two versions use the same chromeos-config.
-RDEPEND="${DEPEND}"
+RDEPEND="${DEPEND}
+	!sys-boot/amd-picasso-fsp
+	"
 
 set_build_env() {
 	local board="$1"
@@ -108,44 +145,7 @@ create_config() {
 	local board="$1"
 	local base_board="$2"
 
-	if [[ -s "${FILESDIR}/configs/config.${board}" ]]; then
-		touch "${CONFIG}"
-
-		if [[ -s "${FILESDIR}/configs/config.baseboard.${base_board}" ]]; then
-			cat "${FILESDIR}/configs/config.baseboard.${base_board}" >> "${CONFIG}"
-			# handle the case when "${CONFIG}" does not have a newline in the end.
-			echo >> "${CONFIG}"
-		fi
-
-		cat "${FILESDIR}/configs/config.${board}" >> "${CONFIG}"
-
-		# handle the case when "${CONFIG}" does not have a newline in the end.
-		echo >> "${CONFIG}"
-
-		# Override mainboard vendor if needed.
-		if [[ -n "${SYSTEM_OEM}" ]]; then
-			echo "CONFIG_MAINBOARD_VENDOR=\"${SYSTEM_OEM}\"" >> "${CONFIG}"
-		fi
-		if [[ -n "${SYSTEM_OEM_VENDOR_ID}" ]]; then
-			echo "CONFIG_SUBSYSTEM_VENDOR_ID=${SYSTEM_OEM_VENDOR_ID}" >> "${CONFIG}"
-		fi
-		if [[ -n "${SYSTEM_OEM_DEVICE_ID}" ]]; then
-			echo "CONFIG_SUBSYSTEM_DEVICE_ID=${SYSTEM_OEM_DEVICE_ID}" >> "${CONFIG}"
-		fi
-		if [[ -n "${SYSTEM_OEM_ACPI_ID}" ]]; then
-			echo "CONFIG_ACPI_SUBSYSTEM_ID=\"${SYSTEM_OEM_ACPI_ID}\"" >> "${CONFIG}"
-		fi
-
-		# In case config comes from a symlink we are likely building
-		# for an overlay not matching this config name. Enable adding
-		# a CBFS based board ID for coreboot.
-		if [[ -L "${FILESDIR}/configs/config.${board}" ]]; then
-			echo "CONFIG_BOARD_ID_MANUAL=y" >> "${CONFIG}"
-			echo "CONFIG_BOARD_ID_STRING=\"${BOARD_USE}\"" >> "${CONFIG}"
-		fi
-	else
-		ewarn "Could not find existing config for ${board}."
-	fi
+	touch "${CONFIG}"
 
 	if use rmt; then
 		echo "CONFIG_MRC_RMT=y" >> "${CONFIG}"
@@ -168,36 +168,102 @@ EOF
 	if use mma; then
 		echo "CONFIG_MMA=y" >> "${CONFIG}"
 	fi
-
-	# disable coreboot's own EC firmware building mechanism
-	echo "CONFIG_EC_GOOGLE_CHROMEEC_FIRMWARE_NONE=y" >> "${CONFIG}"
-	echo "CONFIG_EC_GOOGLE_CHROMEEC_PD_FIRMWARE_NONE=y" >> "${CONFIG}"
-	# enable common GBB flags for development
-	echo "CONFIG_GBB_FLAG_DEV_SCREEN_SHORT_DELAY=y" >> "${CONFIG}"
-	echo "CONFIG_GBB_FLAG_DISABLE_FW_ROLLBACK_CHECK=y" >> "${CONFIG}"
-	echo "CONFIG_GBB_FLAG_FORCE_DEV_BOOT_USB=y" >> "${CONFIG}"
-	echo "CONFIG_GBB_FLAG_FORCE_DEV_SWITCH_ON=y" >> "${CONFIG}"
-	local version=$(${CHROOT_SOURCE_ROOT}/src/third_party/chromiumos-overlay/chromeos/config/chromeos_version.sh |grep "^[[:space:]]*CHROMEOS_VERSION_STRING=" |cut -d= -f2)
-	echo "CONFIG_VBOOT_FWID_VERSION=\".${version}\"" >> "${CONFIG}"
+	if use intel_debug; then
+		echo "CONFIG_SOC_INTEL_DEBUG_CONSENT=y" >> "${CONFIG}"
+	fi
+	if use ti50_onboard; then
+		echo "CONFIG_CBFS_VERIFICATION=y" >> "${CONFIG}"
+	fi
+	if use ti50_onboard && ! use vboot_disable_cbfs_integration; then
+		echo "CONFIG_VBOOT_CBFS_INTEGRATION=y" >> "${CONFIG}"
+	fi
+	if use fw_debug; then
+		echo "CONFIG_BUILDING_WITH_DEBUG_FSP=y" >> "${CONFIG}"
+	fi
+	if use intel-compliance-test-mode; then
+		echo "CONFIG_SOC_INTEL_COMPLIANCE_TEST_MODE=y" >> "${CONFIG}"
+	fi
+	if use qualcomm_ramdump; then
+		echo "CONFIG_QC_SDI_ENABLE=y" >> "${CONFIG}"
+	fi
+	local version=$("${CHROOT_SOURCE_ROOT}"/src/third_party/chromiumos-overlay/chromeos/config/chromeos_version.sh |grep "^[[:space:]]*CHROMEOS_VERSION_STRING=" |cut -d= -f2 | tr - _)
+	{
+		# disable coreboot's own EC firmware building mechanism
+		echo "CONFIG_EC_GOOGLE_CHROMEEC_FIRMWARE_NONE=y"
+		echo "CONFIG_EC_GOOGLE_CHROMEEC_PD_FIRMWARE_NONE=y"
+		# enable common GBB flags for development
+		echo "CONFIG_GBB_FLAG_DEV_SCREEN_SHORT_DELAY=y"
+		echo "CONFIG_GBB_FLAG_DISABLE_FW_ROLLBACK_CHECK=y"
+		echo "CONFIG_GBB_FLAG_FORCE_DEV_BOOT_USB=y"
+		echo "CONFIG_GBB_FLAG_FORCE_DEV_SWITCH_ON=y"
+		echo "CONFIG_VBOOT_FWID_VERSION=\".${version}\""
+	} >> "${CONFIG}"
 	if use em100-mode; then
 		einfo "Enabling em100 mode via CONFIG_EM100 (slower SPI flash)"
 		echo "CONFIG_EM100=y" >> "${CONFIG}"
 	fi
 	# Use FSP's GOP in favor of coreboot's Ada based Intel graphics init
 	# which we don't include at this time. A no-op on non-FSP/GOP devices.
-	echo "CONFIG_RUN_FSP_GOP=y" >> "${CONFIG}"
+	if use fsp_gop; then
+		echo "CONFIG_RUN_FSP_GOP=y" >> "${CONFIG}"
+	fi
 
+	if use fsp_perf; then
+		echo "CONFIG_DISPLAY_FSP_TIMESTAMPS=y" >> "${CONFIG}"
+	fi
+
+	# Override the automatic options created above with board config.
+	local board_config="${FILESDIR}/configs/config.${board}"
+	local baseboard_config="${FILESDIR}/configs/config.baseboard.${base_board}"
+
+	if [[ -s "${baseboard_config}" ]]; then
+		cat "${baseboard_config}" >> "${CONFIG}"
+		# Handle the case when "${CONFIG}" does not have a newline in the end.
+		echo >> "${CONFIG}"
+	fi
+
+	if [[ -s "${board_config}" ]]; then
+		cat "${board_config}" >> "${CONFIG}"
+		# Handle the case when "${CONFIG}" does not have a newline in the end.
+		echo >> "${CONFIG}"
+	else
+		ewarn "Could not find existing config for ${board}."
+	fi
+
+	# Override mainboard vendor if needed.
+	if [[ -n "${SYSTEM_OEM}" ]]; then
+		echo "CONFIG_MAINBOARD_VENDOR=\"${SYSTEM_OEM}\"" >> "${CONFIG}"
+	fi
+	if [[ -n "${SYSTEM_OEM_VENDOR_ID}" ]]; then
+		echo "CONFIG_SUBSYSTEM_VENDOR_ID=${SYSTEM_OEM_VENDOR_ID}" >> "${CONFIG}"
+	fi
+	if [[ -n "${SYSTEM_OEM_DEVICE_ID}" ]]; then
+		echo "CONFIG_SUBSYSTEM_DEVICE_ID=${SYSTEM_OEM_DEVICE_ID}" >> "${CONFIG}"
+	fi
+	if [[ -n "${SYSTEM_OEM_ACPI_ID}" ]]; then
+		echo "CONFIG_ACPI_SUBSYSTEM_ID=\"${SYSTEM_OEM_ACPI_ID}\"" >> "${CONFIG}"
+	fi
+
+	if use private_fsp_headers; then
+		local fspsocname=$(grep "CONFIG_FSP_M_FILE" "${CONFIG}" | cut -d '"' -f2 | cut -d '/' -f4)
+		echo "CONFIG_FSP_HEADER_PATH=\"3rdparty/blobs/intel/${fspsocname}/fsp/PartialHeader/Include\"" >> "${CONFIG}"
+	fi
+
+	# Serial config
 	cp "${CONFIG}" "${CONFIG_SERIAL}"
-	file="${FILESDIR}/configs/fwserial.${board}"
-	if [ ! -f "${file}" ] && [ -n "${base_board}" ]; then
-		file="${FILESDIR}/configs/fwserial.${base_board}"
+	local board_fwserial="${FILESDIR}/configs/fwserial.${board}"
+	if [[ ! -f "${board_fwserial}" && -n "${base_board}" ]]; then
+		board_fwserial="${FILESDIR}/configs/fwserial.${base_board}"
 	fi
-	if [ ! -f "${file}" ]; then
-		file="${FILESDIR}/configs/fwserial.default"
-	fi
-	cat "${file}" >> "${CONFIG_SERIAL}" || die
-	# handle the case when "${CONFIG_SERIAL}" does not have a newline in the end.
+
+	cat "${FILESDIR}/configs/fwserial.default" >> "${CONFIG_SERIAL}" || die
+	# Handle the case when "${CONFIG_SERIAL}" does not have a newline in the end.
 	echo >> "${CONFIG_SERIAL}"
+	if [[ -s "${board_fwserial}" ]]; then
+		cat "${board_fwserial}" >> "${CONFIG_SERIAL}" || die
+		# Handle the case when "${CONFIG_SERIAL}" does not have a newline in the end.
+		echo >> "${CONFIG_SERIAL}"
+	fi
 
 	# Check that we're using coreboot-sdk
 	if ! use coreboot-sdk; then
@@ -285,9 +351,7 @@ make_coreboot() {
 
 	# Modify firmware descriptor if building for the EM100 emulator on
 	# Intel platforms.
-	# TODO(crbug.com/863396): Should we have an 'intel' USE flag? Do we
-	# still have any Intel platforms that don't use ifdtool?
-	if ! use amd_cpu && use em100-mode; then
+	if use intel_cpu && use em100-mode; then
 		einfo "Enabling em100 mode via ifdttool (slower SPI flash)"
 		ifdtool --em100 "${builddir}/coreboot.rom" || die
 		mv "${builddir}/coreboot.rom"{.new,} || die
@@ -305,6 +369,7 @@ add_fw_blobs() {
 
 	local blob
 	local cbname
+	# shellcheck disable=SC2154 # FW_BLOBS may be provided by overlays.
 	for blob in ${FW_BLOBS}; do
 		local blobfile="${fblobroot}/${blob}"
 
@@ -318,7 +383,7 @@ add_fw_blobs() {
 			"${blobfile}" || die
 	done
 
-	if [ -d ${froot}/cbfs ]; then
+	if [[ -d "${froot}/cbfs" ]]; then
 		die "something is still using ${froot}/cbfs, which is deprecated."
 	fi
 }
@@ -328,6 +393,7 @@ src_compile() {
 	# number followed by a dot and the first seven characters of the git
 	# hash. The name is confusing but consistent with the coreboot
 	# Makefile.
+	# shellcheck disable=SC2154 # VCSID is provided by cros-workon.eclass.
 	local sha1v="${VCSID/*-/}"
 	export KERNELREVISION=".${PV}.${sha1v:0:7}"
 
@@ -347,7 +413,7 @@ src_compile() {
 		export CROSS_COMPILE_arm64=${COREBOOT_SDK_PREFIX_arm64}
 		export CROSS_COMPILE_arm=${COREBOOT_SDK_PREFIX_arm}
 
-		export PATH=/opt/coreboot-sdk/bin:$PATH
+		export PATH="/opt/coreboot-sdk/bin:${PATH}"
 	fi
 
 	use verbose && elog "Toolchain:\n$(sh util/xcompile/xcompile)\n"
@@ -391,19 +457,36 @@ do_install() {
 	FSP=$( awk 'BEGIN{FS="\""} /CONFIG_FSP_FILE=/ { print $2 }' \
 		"${CONFIG}" )
 	if [[ -n "${FSP}" ]]; then
-		newins ${FSP} fsp.bin
+		newins "${FSP}" fsp.bin
 	fi
-	# Save the psp_verstage binary for signing on AMD Fam17h platforms
+	# Save the psp_verstage binary for signing on AMD platforms
 	if [[ -e "${BUILD_DIR}/psp_verstage.bin" ]]; then
-		newins "${BUILD_DIR}/psp_verstage.bin" psp_verstage.bin
+		# Extract the path of the signing token from coreboot.config
+		# Eg. 3rdparty/blobs/mainboard/google/skyrim/skyrim_shiraz.stkn
+		SIGNING_TOKEN="$( awk 'BEGIN{FS="\""} /CONFIG_PSP_VERSTAGE_SIGNING_TOKEN=/ \
+					{ print $2 }' "${CONFIG}" )"
+		# Prepare the psp_verstage for signing if the signing token exists
+		if [[ -n "${SIGNING_TOKEN}" ]]; then
+			insinto "/firmware/psp_verstage_to_sign"
+			local prep_verstage="3rdparty/blobs/mainboard/google/utils/prepare_verstage_to_sign.sh"
+			"${prep_verstage}" "${BUILD_DIR}/psp_verstage.bin" "${SIGNING_TOKEN}" \
+					"${BUILD_DIR}/psp_verstage_to_sign.bin" || die "Error preparing: ${BUILD_DIR}/psp_verstage.bin"
+			newins "${BUILD_DIR}/psp_verstage_to_sign.bin" \
+					"${build_target}"_psp_verstage.bin
+		fi
+		# Save the unsigned psp_verstage too for later reference
+		insinto "/firmware/unsigned_psp_verstage"
+		newins "${BUILD_DIR}/psp_verstage.bin" "${build_target}"_psp_verstage.bin
+		# Back to the original destination for rest of the installation
+		insinto "${dest_dir}"
 	fi
 	if [[ -n "${OPROM}" ]]; then
-		newins ${OPROM} ${CBFSOPROM}
+		newins "${OPROM}" "${CBFSOPROM}"
 	fi
 	if use memmaps; then
 		for mapfile in "${BUILD_DIR}"/cbfs/fallback/*.map
 		do
-			doins $mapfile
+			doins "${mapfile}"
 		done
 	fi
 	newins "${CONFIG}" coreboot.config
@@ -426,6 +509,11 @@ do_install() {
 	insinto "/firmware/${build_combination}/libpayload/libpayload/include"
 	doins "${BUILD_DIR}/static_fw_config.h"
 	einfo "Installed static_fw_config.h into libpayload include directory"
+}
+
+src_configure() {
+	sanitizers-setup-env
+	default
 }
 
 src_install() {

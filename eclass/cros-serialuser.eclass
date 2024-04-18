@@ -1,15 +1,15 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2012 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 #
-# Original Author: The Chromium OS Authors <chromium-os-dev@chromium.org>
+# Original Author: The ChromiumOS Authors <chromium-os-dev@chromium.org>
 # Purpose: Eclass for use by ebuilds that need to know the debug serial port.
 #
 
-# Check for EAPI 4+
+# Check for EAPI 7+
 case "${EAPI:-0}" in
-4|5|6) ;;
-*) die "unsupported EAPI (${EAPI}) in eclass (${ECLASS})" ;;
+[0123456]) die "unsupported EAPI (${EAPI}) in eclass (${ECLASS})" ;;
+*) ;;
 esac
 
 SERIAL_USE_PREFIX="serial_use_"
@@ -26,8 +26,8 @@ get_serial_name() {
 	local item
 
 	for item in "${ALL_SERIALPORTS[@]}"; do
-		if use ${SERIAL_USE_PREFIX}${item}; then
-			echo ${item}
+		if use ${SERIAL_USE_PREFIX}"${item}"; then
+			echo "${item}"
 			return
 		fi
 	done

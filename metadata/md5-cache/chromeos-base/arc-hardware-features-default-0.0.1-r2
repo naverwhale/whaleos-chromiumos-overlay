@@ -1,7 +1,0 @@
-DEFINED_PHASES=install
-DESCRIPTION=Install per-board hardware features for ARC++.
-EAPI=6
-KEYWORDS=*
-LICENSE=BSD-Google
-SLOT=0
-_md5_=1b2fa5012e4344eb545ae16a7724c6c4

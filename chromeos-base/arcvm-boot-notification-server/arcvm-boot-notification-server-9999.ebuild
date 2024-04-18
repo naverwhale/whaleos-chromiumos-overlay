@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -11,11 +11,14 @@ CROS_WORKON_OUTOFTREE_BUILD=1
 CROS_WORKON_SUBTREE="common-mk arc/vm/boot_notification_server .gn"
 
 PLATFORM_SUBDIR="arc/vm/boot_notification_server"
+# Do not run test parallelly until unit tests are fixed (b/293417686).
+# shellcheck disable=SC2034
+PLATFORM_PARALLEL_GTEST_TEST="no"
 
 inherit cros-workon platform user
 
 DESCRIPTION="ARCVM boot notification server"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/arc/vm/boot_notification_server"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/arc/vm/boot_notification_server"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
@@ -23,6 +26,8 @@ SLOT="0/0"
 IUSE="+seccomp"
 
 src_install() {
+	platform_src_install
+
 	newsbin "${OUT}/boot_notification_server" arcvm_boot_notification_server
 
 	insinto /etc/init

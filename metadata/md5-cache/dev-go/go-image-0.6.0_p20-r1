@@ -1,0 +1,13 @@
+BDEPEND=dev-lang/go
+DEFINED_PHASES=compile install nofetch postinst test unpack
+DEPEND=dev-go/text
+DESCRIPTION=Go packages for image libraries
+EAPI=7
+HOMEPAGE=https://go.googlesource.com/image
+KEYWORDS=*
+LICENSE=BSD-Google
+RESTRICT=binchecks strip
+SLOT=0
+SRC_URI=https://go.googlesource.com/image/+archive/a66eb6448b8d7557efb0c974c8d4d72085371c58.tar.gz -> go.googlesource.com-image-a66eb6448b8d7557efb0c974c8d4d72085371c58.tar.gz
+_eclasses_=cros-go	77ba1c1ddf5c20dab7e47e19efeffef7	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=63c76b868651fda53e22ef8aa4ed4268

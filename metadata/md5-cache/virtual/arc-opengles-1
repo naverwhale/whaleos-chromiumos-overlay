@@ -5,4 +5,4 @@ KEYWORDS=*
 LICENSE=metapackage
 RDEPEND=media-libs/arc-mesa
 SLOT=0
-_md5_=8aa020c92e02a2b029917c49469a2e11
+_md5_=b75533c9cfc5ad32ee00af235a36a648

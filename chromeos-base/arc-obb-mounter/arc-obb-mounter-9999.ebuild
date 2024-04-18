@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -14,7 +14,7 @@ PLATFORM_SUBDIR="arc/container/obb-mounter"
 inherit cros-workon platform
 
 DESCRIPTION="D-Bus service to mount OBB files"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/arc/container/obb-mounter"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/arc/container/obb-mounter"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
@@ -34,7 +34,7 @@ BDEPEND="
 CONTAINER_DIR="/opt/google/containers/arc-obb-mounter"
 
 src_install() {
-	platform_install
+	platform_src_install
 
 	# Keep the parent directory of mountpoints inaccessible from non-root
 	# users because mountpoints themselves are often world-readable but we

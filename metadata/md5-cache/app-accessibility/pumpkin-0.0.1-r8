@@ -1,0 +1,12 @@
+BDEPEND=app-misc/jq
+DEFINED_PHASES=info install setup unpack
+DESCRIPTION=Pumpkin is a semantic parser built using web assembly and a JavaScript API. This DLC downloads the web assembly, JavaScript wrapper, and locale-specific binary files, which are all built in google3. Pumpkin is currently used by accessibility services on Chrome OS.
+EAPI=7
+IUSE=dlc cros_host cros_workon_tree_776139a53bc86333de8672a51ed7879e75909ac9
+KEYWORDS=*
+LICENSE=BSD-Google
+REQUIRED_USE=dlc
+SLOT=0
+SRC_URI=gs://chromeos-localmirror/distfiles/pumpkin-3.0.tar.xz
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-workon	247d4700539e27bc12026f785ec53757	dlc	0e249e19536561abe6eb72bd84e06026	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=fd7e190f7f1e3048e5c94794b8ebc557

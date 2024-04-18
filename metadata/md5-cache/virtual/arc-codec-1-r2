@@ -6,4 +6,4 @@ KEYWORDS=*
 LICENSE=metapackage
 RDEPEND=chromeos-base/arc-codec-software
 SLOT=0
-_md5_=785f0620af96475f70b647db54f9c8c1
+_md5_=4fd382e75d6a0b8ceddb5bd1a710ef61

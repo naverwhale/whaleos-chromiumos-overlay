@@ -1,0 +1,11 @@
+BDEPEND=app-misc/jq
+DEFINED_PHASES=install unpack
+DESCRIPTION=A prebuilt sample DLC
+EAPI=7
+KEYWORDS=*
+LICENSE=BSD-Google
+RESTRICT=mirror
+SLOT=0
+SRC_URI=gs://chromeos-localmirror/dlc-images/prebuilt-sample-dlc/package/8.0.0/meta.tar.zst -> meta.tar.zst-prebuilt-sample-dlc-package-8.0.0
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	dlc	0e249e19536561abe6eb72bd84e06026	dlc-prebuilt	e221f20e27d5c771e27b925a464ba675	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	unpacker	aa6a4e924009232d8b78b31e932c30b5
+_md5_=0d48a4d9d1ab1d57246abf828bf7c0eb

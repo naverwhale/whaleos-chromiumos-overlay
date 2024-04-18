@@ -1,7 +1,7 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=6
+EAPI="7"
 CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_SUBTREE="vm_tools/crostini_client"
@@ -10,20 +10,20 @@ CROS_WORKON_INCREMENTAL_BUILD=1
 inherit cros-workon cros-rust
 
 DESCRIPTION="Command-line client for controlling crostini"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/vm_tools/crostini_client/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/vm_tools/crostini_client/"
 
 LICENSE="BSD-Google"
 SLOT="0"
 KEYWORDS="~*"
 
-DEPEND="chromeos-base/system_api
-	=dev-rust/dbus-0.8*:=
-	=dev-rust/getopts-0.2*:=
-	=dev-rust/lazy_static-1*:=
-	>=dev-rust/libc-0.2.44:=
-	!>=dev-rust/libc-0.3
-	>=dev-rust/protobuf-2.16:= <dev-rust/protobuf-3
-	>=dev-rust/protoc-rust-2.16:= <dev-rust/protoc-rust-3
+BDEPEND="dev-libs/protobuf"
+DEPEND="
+	chromeos-base/system_api
+	cros_host? ( dev-libs/protobuf:= )
+	dev-rust/libchromeos:=
+	dev-rust/system_api:=
+	dev-rust/third-party-crates-src:=
+	sys-apps/dbus:=
 "
 
 RDEPEND="sys-apps/dbus"

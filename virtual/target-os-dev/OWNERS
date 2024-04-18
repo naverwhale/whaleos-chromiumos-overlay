@@ -1,0 +1,4 @@
+# This package should rarely change, and exists more to provide overall build
+# structure than defining the OS itself as the main contents live in the
+# virtual/target-chromium-os* packages instead.
+include chromiumos/owners:v1:/infra/OWNERS.build

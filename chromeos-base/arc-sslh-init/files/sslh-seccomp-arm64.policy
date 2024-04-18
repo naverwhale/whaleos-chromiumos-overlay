@@ -1,6 +1,9 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
 
 write: 1
 pselect6: 1
@@ -47,3 +50,6 @@ writev: 1
 rt_sigprocmask: 1
 gettid: 1
 tgkill: 1
+futex: 1
+set_robust_list: 1
+statx: 1

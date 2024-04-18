@@ -1,4 +1,1 @@
-anholt@chromium.org
-chadversary@chromium.org
-ihf@chromium.org
-msturner@google.com
+include chromiumos/platform/graphics:/OWNERS.deqp_runner

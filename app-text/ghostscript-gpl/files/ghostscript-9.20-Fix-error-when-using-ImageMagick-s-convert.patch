@@ -1,7 +1,7 @@
-From e374e21f52d049b2f56c8cd29dcfe1b3de0975bf Mon Sep 17 00:00:00 2001
+From 4cc1a561e9c56199987c4a3d00b4fa8b24b31f29 Mon Sep 17 00:00:00 2001
 From: "David Kaspar [Dee'Kej]" <dkaspar@redhat.com>
 Date: Fri, 7 Oct 2016 12:20:29 +0200
-Subject: [PATCH 1/6] Fix error when using ImageMagick's convert:
+Subject: [PATCH 01/10] Fix error when using ImageMagick's convert:
 
   Error: /undefined in .runlibfileexists
 ---
@@ -10,7 +10,7 @@ Subject: [PATCH 1/6] Fix error when using ImageMagick's convert:
  2 files changed, 21 insertions(+), 3 deletions(-)
 
 diff --git a/Resource/Init/gs_fonts.ps b/Resource/Init/gs_fonts.ps
-index f1e26b093..46fff5576 100644
+index 1b1f852aa..435b99ae6 100644
 --- a/Resource/Init/gs_fonts.ps
 +++ b/Resource/Init/gs_fonts.ps
 @@ -139,10 +139,19 @@ userdict /.nativeFontmap .FontDirectory maxlength dict put
@@ -37,10 +37,10 @@ index f1e26b093..46fff5576 100644
                  % This is a real entry.
                  % Read and pop tokens until a semicolon.
 diff --git a/Resource/Init/gs_init.ps b/Resource/Init/gs_init.ps
-index 088c8583e..9b6ffffe3 100644
+index f1e6d7d68..769778392 100644
 --- a/Resource/Init/gs_init.ps
 +++ b/Resource/Init/gs_init.ps
-@@ -870,6 +870,14 @@ currentdict /.makeinternaldict .undef
+@@ -872,6 +872,14 @@ currentdict /.makeinternaldict .undef
             { /undefinedfilename signalerror }
            ifelse
          } bind def
@@ -55,7 +55,7 @@ index 088c8583e..9b6ffffe3 100644
  /selectdevice
          { finddevice setdevice .setdefaultscreen } bind def
  /signalerror		% <object> <errorname> signalerror -
-@@ -998,6 +1006,7 @@ def
+@@ -1000,6 +1008,7 @@ def
          } bind def
  % Temporarily substitute it for the real runlibfile.
  /.runlibfile /runlibfile load def
@@ -64,5 +64,5 @@ index 088c8583e..9b6ffffe3 100644
  currentdict /runlibfile0 .undef
  
 -- 
-2.31.0.208.g409f899ff0-goog
+2.39.1
 

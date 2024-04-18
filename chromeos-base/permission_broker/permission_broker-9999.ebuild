@@ -1,4 +1,4 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2012 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -7,34 +7,49 @@ CROS_WORKON_INCREMENTAL_BUILD=1
 CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_OUTOFTREE_BUILD=1
-CROS_WORKON_SUBTREE="common-mk permission_broker .gn"
+CROS_WORKON_SUBTREE="common-mk net-base permission_broker featured .gn"
 
 PLATFORM_NATIVE_TEST="yes"
-PLATFORM_SUBDIR="${PN}"
+PLATFORM_SUBDIR="permission_broker"
+
+# Do not run test parallelly until unit tests are fixed.
+# shellcheck disable=SC2034
+PLATFORM_PARALLEL_GTEST_TEST="no"
 
 inherit cros-workon platform udev user
 
 DESCRIPTION="Permission Broker for Chromium OS"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/permission_broker/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/permission_broker/"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
 IUSE="cfm_enabled_device fuzzer"
 
 COMMMON_DEPEND="
+	chromeos-base/featured:=
+	chromeos-base/net-base:=
 	chromeos-base/patchpanel-client:=
+	chromeos-base/system_api:=[fuzzer?]
 	sys-apps/dbus:=
 	virtual/libusb:1
-	virtual/udev
+	virtual/libudev:=
 "
 
-RDEPEND="${COMMMON_DEPEND}"
+RDEPEND="
+	${COMMMON_DEPEND}
+	virtual/udev
+"
 DEPEND="${COMMMON_DEPEND}
-	chromeos-base/system_api:=[fuzzer?]
 	sys-kernel/linux-headers:=
 "
 
+BDEPEND="
+	chromeos-base/chromeos-dbus-bindings
+"
+
 src_install() {
+	platform_src_install
+
 	dobin "${OUT}"/permission_broker
 
 	# Install upstart configuration

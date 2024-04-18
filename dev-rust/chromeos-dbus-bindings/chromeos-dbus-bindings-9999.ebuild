@@ -1,4 +1,4 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -18,8 +18,9 @@ LICENSE="BSD-Google"
 SLOT="0/${PVR}"
 KEYWORDS="~*"
 
-DEPEND="=dev-rust/which-4*:="
+DEPEND="dev-rust/third-party-crates-src:="
 RDEPEND="!chromeos-base/chromeos-dbus-bindings-rust
+	dev-rust/dbus-codegen
 	${DEPEND}"
 
-BDEPEND=">=dev-rust/dbus-codegen-0.9.0"
+BDEPEND=">=dev-rust/dbus-codegen-0.10.0"

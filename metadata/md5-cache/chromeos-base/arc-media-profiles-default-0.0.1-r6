@@ -1,8 +1,0 @@
-DEFINED_PHASES=install
-DESCRIPTION=Install media profiles on ARC++
-EAPI=4
-KEYWORDS=*
-LICENSE=BSD-Google
-SLOT=0
-_eclasses_=cros-constants	bf71cd1168b6441b64a8cdbc06c36eda
-_md5_=14f8b451e74122961f30a1304dc3f326

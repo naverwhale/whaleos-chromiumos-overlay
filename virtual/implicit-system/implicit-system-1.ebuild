@@ -1,4 +1,4 @@
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright 2013 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="7"
@@ -114,7 +114,7 @@ RDEPEND+=" sys-libs/gcc-libs"
 
 # Provides libc++ libs.
 RDEPEND+="
-	sys-libs/libcxxabi
+	sys-libs/llvm-libunwind
 	sys-libs/libcxx
 "
 

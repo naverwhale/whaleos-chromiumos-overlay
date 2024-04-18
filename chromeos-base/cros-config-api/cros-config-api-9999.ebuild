@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -14,7 +14,7 @@ DISTUTILS_USE_SETUPTOOLS=bdepend
 inherit cros-workon distutils-r1
 
 DESCRIPTION="Provides python and go bindings to the config API"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/config/+/master/python/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/config/+/HEAD/python/"
 
 LICENSE="BSD-Google"
 SLOT=0
@@ -22,6 +22,8 @@ KEYWORDS="~*"
 
 RDEPEND="
 	dev-go/genproto
+	dev-go/grpc
+	dev-go/protobuf-legacy-api
 "
 
 DEPEND="

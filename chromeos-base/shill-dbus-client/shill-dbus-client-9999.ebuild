@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -7,7 +7,7 @@ CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_OUTOFTREE_BUILD=1
 CROS_WORKON_INCREMENTAL_BUILD=1
-CROS_WORKON_SUBTREE="common-mk shill .gn"
+CROS_WORKON_SUBTREE="common-mk net-base shill .gn"
 
 PLATFORM_SUBDIR="shill/dbus/client"
 
@@ -22,12 +22,16 @@ KEYWORDS="~*"
 IUSE=""
 
 DEPEND="
+	chromeos-base/net-base:=
+	chromeos-base/system_api:=
 	chromeos-base/shill-client:=
 	chromeos-base/shill-net
 "
 RDEPEND="${DEPEND}"
 
 src_install() {
+	platform_src_install
+
 	# Install libshill-dbus-client library.
 	insinto "/usr/$(get_libdir)/pkgconfig"
 	local v="$(libchrome_ver)"

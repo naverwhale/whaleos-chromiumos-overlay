@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -15,7 +15,7 @@ PLATFORM_SUBDIR="easy-unlock"
 inherit cros-workon platform user
 
 DESCRIPTION="Service for supporting Easy Unlock in Chromium OS"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/easy-unlock/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/easy-unlock/"
 LICENSE="BSD-Google"
 SLOT="0/0"
 KEYWORDS="~*"
@@ -37,23 +37,6 @@ pkg_preinst() {
 	enewgroup easy-unlock
 }
 
-src_install() {
-	exeinto /opt/google/easy_unlock
-	doexe "${OUT}/easy_unlock"
-
-	insinto /etc/dbus-1/system.d
-	doins org.chromium.EasyUnlock.conf
-
-	insinto /usr/share/dbus-1/system-services
-	doins org.chromium.EasyUnlock.service
-
-	insinto /etc/init
-	doins init/easy-unlock.conf
-
-	insinto /usr/share/dbus-1/interfaces
-	doins dbus_bindings/org.chromium.EasyUnlockInterface.xml
-}
-
 platform_pkg_test() {
-	platform_test "run" "${OUT}/easy_unlock_test_runner"
+	platform test_all
 }

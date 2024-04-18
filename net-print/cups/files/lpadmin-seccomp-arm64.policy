@@ -1,6 +1,9 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
 
 brk: 1
 bind: 1
@@ -16,6 +19,7 @@ fcntl: 1
 fstat: 1
 fstatfs: 1
 futex: 1
+getdents64: 1
 getegid: 1
 geteuid: 1
 getgid: 1
@@ -25,13 +29,14 @@ getrandom: 1
 getrlimit: 1
 getrusage: 1
 getsockname: 1
+gettid: 1
 gettimeofday: 1
 getuid: 1
 ioctl: 1
 lseek: 1
 # Don't allow mmap or mprotect with both PROT_WRITE and PROT_EXEC
-mmap: arg2 in 0xfffffffb || arg2 in 0xfffffffd
-mprotect: arg2 in 0xfffffffb || arg2 in 0xfffffffd
+mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mremap: 1
 munmap: 1
 nanosleep: 1
@@ -50,6 +55,7 @@ set_robust_list: 1
 set_tid_address: 1
 setsockopt: 1
 socket: arg0 == PF_FILE || arg0 == PF_INET || arg0 == PF_NETLINK || arg0 == AF_INET || arg0 == AF_INET6
+statx: 1
 uname: 1
 unlinkat: 1
 write: 1

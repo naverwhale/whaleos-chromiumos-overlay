@@ -1,0 +1,33 @@
+From 54995e87d38fb1269aa13aee07727ed7ae9a75fa Mon Sep 17 00:00:00 2001
+From: Zubin Mithra <zsm@google.com>
+Date: Mon, 14 Aug 2023 22:24:39 +0000
+Subject: [PATCH] cros-syzkaller: do not collect remote coverage
+
+---
+ executor/executor_linux.h | 10 ----------
+ 1 file changed, 10 deletions(-)
+
+diff --git a/executor/executor_linux.h b/executor/executor_linux.h
+index 8e3c35044..b90bd31ef 100644
+--- a/executor/executor_linux.h
++++ b/executor/executor_linux.h
+@@ -127,16 +127,6 @@ static void cover_enable(cover_t* cov, bool collect_comps, bool extra)
+ 			exitf("cover enable write trace failed, mode=%d", kcov_mode);
+ 		return;
+ 	}
+-	kcov_remote_arg<1> arg = {
+-	    .trace_mode = kcov_mode,
+-	    // Coverage buffer size of background threads.
+-	    .area_size = kExtraCoverSize,
+-	    .num_handles = 1,
+-	};
+-	arg.common_handle = kcov_remote_handle(KCOV_SUBSYSTEM_COMMON, procid + 1);
+-	arg.handles[0] = kcov_remote_handle(KCOV_SUBSYSTEM_USB, procid + 1);
+-	if (ioctl(cov->fd, KCOV_REMOTE_ENABLE, &arg))
+-		exitf("remote cover enable write trace failed");
+ }
+ 
+ static void cover_reset(cover_t* cov)
+-- 
+2.41.0.694.ge786442a9b-goog
+

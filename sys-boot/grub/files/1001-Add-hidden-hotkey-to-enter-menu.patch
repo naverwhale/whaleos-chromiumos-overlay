@@ -1,0 +1,75 @@
+diff --git a/grub-core/kern/main.c b/grub-core/kern/main.c
+index 73967e2..4ed805c 100644
+--- a/grub-core/kern/main.c
++++ b/grub-core/kern/main.c
+@@ -272,7 +272,6 @@ grub_main (void)
+ 
+   /* Hello.  */
+   grub_setcolorstate (GRUB_TERM_COLOR_HIGHLIGHT);
+-  grub_printf ("Welcome to GRUB!\n\n");
+   grub_setcolorstate (GRUB_TERM_COLOR_STANDARD);
+ 
+   /* Init verifiers API. */
+diff --git a/grub-core/normal/main.c b/grub-core/normal/main.c
+index c4ebe9e..1f3668e 100644
+--- a/grub-core/normal/main.c
++++ b/grub-core/normal/main.c
+@@ -209,7 +209,7 @@ grub_normal_init_page (struct grub_term_output *term,
+  
+   grub_term_cls (term);
+ 
+-  msg_formatted = grub_xasprintf (_("GNU GRUB  version %s"), PACKAGE_VERSION);
++  msg_formatted = grub_xasprintf (_("WhaleOS Boot Mode List"));
+   if (!msg_formatted)
+     return;
+  
+diff --git a/grub-core/normal/menu.c b/grub-core/normal/menu.c
+index 8397886..8e989b6 100644
+--- a/grub-core/normal/menu.c
++++ b/grub-core/normal/menu.c
+@@ -341,8 +341,6 @@ grub_menu_execute_with_fallback (grub_menu_t menu,
+ {
+   int fallback_entry;
+ 
+-  callback->notify_booting (entry, callback_data);
+-
+   grub_menu_execute_entry (entry, 1);
+ 
+   /* Deal with fallback entries.  */
+@@ -566,6 +564,8 @@ print_countdown (struct grub_term_coordinate *pos, int n)
+ 
+ #define GRUB_MENU_PAGE_SIZE 10
+ 
++int via_menu;
++
+ /* Show the menu and handle menu entry selection.  Returns the menu entry
+    index that should be executed or -1 if no entry should be executed (e.g.,
+    Esc pressed to exit a sub-menu or switching menu viewers).
+@@ -595,6 +595,27 @@ run_menu (grub_menu_t menu, int nested, int *auto_boot)
+        useful and likely to be a source of confusion, so we disallow this.  */
+     grub_env_unset ("timeout_style");
+ 
++  /* Initialize the time.  */
++  saved_time = grub_get_time_ms ();
++
++  while (1)
++  {
++    if (has_second_elapsed (&saved_time))
++    {
++      *auto_boot = 1;
++      return get_entry_number (menu, "default");
++    }
++
++    if (grub_getkey_noblock () == (GRUB_TERM_CTRL | GRUB_TERM_ALT | 'r'))
++    {
++      via_menu = 1;
++      *auto_boot = 0;
++      timeout = -1;
++      current_entry = default_entry;
++      goto refresh;
++    }
++  }
++
+   timeout_style = get_timeout_style ();
+ 
+   if (timeout_style == TIMEOUT_STYLE_COUNTDOWN

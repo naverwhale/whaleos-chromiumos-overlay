@@ -1,9 +1,9 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # @ECLASS: tast-bundle.eclass
 # @MAINTAINER:
-# The Chromium OS Authors <chromium-os-dev@chromium.org>
+# The ChromiumOS Authors <chromium-os-dev@chromium.org>
 # @BUGREPORTS:
 # Please report bugs via https://issuetracker.google.com/ (with component
 # "ChromeOS > Test > Harness > Tast > Framework").
@@ -14,6 +14,21 @@
 # See https://chromium.googlesource.com/chromiumos/platform/tast/ for details.
 # The bundle type ("local" or "remote") are derived from the package name, which
 # should end with "-<type>-data".
+
+# @ECLASS-VARIABLE: TAST_BUNDLE_ROOT
+# @DESCRIPTION:
+# It is the root of the full path of the Tast bundle to be installed.
+: "${TAST_BUNDLE_ROOT:="go.chromium.org/tast-tests/cros"}"
+
+# @ECLASS-VARIABLE: TAST_BUNDLE_DATA_PRIVATE
+# @DESCRIPTION:
+# If set to "1", this test bundle is not installed to images, but is downloaded
+# at run time by local_test_runner. Otherwise this test bundle is installed to
+# images.
+# Only local test data will be marked private; remote test bundles are always
+# installed to the chroot at this moment.
+: "${TAST_BUNDLE_DATA_PRIVATE:=0}"
+
 
 if ! [[ "${PN}" =~ .*-(local|remote)-data$ ]]; then
 	die "Package \"${PN}\" should end with \"-<type>-data\""
@@ -36,14 +51,23 @@ tast-bundle-data_pkg_setup() {
 # @DESCRIPTION:
 # Installs data files.
 tast-bundle-data_src_install() {
+	# Decide if this is a private bundle.
+	local tast_bundle_prefix=/usr
+	if [[ "${TAST_BUNDLE_DATA_PRIVATE}" == 1 ]]; then
+		if [[ "${TAST_BUNDLE_DATA_TYPE}" != local ]]; then
+			die "unsupported type \"${TAST_BUNDLE_DATA_TYPE}\""
+		fi
+		tast_bundle_prefix=/build
+	fi
+
 	# The base directory where test data files are installed.
-	local -r basedatadir="/usr/share/tast/data"
+	local -r basedatadir="${tast_bundle_prefix}/share/tast/data"
 
 	# Install each test category's data dir.
 	pushd src >/dev/null || die "failed to pushd src"
 	local datadir dest
 
-	find "chromiumos/tast/${TAST_BUNDLE_DATA_TYPE}" -type d,l -name 'data' | while read -r datadir; do
+	find "${TAST_BUNDLE_ROOT}/${TAST_BUNDLE_DATA_TYPE}" -type d,l -name 'data' | while read -r datadir; do
 		[[ -e "${datadir}" ]] || die
 		[[ -d "${datadir}" ]] || continue
 

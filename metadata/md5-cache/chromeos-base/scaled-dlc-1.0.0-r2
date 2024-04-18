@@ -1,0 +1,11 @@
+DEFINED_PHASES=install unpack
+DESCRIPTION=A scaled DLC
+EAPI=7
+HOMEPAGE=https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/dlcservice
+IUSE=dlc
+KEYWORDS=*
+LICENSE=BSD-Google
+REQUIRED_USE=dlc
+SLOT=0
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	dlc	0e249e19536561abe6eb72bd84e06026
+_md5_=f30423fe8014cc15b8662751a8261763

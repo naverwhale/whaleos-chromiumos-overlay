@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -31,18 +31,20 @@ RDEPEND="${DEPEND}"
 #
 # 1) Unzip the .zip file emailed from the vendor.
 # 2) Convert from hex to bin.
-#    ex: objcopy -I ihex --output-target=binary PS8815_FW_0x13_20210208_A2_combine.hex \
-#          parade-ps8815a2-firmware-19/ps8815_a2_0x13.bin
+#    ex: objcopy -I ihex --output-target=binary \
+#         --gap-fill 0xff --pad-to 0x10000 \
+#          PS8815_FW_0x24_20220105_A2_combine.hex \
+#          parade-ps8815a2-firmware-36/ps8815_a2_0x24.bin
 # 3) Tarball it up using XZ, including the right directory.
-#    ex: tar -cJf parade-ps8815a2-firmware-19.tar.xz \
-#          parade-ps8815a2-firmware-19/ps8815_a2_0x13.bin
+#    ex: tar -cJf parade-ps8815a2-firmware-36.tar.xz \
+#          parade-ps8815a2-firmware-36/ps8815_a2_0x24.bin
 # 4) Then upload it at https://pantheon.corp.google.com/storage/browser/chromeos-localmirror/distfiles
-# 5) On the uploaded file, click the three-dot-menu, "Edit
-#    Permissions", click on ADD ENTRY, then set:
+# 5) On the uploaded file, click the three-dot-menu, "Edit access",
+#    click on ADD ENTRY, then set:
 #      Entity: "Public"
 #      Name:   "allUsers"
 #      Access: "Reader"
-# 6) Finally run 'ebuild parade-ps8815a2-firmware-19.ebuild manifest'
+# 6) Finally run 'ebuild parade-ps8815a2-firmware-36.ebuild manifest'
 
 src_install() {
 	local fw_rev_hex=$(printf '%02x' "${PV}")

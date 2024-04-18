@@ -1,6 +1,6 @@
 # Chrome OS Kernel Configuration
 
-The [cros-kernel2] eclass supports automatically configuring and building a
+The [cros-kernel] eclass supports automatically configuring and building a
 kernel for Chrome OS. It supports the following methods of retrieving the
 appropriate `.config` file:
 
@@ -27,7 +27,7 @@ any other configuration mechanisms documented in this file.
 
 ## Fallback kernel config
 
-When looking for a kernel configuration, the `cros-kernel2_src_configure()`
+When looking for a kernel configuration, the `cros-kernel_src_configure()`
 function looks first for the Chrome OS configuration via the other two
 mechanisms (either in your kernel's `chromeos/scripts/` directory, or via
 `CHROMEOS_KERNEL_CONFIG`). If these are not present, it "falls back" to a set
@@ -35,7 +35,7 @@ of defconfigs provided in [this directory].
 
 ### Fallback config selection
 
-The [cros-kernel2] eclass tries to automatically determine an appropriate
+The [cros-kernel] eclass tries to automatically determine an appropriate
 `*_defconfig` to use for your given `${BOARD}`. e.g., for a Qualcomm platform,
 it should select `qualcomm_defconfig`, and for an Intel system, it should
 select `x86_64_defconfig`. These determinations are made (in
@@ -103,7 +103,7 @@ The resulting kernel can be deployed to your existing Chrome OS system as you
 would deploy any other Chrome OS kernel.
 
 
-[cros-kernel2]: ../cros-kernel2.eclass
+[cros-kernel]: ../cros-kernel.eclass
 [chromium.org docs]: https://dev.chromium.org/chromium-os/how-tos-and-troubleshooting/kernel-configuration
 [this directory]: ./
 [qualcomm_defconfig update]: https://crrev.com/c/2166346

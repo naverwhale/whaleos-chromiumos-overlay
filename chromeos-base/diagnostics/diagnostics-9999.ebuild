@@ -1,11 +1,11 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
 
 CROS_WORKON_INCREMENTAL_BUILD=1
 CROS_WORKON_LOCALNAME="platform2"
-CROS_WORKON_OUTOFTREE_BUILD=1
+CROS_WORKON_DESTDIR="${S}/platform2"
 CROS_WORKON_PROJECT="chromiumos/platform2"
 # TODO(crbug.com/1044813): Remove chromeos-config once its public headers are fixed.
 CROS_WORKON_SUBTREE="common-mk chromeos-config diagnostics .gn"
@@ -15,52 +15,92 @@ PLATFORM_SUBDIR="diagnostics"
 inherit cros-workon cros-unibuild platform udev user
 
 DESCRIPTION="Device telemetry and diagnostics for Chrome OS"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/diagnostics"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/diagnostics"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
-IUSE="fuzzer wilco mesa_reven"
+IUSE="fuzzer wilco mesa_reven diagnostics dlc"
 
 COMMON_DEPEND="
+	acct-user/cros_healthd
+	acct-group/cros_healthd
+	chromeos-base/bootstat:=
 	chromeos-base/chromeos-config-tools:=
+	chromeos-base/libec:=
+	chromeos-base/metrics:=
 	chromeos-base/minijail:=
+	chromeos-base/missive:=
+	chromeos-base/mojo_service_manager:=
+	chromeos-base/spaced
+	wilco? (
+		dev-cpp/abseil-cpp:=
+	)
+	dev-libs/glib:=
+	dev-libs/libevdev:=
 	dev-libs/protobuf:=
 	dev-libs/re2:=
 	net-libs/grpc:=
 	virtual/libudev:=
 	sys-apps/pciutils:=
+	virtual/libusb:1=
 	virtual/opengles:=
+	sys-apps/fwupd:=
+	sys-apps/rootdev:=
+	sys-apps/util-linux:=
+	x11-libs/libdrm:=
 "
 
 DEPEND="
 	${COMMON_DEPEND}
 	chromeos-base/attestation-client:=
+	chromeos-base/chromeos-ec-headers:=
 	chromeos-base/debugd-client:=
+	chromeos-base/dlcservice-client:=
+	chromeos-base/libiioservice_ipc:=
+	chromeos-base/power_manager-client:=
 	chromeos-base/tpm_manager-client:=
 	chromeos-base/system_api:=[fuzzer?]
 	media-sound/adhd:=
 	x11-drivers/opengles-headers:=
 "
 
-# TODO(crbug/1085169): Replace sys-block/fio dependency with an alternative as
-# it is very large. It is currently only a dependency of wilco as it is
-# currently the only client.
+# TODO(b/273184171): Remove chromeos-base/ec-utils once we don't rely on ectool.
+# TODO(b/271544868): Remove net-wireless/iw once we find alternatives.
 RDEPEND="
 	${COMMON_DEPEND}
+	chromeos-base/crash-reporter
+	chromeos-base/ec-utils
+	chromeos-base/iioservice
 	dev-util/stressapptest
+	net-wireless/iw
 	wilco? (
-		sys-block/fio
 		chromeos-base/chromeos-dtc-vm
 		chromeos-base/vpd
 	)
+	dlc? (
+		chromeos-base/fio-dlc
+	)
+"
+
+BDEPEND="
+	chromeos-base/chromeos-dbus-bindings
+	chromeos-base/minijail
+	dev-libs/protobuf
+	net-libs/grpc
 "
 
 pkg_preinst() {
 	enewgroup cros_ec-access
-	enewuser cros_healthd
-	enewgroup cros_healthd
+	enewgroup fpdev
 	enewuser healthd_ec
 	enewgroup healthd_ec
+	enewuser healthd_fp
+	enewgroup healthd_fp
+	enewuser healthd_evdev
+	enewgroup healthd_evdev
+	enewuser healthd_psr
+	enewgroup healthd_psr
+	enewgroup mei-access
 
 	if use wilco; then
 		enewuser wilco_dtc
@@ -69,82 +109,30 @@ pkg_preinst() {
 }
 
 src_install() {
-	dobin "${OUT}/cros_healthd"
-	dobin "${OUT}/cros-health-tool"
+	platform_src_install
 
 	if use wilco; then
-		dobin "${OUT}/wilco_dtc_supportd"
-
-		# Install seccomp policy files.
-		insinto /usr/share/policy
-		newins "init/wilco_dtc_supportd-seccomp-${ARCH}.policy" \
-			wilco_dtc_supportd-seccomp.policy
-		newins "init/wilco-dtc-e2fsck-seccomp-${ARCH}.policy" \
-			wilco-dtc-e2fsck-seccomp.policy
-		newins "init/wilco-dtc-resize2fs-seccomp-${ARCH}.policy" \
-			wilco-dtc-resize2fs-seccomp.policy
-
-		# Install D-Bus configuration file.
-		insinto /etc/dbus-1/system.d
-		doins dbus/org.chromium.WilcoDtcSupportd.conf
-		doins dbus/WilcoDtcUpstart.conf
-
-		# Install the init scripts.
-		insinto /etc/init
-		doins init/wilco_dtc_dispatcher.conf
-		doins init/wilco_dtc_supportd.conf
-		doins init/wilco_dtc.conf
-
 		# Install udev rules.
 		udev_dorules udev/99-ec_driver_files.rules
 	fi
 
-	# Install seccomp policy files.
-	insinto /usr/share/policy
-	newins "init/cros_healthd-seccomp-${ARCH}.policy" \
-		cros_healthd-seccomp.policy
-	newins "cros_healthd/seccomp/ectool_i2cread-seccomp-${ARCH}.policy" \
-		ectool_i2cread-seccomp.policy
-	newins "cros_healthd/seccomp/ectool_pwmgetfanrpm-seccomp-${ARCH}.policy" \
-		ectool_pwmgetfanrpm-seccomp.policy
-	newins "seccomp/memtester-seccomp-${ARCH}.policy" memtester-seccomp.policy
-
-	# Install D-Bus configuration file.
-	insinto /etc/dbus-1/system.d
-	doins dbus/org.chromium.CrosHealthd.conf
-
-	# Install the init scripts.
-	insinto /etc/init
-	doins init/cros_healthd.conf
-
-	# Install the diagnostic routine executables.
-	exeinto /usr/libexec/diagnostics
-	doexe "${OUT}/floating-point-accuracy"
-	doexe "${OUT}/prime-search"
-	doexe "${OUT}/smartctl-check"
-	doexe "${OUT}/urandom"
-
 	# Install udev rules.
 	udev_dorules udev/99-chown_dmi_dir.rules
+	udev_dorules udev/99-mei_driver_files.rules
 
 	# Install fuzzers.
 	local fuzzer_component_id="982097"
 	platform_fuzzer_install "${S}"/OWNERS "${OUT}"/fetch_system_info_fuzzer \
 		--comp "${fuzzer_component_id}"
+	platform_fuzzer_install "${S}"/OWNERS "${OUT}"/crash_events_uploads_log_parser_fuzzer \
+		--comp "${fuzzer_component_id}"
+
+	# TODO(b/299052079): Remove mojom file after completing hotline migration.
+	insinto /usr/include/cros_healthd-client/diagnostics/mojom/public
+	doins "${S}"/mojom/public/cros_healthd_probe.mojom
+	doins "${OUT}"/gen/include/diagnostics/mojom/public/cros_healthd_probe.mojom-module
 }
 
 platform_pkg_test() {
-	local tests=(
-		cros_healthd_test
-	)
-	if use wilco; then
-		tests+=(
-			wilco_dtc_supportd_test
-		)
-	fi
-
-	local test_bin
-	for test_bin in "${tests[@]}"; do
-		platform_test "run" "${OUT}/${test_bin}"
-	done
+	platform test_all
 }

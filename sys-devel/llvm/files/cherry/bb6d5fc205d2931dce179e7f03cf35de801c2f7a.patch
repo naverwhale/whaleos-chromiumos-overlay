@@ -1,0 +1,2757 @@
+commit bb6d5fc205d2931dce179e7f03cf35de801c2f7a
+Author: Joel E. Denny <jdenny.ornl@gmail.com>
+Date:   Thu Sep 7 12:34:59 2023 -0400
+
+    Revert "[lit] Improve test output from lit's internal shell"
+    
+    This reverts commit c981c533055e14302e7bff5d6898c9308065f665.
+    
+    The reason for the revert is discussed at:
+    https://discourse.llvm.org/t/rfc-improving-lits-debug-output/72839/52
+
+diff --git a/libcxx/utils/libcxx/test/dsl.py b/libcxx/utils/libcxx/test/dsl.py
+index 4c2217ec3142..847cebf5962f 100644
+--- a/libcxx/utils/libcxx/test/dsl.py
++++ b/libcxx/utils/libcxx/test/dsl.py
+@@ -180,7 +180,7 @@ def programOutput(config, program, args=None):
+                 "Failed to run program, cmd:\n{}\nstderr is:\n{}".format(runcmd, err)
+             )
+ 
+-        return out
++        return libcxx.test.format._parseLitOutput(out)
+ 
+ 
+ @_memoizeExpensiveOperation(
+diff --git a/libcxx/utils/libcxx/test/format.py b/libcxx/utils/libcxx/test/format.py
+index 2be42d293280..ddd88f25646e 100644
+--- a/libcxx/utils/libcxx/test/format.py
++++ b/libcxx/utils/libcxx/test/format.py
+@@ -35,6 +35,39 @@ def _checkBaseSubstitutions(substitutions):
+     for s in ["%{cxx}", "%{compile_flags}", "%{link_flags}", "%{flags}", "%{exec}"]:
+         assert s in substitutions, "Required substitution {} was not provided".format(s)
+ 
++def _parseLitOutput(fullOutput):
++    """
++    Parse output of a Lit ShTest to extract the actual output of the contained commands.
++
++    This takes output of the form
++
++        $ ":" "RUN: at line 11"
++        $ "echo" "OUTPUT1"
++        # command output:
++        OUTPUT1
++
++        $ ":" "RUN: at line 12"
++        $ "echo" "OUTPUT2"
++        # command output:
++        OUTPUT2
++
++    and returns a string containing
++
++        OUTPUT1
++        OUTPUT2
++
++    as-if the commands had been run directly. This is a workaround for the fact
++    that Lit doesn't let us execute ShTest and retrieve the raw output without
++    injecting additional Lit output around it.
++    """
++    parsed = ''
++    for output in re.split('[$]\s*":"\s*"RUN: at line \d+"', fullOutput):
++        if output: # skip blank lines
++            commandOutput = re.search("# command output:\n(.+)\n$", output, flags=re.DOTALL)
++            if commandOutput:
++                parsed += commandOutput.group(1)
++    return parsed
++
+ def _executeScriptInternal(test, litConfig, commands):
+     """
+     Returns (stdout, stderr, exitCode, timeoutInfo, parsedCommands)
+@@ -46,12 +79,21 @@ def _executeScriptInternal(test, litConfig, commands):
+     _, tmpBase = _getTempPaths(test)
+     execDir = os.path.dirname(test.getExecPath())
+     res = lit.TestRunner.executeScriptInternal(
+-        test, litConfig, tmpBase, parsedCommands, execDir, debug=False
++        test, litConfig, tmpBase, parsedCommands, execDir
+     )
+     if isinstance(res, lit.Test.Result):  # Handle failure to parse the Lit test
+         res = ("", res.output, 127, None)
+     (out, err, exitCode, timeoutInfo) = res
+ 
++    # TODO: As a temporary workaround until https://reviews.llvm.org/D81892 lands, manually
++    #       split any stderr output that is included in stdout. It shouldn't be there, but
++    #       the Lit internal shell conflates stderr and stdout.
++    conflatedErrorOutput = re.search("(# command stderr:.+$)", out, flags=re.DOTALL)
++    if conflatedErrorOutput:
++        conflatedErrorOutput = conflatedErrorOutput.group(0)
++        out = out[: -len(conflatedErrorOutput)]
++        err += conflatedErrorOutput
++
+     return (out, err, exitCode, timeoutInfo, parsedCommands)
+ 
+ 
+@@ -358,7 +400,8 @@ class CxxStandardLibraryTest(lit.formats.FileBasedTest):
+             raise RuntimeError(f"Error while trying to generate gen test\nstdout:\n{out}\n\nstderr:\n{err}")
+ 
+         # Split the generated output into multiple files and generate one test for each file
+-        for (subfile, content) in self._splitFile(out):
++        parsed = _parseLitOutput(out)
++        for (subfile, content) in self._splitFile(parsed):
+             generatedFile = testSuite.getExecPath(pathInSuite + (subfile, ))
+             os.makedirs(os.path.dirname(generatedFile), exist_ok=True)
+             with open(generatedFile, 'w') as f:
+diff --git a/llvm/utils/lit/lit/TestRunner.py b/llvm/utils/lit/lit/TestRunner.py
+index 461cf63d6b96..0629eca42049 100644
+--- a/llvm/utils/lit/lit/TestRunner.py
++++ b/llvm/utils/lit/lit/TestRunner.py
+@@ -8,7 +8,6 @@ import re
+ import stat
+ import pathlib
+ import platform
+-import shlex
+ import shutil
+ import tempfile
+ import threading
+@@ -58,14 +57,6 @@ kDevNull = "/dev/null"
+ kPdbgRegex = "%dbg\\(([^)'\"]*)\\)(.*)"
+ 
+ 
+-def buildPdbgCommand(msg, cmd):
+-    res = f"%dbg({msg}) {cmd}"
+-    assert re.match(
+-        kPdbgRegex, res
+-    ), f"kPdbgRegex expected to match actual %dbg usage: {res}"
+-    return res
+-
+-
+ class ShellEnvironment(object):
+ 
+     """Mutable shell environment containing things like CWD and env vars.
+@@ -349,12 +340,12 @@ def executeBuiltinExport(cmd, shenv):
+ 
+ 
+ def executeBuiltinEcho(cmd, shenv):
+-    """Interpret a redirected echo or @echo command"""
++    """Interpret a redirected echo command"""
+     opened_files = []
+     stdin, stdout, stderr = processRedirects(cmd, subprocess.PIPE, shenv, opened_files)
+     if stdin != subprocess.PIPE or stderr != subprocess.PIPE:
+         raise InternalShellError(
+-            cmd, f"stdin and stderr redirects not supported for {cmd.args[0]}"
++            cmd, "stdin and stderr redirects not supported for echo"
+         )
+ 
+     # Some tests have un-redirected echo commands to help debug test failures.
+@@ -701,7 +692,6 @@ def _executeShCmd(cmd, shenv, results, timeoutHelper):
+         "cd": executeBuiltinCd,
+         "export": executeBuiltinExport,
+         "echo": executeBuiltinEcho,
+-        "@echo": executeBuiltinEcho,
+         "mkdir": executeBuiltinMkdir,
+         "popd": executeBuiltinPopd,
+         "pushd": executeBuiltinPushd,
+@@ -929,7 +919,7 @@ def _executeShCmd(cmd, shenv, results, timeoutHelper):
+         if res == -signal.SIGINT:
+             raise KeyboardInterrupt
+         if proc_not_counts[i] % 2:
+-            res = 1 if res == 0 else 0
++            res = not res
+         elif proc_not_counts[i] > 1:
+             res = 1 if res != 0 else 0
+ 
+@@ -992,58 +982,19 @@ def _executeShCmd(cmd, shenv, results, timeoutHelper):
+     return exitCode
+ 
+ 
+-def formatOutput(title, data, limit=None):
+-    if not data.strip():
+-        return ""
+-    if not limit is None and len(data) > limit:
+-        data = data[:limit] + "\n...\n"
+-        msg = "data was truncated"
+-    else:
+-        msg = ""
+-    ndashes = 30
+-    out =  f"# .---{title}{'-' * (ndashes - 4 - len(title))}\n"
+-    out += f"# | " + "\n# | ".join(data.splitlines()) + "\n"
+-    out += f"# `---{msg}{'-' * (ndashes - 4 - len(msg))}\n"
+-    return out
+-
+-# Normally returns out, err, exitCode, timeoutInfo.
+-#
+-# If debug is True (the normal lit behavior), err is empty, and out contains an
+-# execution trace, including stdout and stderr shown per command executed.
+-#
+-# If debug is False (set by some custom lit test formats that call this
+-# function), out contains only stdout from the script, err contains only stderr
+-# from the script, and there is no execution trace.
+-def executeScriptInternal(test, litConfig, tmpBase, commands, cwd,
+-                          debug=True):
++def executeScriptInternal(test, litConfig, tmpBase, commands, cwd):
+     cmds = []
+     for i, ln in enumerate(commands):
+-        # Within lit, we try to always add '%dbg(...)' to command lines in order
+-        # to maximize debuggability.  However, custom lit test formats might not
+-        # always add it, so add a generic debug message in that case.
+         match = re.match(kPdbgRegex, ln)
+         if match:
+-            dbg = match.group(1)
+             command = match.group(2)
+-        else:
+-            dbg = "command line"
+-            command = ln
+-        if debug:
+-            ln = f"@echo '# {dbg}' "
+-            if command:
+-                ln += f"&& @echo {shlex.quote(command.lstrip())} && {command}"
+-            else:
+-                ln += "has no command after substitutions"
+-        else:
+-            ln = command
++            ln = commands[i] = match.expand(": '\\1'; \\2" if command else ": '\\1'")
+         try:
+             cmds.append(
+                 ShUtil.ShParser(ln, litConfig.isWindows, test.config.pipefail).parse()
+             )
+         except:
+-            return lit.Test.Result(
+-                Test.FAIL, f"shell parser error on {dbg}: {command.lstrip()}\n"
+-            )
++            return lit.Test.Result(Test.FAIL, "shell parser error on: %r" % ln)
+ 
+     cmd = cmds[0]
+     for c in cmds[1:]:
+@@ -1063,42 +1014,8 @@ def executeScriptInternal(test, litConfig, tmpBase, commands, cwd,
+ 
+     out = err = ""
+     for i, result in enumerate(results):
+-        if not debug:
+-            out += result.stdout
+-            err += result.stderr
+-            continue
+-
+-        # The purpose of an "@echo" command is merely to add a debugging message
+-        # directly to lit's output.  It is used internally by lit's internal
+-        # shell and is not currently documented for use in lit tests.  However,
+-        # if someone misuses it (e.g., both "echo" and "@echo" complain about
+-        # stdin redirection), produce the normal execution trace to facilitate
+-        # debugging.
+-        if (
+-            result.command.args[0] == "@echo"
+-            and result.exitCode == 0
+-            and not result.stderr
+-            and not result.outputFiles
+-            and not result.timeoutReached
+-        ):
+-            out += result.stdout
+-            continue
+-
+-        # Write the command line that was run.  Properly quote it.  Leading
+-        # "!" commands should not be quoted as that would indicate they are not
+-        # the builtins.
+-        out += "# executed command: "
+-        nLeadingBangs = next(
+-            (i for i, cmd in enumerate(result.command.args) if cmd != "!"),
+-            len(result.command.args),
+-        )
+-        out += "! " * nLeadingBangs
+-        out += " ".join(
+-            shlex.quote(str(s))
+-            for i, s in enumerate(result.command.args)
+-            if i >= nLeadingBangs
+-        )
+-        out += "\n"
++        # Write the command line run.
++        out += "$ %s\n" % (" ".join('"%s"' % s for s in result.command.args),)
+ 
+         # If nothing interesting happened, move on.
+         if (
+@@ -1113,16 +1030,22 @@ def executeScriptInternal(test, litConfig, tmpBase, commands, cwd,
+ 
+         # Add the command output, if redirected.
+         for (name, path, data) in result.outputFiles:
+-            data = to_string(data.decode("utf-8", errors="replace"))
+-            out += formatOutput(
+-                f"redirected output from '{name}'", data, limit=1024
+-            )
++            if data.strip():
++                out += "# redirected output from %r:\n" % (name,)
++                data = to_string(data.decode("utf-8", errors="replace"))
++                if len(data) > 1024:
++                    out += data[:1024] + "\n...\n"
++                    out += "note: data was truncated\n"
++                else:
++                    out += data
++                out += "\n"
++
+         if result.stdout.strip():
+-            out += formatOutput("command stdout", result.stdout)
++            out += "# command output:\n%s\n" % (result.stdout,)
+         if result.stderr.strip():
+-            out += formatOutput("command stderr", result.stderr)
++            out += "# command stderr:\n%s\n" % (result.stderr,)
+         if not result.stdout.strip() and not result.stderr.strip():
+-            out += "# note: command had no output on stdout or stderr\n"
++            out += "note: command had no output on stdout or stderr\n"
+ 
+         # Show the error conditions:
+         if result.exitCode != 0:
+@@ -1132,9 +1055,9 @@ def executeScriptInternal(test, litConfig, tmpBase, commands, cwd,
+                 codeStr = hex(int(result.exitCode & 0xFFFFFFFF)).rstrip("L")
+             else:
+                 codeStr = str(result.exitCode)
+-            out += "# error: command failed with exit status: %s\n" % (codeStr,)
++            out += "error: command failed with exit status: %s\n" % (codeStr,)
+         if litConfig.maxIndividualTestTime > 0 and result.timeoutReached:
+-            out += "# error: command reached timeout: %s\n" % (
++            out += "error: command reached timeout: %s\n" % (
+                 str(result.timeoutReached),
+             )
+ 
+@@ -1910,7 +1833,13 @@ class IntegratedTestKeywordParser(object):
+         if not output or not output[-1].add_continuation(line_number, keyword, line):
+             if output is None:
+                 output = []
+-            line = buildPdbgCommand(f"{keyword} at line {line_number}", line)
++            pdbg = "%dbg({keyword} at line {line_number})".format(
++                keyword=keyword, line_number=line_number
++            )
++            assert re.match(
++                kPdbgRegex + "$", pdbg
++            ), "kPdbgRegex expected to match actual %dbg usage"
++            line = "{pdbg} {real_command}".format(pdbg=pdbg, real_command=line)
+             output.append(CommandDirective(line_number, line_number, keyword, line))
+         return output
+ 
+@@ -2175,8 +2104,6 @@ def executeShTest(
+         return lit.Test.Result(Test.UNSUPPORTED, "Test is unsupported")
+ 
+     script = list(preamble_commands)
+-    script = [buildPdbgCommand(f"preamble command line", ln) for ln in script]
+-
+     parsed = parseIntegratedTestScript(test, require_script=not script)
+     if isinstance(parsed, lit.Test.Result):
+         return parsed
+diff --git a/llvm/utils/lit/tests/Inputs/lit-opts/lit.cfg b/llvm/utils/lit/tests/Inputs/lit-opts/lit.cfg
+index 301208c25bdc..cf1a4f1ba1ec 100644
+--- a/llvm/utils/lit/tests/Inputs/lit-opts/lit.cfg
++++ b/llvm/utils/lit/tests/Inputs/lit-opts/lit.cfg
+@@ -5,4 +5,4 @@ config.suffixes = [".txt"]
+ config.test_format = lit.formats.ShTest()
+ config.test_source_root = None
+ config.test_exec_root = None
+-config.substitutions.append(("%var", lit_config.params.get("var", "default")))
++config.substitutions.append(("%var", lit_config.params.get("var", "")))
+diff --git a/llvm/utils/lit/tests/Inputs/shtest-define/examples/param-subst.txt b/llvm/utils/lit/tests/Inputs/shtest-define/examples/param-subst.txt
+index 1d94c1213723..6dd9b16304e0 100644
+--- a/llvm/utils/lit/tests/Inputs/shtest-define/examples/param-subst.txt
++++ b/llvm/utils/lit/tests/Inputs/shtest-define/examples/param-subst.txt
+@@ -14,21 +14,21 @@
+ ; REDEFINE: %{cflags} = -triple x86_64-apple-darwin10.6.0 -fopenmp-simd
+ ; REDEFINE: %{fcflags} = -check-prefix=SIMD
+ ; RUN: %{check}
+-; CHECK:# | %clang_cc1 -verify -fopenmp -fopenmp-version=51 -triple x86_64-apple-darwin10.6.0 -fopenmp-simd -emit-llvm -o - {{.*}} | FileCheck -check-prefix=SIMD {{.*}}
++; CHECK: %clang_cc1 -verify -fopenmp -fopenmp-version=51 -triple x86_64-apple-darwin10.6.0 -fopenmp-simd -emit-llvm -o - {{.*}} | FileCheck -check-prefix=SIMD {{.*}}
+ 
+ ; REDEFINE: %{cflags} = -triple x86_64-unknown-linux-gnu -fopenmp-simd
+ ; REDEFINE: %{fcflags} = -check-prefix=SIMD
+ ; RUN: %{check}
+-; CHECK:# | %clang_cc1 -verify -fopenmp -fopenmp-version=51 -triple x86_64-unknown-linux-gnu -fopenmp-simd -emit-llvm -o - {{.*}} | FileCheck -check-prefix=SIMD {{.*}}
++; CHECK: %clang_cc1 -verify -fopenmp -fopenmp-version=51 -triple x86_64-unknown-linux-gnu -fopenmp-simd -emit-llvm -o - {{.*}} | FileCheck -check-prefix=SIMD {{.*}}
+ 
+ ; REDEFINE: %{cflags} = -triple x86_64-apple-darwin10.6.0
+ ; REDEFINE: %{fcflags} = -check-prefix=NO-SIMD
+ ; RUN: %{check}
+-; CHECK:# | %clang_cc1 -verify -fopenmp -fopenmp-version=51 -triple x86_64-apple-darwin10.6.0 -emit-llvm -o - {{.*}} | FileCheck -check-prefix=NO-SIMD {{.*}}
++; CHECK: %clang_cc1 -verify -fopenmp -fopenmp-version=51 -triple x86_64-apple-darwin10.6.0 -emit-llvm -o - {{.*}} | FileCheck -check-prefix=NO-SIMD {{.*}}
+ 
+ ; REDEFINE: %{cflags} = -triple x86_64-unknown-linux-gnu
+ ; REDEFINE: %{fcflags} = -check-prefix=NO-SIMD
+ ; RUN: %{check}
+-; CHECK:# | %clang_cc1 -verify -fopenmp -fopenmp-version=51 -triple x86_64-unknown-linux-gnu -emit-llvm -o - {{.*}} | FileCheck -check-prefix=NO-SIMD {{.*}}
++; CHECK: %clang_cc1 -verify -fopenmp -fopenmp-version=51 -triple x86_64-unknown-linux-gnu -emit-llvm -o - {{.*}} | FileCheck -check-prefix=NO-SIMD {{.*}}
+ 
+ ; CHECK: Passed: 1
+diff --git a/llvm/utils/lit/tests/Inputs/shtest-define/expansion-order.txt b/llvm/utils/lit/tests/Inputs/shtest-define/expansion-order.txt
+index 23c0a6d50753..3bf057151afb 100644
+--- a/llvm/utils/lit/tests/Inputs/shtest-define/expansion-order.txt
++++ b/llvm/utils/lit/tests/Inputs/shtest-define/expansion-order.txt
+@@ -7,7 +7,7 @@
+ #
+ # REDEFINE: %{global:greeting}=Hello
+ # RUN: %{global:echo}
+-# CHECK:# | GLOBAL: Hello World
++# CHECK: GLOBAL: Hello World
+ 
+ # We can redefine the test suite config's substitutions multiple times.  Again,
+ # the expansion order remains the same (%{global:echo} before %{global:greeting}
+@@ -17,7 +17,7 @@
+ # REDEFINE: %{global:greeting}=Goodbye %{global:what}
+ # REDEFINE: %{global:what}=Sleep
+ # RUN: %{global:echo}
+-# CHECK:# | GLOBAL: Goodbye Sleep Sleep
++# CHECK: GLOBAL: Goodbye Sleep Sleep
+ 
+ # A new local substitution is prepended to the substitution list so that it can
+ # depend on all substitutions that were defined previously, including those from
+@@ -26,7 +26,7 @@
+ # DEFINE: %{local:greeting}=Hey %{global:what}
+ # DEFINE: %{local:echo}=echo "LOCAL: %{local:greeting} %{global:what}"
+ # RUN: %{local:echo}
+-# CHECK:# | LOCAL: Hey Sleep Sleep
++# CHECK: LOCAL: Hey Sleep Sleep
+ 
+ # As for substitutions from the test suite config, redefining local
+ # substitutions should not change the expansion order.  Again, the expansion
+@@ -36,6 +36,6 @@
+ # REDEFINE: %{local:greeting}=So Long %{global:what}
+ # REDEFINE: %{global:what}=World
+ # RUN: %{local:echo}
+-# CHECK:# | LOCAL: So Long World World
++# CHECK: LOCAL: So Long World World
+ 
+ # CHECK: Passed: 1
+diff --git a/llvm/utils/lit/tests/Inputs/shtest-define/line-number-substitutions.txt b/llvm/utils/lit/tests/Inputs/shtest-define/line-number-substitutions.txt
+index 5a1d7f2e1987..65f90792ff7b 100644
+--- a/llvm/utils/lit/tests/Inputs/shtest-define/line-number-substitutions.txt
++++ b/llvm/utils/lit/tests/Inputs/shtest-define/line-number-substitutions.txt
+@@ -1,19 +1,19 @@
+ # Does it work as expected directly in RUN lines?
+ # RUN: echo %(line), %(line-1), %(line+2)
+-# CHECK:# | [[#@LINE-1]], [[#@LINE-2]], [[#@LINE+1]]
++# CHECK: [[#@LINE-1]], [[#@LINE-2]], [[#@LINE+1]]
+ 
+ # %(line) substitutions refer to the original DEFINE/REDEFINE line not the RUN
+ # line they eventually appear within.
+ #
+ # DEFINE: %{lines} = %(line)
+ # RUN: echo '%{lines}'
+-# CHECK:# | [[#@LINE-2]]
++# CHECK: [[#@LINE-2]]
+ #
+ # REDEFINE: %{lines} = %(line),                                                \
+ # REDEFINE:            %(line),                                                \
+ # REDEFINE:            %(line)
+ # RUN: echo '%{lines}'
+-# CHECK:# | [[#@LINE-4]], [[#@LINE-3]], [[#@LINE-2]]
++# CHECK: [[#@LINE-4]], [[#@LINE-3]], [[#@LINE-2]]
+ 
+ # %(line+N) and %{line-N) should work too.
+ #
+@@ -21,12 +21,12 @@
+ # DEFINE:                %(line),                                              \
+ # DEFINE:                %(line-1)
+ # RUN: echo '%{lines-rel}'
+-# CHECK:# | [[#@LINE-3]], [[#@LINE-3]], [[#@LINE-3]]
++# CHECK: [[#@LINE-3]], [[#@LINE-3]], [[#@LINE-3]]
+ #
+ # REDEFINE: %{lines-rel} = %(line+5),                                          \
+ # REDEFINE:                %(line+0),                                          \
+ # REDEFINE:                %(line-10)
+ # RUN: echo '%{lines-rel}'
+-# CHECK:# | [[#@LINE+1]], [[#@LINE-3]], [[#@LINE-12]]
++# CHECK: [[#@LINE+1]], [[#@LINE-3]], [[#@LINE-12]]
+ 
+ # CHECK: Passed: 1
+diff --git a/llvm/utils/lit/tests/Inputs/shtest-define/name-chars.txt b/llvm/utils/lit/tests/Inputs/shtest-define/name-chars.txt
+index d27fda2e2fe6..18a27cdd72fa 100644
+--- a/llvm/utils/lit/tests/Inputs/shtest-define/name-chars.txt
++++ b/llvm/utils/lit/tests/Inputs/shtest-define/name-chars.txt
+@@ -1,25 +1,25 @@
+ # DEFINE: %{abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789} = ok
+ # RUN: echo '%{abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789}'
+-# CHECK:# | ok
++# CHECK: ok
+ 
+ # DEFINE: %{FooBar} = ok at %(line)
+ # RUN: echo '%{FooBar}'
+-# CHECK:# | ok at [[#@LINE - 2]]
++# CHECK: ok at [[#@LINE - 2]]
+ 
+ # DEFINE: %{fooBar} = ok at %(line)
+ # RUN: echo '%{fooBar}'
+-# CHECK:# | ok at [[#@LINE - 2]]
++# CHECK: ok at [[#@LINE - 2]]
+ 
+ # DEFINE: %{foo-bar-} = ok at %(line)
+ # RUN: echo '%{foo-bar-}'
+-# CHECK:# | ok at [[#@LINE - 2]]
++# CHECK: ok at [[#@LINE - 2]]
+ 
+ # DEFINE: %{foo:bar:} = ok at %(line)
+ # RUN: echo '%{foo:bar:}'
+-# CHECK:# | ok at [[#@LINE - 2]]
++# CHECK: ok at [[#@LINE - 2]]
+ 
+ # DEFINE: %{_foo_bar_} = ok at %(line)
+ # RUN: echo '%{_foo_bar_}'
+-# CHECK:# | ok at [[#@LINE - 2]]
++# CHECK: ok at [[#@LINE - 2]]
+ 
+ # CHECK: Passed: 1
+diff --git a/llvm/utils/lit/tests/Inputs/shtest-define/recursiveExpansionLimit.txt b/llvm/utils/lit/tests/Inputs/shtest-define/recursiveExpansionLimit.txt
+index e504b822ace8..eb5f0b918fd1 100644
+--- a/llvm/utils/lit/tests/Inputs/shtest-define/recursiveExpansionLimit.txt
++++ b/llvm/utils/lit/tests/Inputs/shtest-define/recursiveExpansionLimit.txt
+@@ -6,7 +6,7 @@
+ 
+ # RUN: echo '%{outer}'
+ 
+-# CHECK-NON-RECUR:# | %{inner}
+-# CHECK-RECUR:# | expanded
++# CHECK-NON-RECUR:%{inner}
++# CHECK-RECUR:expanded
+ 
+ # CHECK: Passed: 1
+diff --git a/llvm/utils/lit/tests/Inputs/shtest-define/value-equals.txt b/llvm/utils/lit/tests/Inputs/shtest-define/value-equals.txt
+index c1bdfef30b1a..9d2e7197fb3a 100644
+--- a/llvm/utils/lit/tests/Inputs/shtest-define/value-equals.txt
++++ b/llvm/utils/lit/tests/Inputs/shtest-define/value-equals.txt
+@@ -2,21 +2,21 @@
+ 
+ # DEFINE: %{equals} = FileCheck -check-prefixes=FOO,BAR
+ # RUN: echo '%{equals}'
+-# CHECK:# | FileCheck -check-prefixes=FOO,BAR
++# CHECK: FileCheck -check-prefixes=FOO,BAR
+ #
+ # REDEFINE: %{equals} == == =
+ # RUN: echo '%{equals}'
+-# CHECK:# | = == =
++# CHECK: = == =
+ 
+ # DEFINE: %{continue-equals} = FileCheck -strict-whitespace -match-full-lines \
+ # DEFINE:                      -check-prefixes=FOO,BAR
+ # RUN: echo '%{continue-equals}'
+-# CHECK:# | FileCheck -strict-whitespace -match-full-lines -check-prefixes=FOO,BAR
++# CHECK: FileCheck -strict-whitespace -match-full-lines -check-prefixes=FOO,BAR
+ #
+ # REDEFINE: %{continue-equals} = FileCheck -input-file=test.txt                \
+ # REDEFINE:                      -implicit-check-not=foobar                    \
+ # REDEFINE:                      -check-prefixes=FOO,BAR
+ # RUN: echo '%{continue-equals}'
+-# CHECK:# | FileCheck -input-file=test.txt -implicit-check-not=foobar -check-prefixes=FOO,BAR
++# CHECK: FileCheck -input-file=test.txt -implicit-check-not=foobar -check-prefixes=FOO,BAR
+ 
+ # CHECK: Passed: 1
+diff --git a/llvm/utils/lit/tests/Inputs/shtest-define/value-escaped.txt b/llvm/utils/lit/tests/Inputs/shtest-define/value-escaped.txt
+index 9143796edd32..58d5c1a34ce8 100644
+--- a/llvm/utils/lit/tests/Inputs/shtest-define/value-escaped.txt
++++ b/llvm/utils/lit/tests/Inputs/shtest-define/value-escaped.txt
+@@ -6,11 +6,11 @@
+ 
+ # DEFINE: %{escape} = \g<0>\n
+ # RUN: echo '%{escape}'
+-# CHECK:# | {{\\?}}\g<0>{{\\?}}\n
++# CHECK: {{\\?}}\g<0>{{\\?}}\n
+ 
+ # REDEFINE: %{escape} = \n                                                     \
+ # REDEFINE:             \g<param>
+ # RUN: echo '%{escape}'
+-# CHECK:# | {{\\?}}\n {{\\?}}\g<param>
++# CHECK: {{\\?}}\n {{\\?}}\g<param>
+ 
+ # CHECK: Passed: 1
+diff --git a/llvm/utils/lit/tests/Inputs/shtest-define/ws-and-continuations.txt b/llvm/utils/lit/tests/Inputs/shtest-define/ws-and-continuations.txt
+index 3e4db1b15d92..1259e511ba70 100644
+--- a/llvm/utils/lit/tests/Inputs/shtest-define/ws-and-continuations.txt
++++ b/llvm/utils/lit/tests/Inputs/shtest-define/ws-and-continuations.txt
+@@ -3,33 +3,33 @@
+ #
+ # DEFINE: %{empty}=
+ # RUN: echo "'%{empty}'"
+-# CHECK:# | ''
++# CHECK:''
+ #
+ # REDEFINE: %{empty}=
+ # RUN: echo "'%{empty}'"
+-# CHECK:# | ''
++# CHECK:''
+ 
+ # A value consisting only of whitespace is trimmed to the empty string.
+ #
+ #               v~~ intentional whitespace
+ # DEFINE: %{ws}=   
+ # RUN: echo "'%{ws}'"
+-# CHECK:# | ''
++# CHECK:''
+ #
+ #                 v intentional whitespace
+ # REDEFINE: %{ws}= 
+ # RUN: echo "'%{ws}'"
+-# CHECK:# | ''
++# CHECK:''
+ 
+ # Whitespace is not required around the name or value.
+ #
+ # DEFINE:%{no-whitespace}=abc
+ # RUN: echo "'%{no-whitespace}'"
+-# CHECK:# | 'abc'
++# CHECK:'abc'
+ #
+ # REDEFINE:%{no-whitespace}=HelloWorld
+ # RUN: echo "'%{no-whitespace}'"
+-# CHECK:# | 'HelloWorld'
++# CHECK:'HelloWorld'
+ 
+ # Whitespace is not required between substitutions in a value.
+ #
+@@ -37,11 +37,11 @@
+ # DEFINE: %{adjacent1} = bar
+ # DEFINE: %{has-adjacent-substs} = %{adjacent0}%{adjacent1}
+ # RUN: echo "'%{has-adjacent-substs}'"
+-# CHECK:# | 'foobar'
++# CHECK:'foobar'
+ #
+ # REDEFINE: %{has-adjacent-substs} = %{adjacent0}%{adjacent1}%{adjacent0}
+ # RUN: echo "'%{has-adjacent-substs}'"
+-# CHECK:# | 'foobarfoo'
++# CHECK:'foobarfoo'
+ 
+ # Exact whitespace is preserved within the value, but whitespace enclosing the
+ # name or value is discarded.  ('%{' and '}' are part of the name, and
+@@ -50,11 +50,11 @@
+ #                                       v~~ intentional whitespace
+ # DEFINE:   %{whitespace}  =  abc    def   
+ # RUN: echo "'%{whitespace}'"
+-# CHECK:# | 'abc    def'
++# CHECK:'abc    def'
+ #                                      v intentional whitespace
+ # REDEFINE: %{whitespace} = Hello World 
+ # RUN: echo "'%{whitespace}'"
+-# CHECK:# | 'Hello World'
++# CHECK:'Hello World'
+ 
+ # Line continuations in the value are permitted and collapse whitespace.
+ #
+@@ -66,12 +66,12 @@
+ # DEFINE:  pqr 
+ #             ^ intentional whitespace
+ # RUN: echo "'%{continue}'"
+-# CHECK:# | 'abc def ghi jkl mno pqr'
++# CHECK:'abc def ghi jkl mno pqr'
+ #
+ # REDEFINE: %{continue} =  abc  \
+ # REDEFINE: def
+ # RUN: echo "'%{continue}'"
+-# CHECK:# | 'abc def'
++# CHECK:'abc def'
+ 
+ # Whitespace at the end of the line after a '\' is ignored, and it's treated as
+ # a line continuation.  Otherwise, the behavior would be hard to understand
+@@ -83,7 +83,7 @@
+ #                                   ^ intentional whitespace
+ # DEFINE: baz
+ # RUN: echo "'%{ws-after-continue}'"
+-# CHECK:# | 'foo bar baz'
++# CHECK:'foo bar baz'
+ #
+ #                                     v intentional whitespace
+ # REDEFINE: %{ws-after-continue}=foo \ 
+@@ -91,7 +91,7 @@
+ #                                     ^~~~~~~~~~~~ intentional whitespace
+ # REDEFINE: baz
+ # RUN: echo "'%{ws-after-continue}'"
+-# CHECK:# | 'foo bar baz'
++# CHECK:'foo bar baz'
+ 
+ # A line continuation is recognized anywhere.  It should be used only where
+ # whitespace is permitted because it reduces to a single space.
+@@ -107,7 +107,7 @@
+ # DEFINE:\
+ # DEFINE:a
+ # RUN: echo "'%{blank-lines}'"
+-# CHECK:# | 'a'
++# CHECK:'a'
+ #
+ # REDEFINE:                  \
+ # REDEFINE: %{blank-lines}   \
+@@ -120,7 +120,7 @@
+ # REDEFINE:                  \
+ # REDEFINE:      c
+ # RUN: echo "'%{blank-lines}'"
+-# CHECK:# | 'a b c'
++# CHECK:'a b c'
+ 
+ # The fourth DEFINE line is deceptive because it looks like a new substitution,
+ # but it's actually a continuation of the previous value.
+@@ -130,6 +130,6 @@
+ # DEFINE: %{deceptive-continue}=echo \
+ # DEFINE: %{name}=%{value}
+ # RUN: %{deceptive-continue}
+-# CHECK:# | x=3
++# CHECK:x=3
+ 
+ # CHECK:{{ *}}Passed: 1
+diff --git a/llvm/utils/lit/tests/Inputs/shtest-if-else/test.txt b/llvm/utils/lit/tests/Inputs/shtest-if-else/test.txt
+index b5fc1b49fcc5..b0a7cfd97941 100644
+--- a/llvm/utils/lit/tests/Inputs/shtest-if-else/test.txt
++++ b/llvm/utils/lit/tests/Inputs/shtest-if-else/test.txt
+@@ -1,34 +1,46 @@
+-# CHECK: -- Testing:{{.*}}
+-# CHECK-NEXT: PASS: shtest-if-else :: test.txt (1 of 1)
+-#      CHECK: Command Output (stdout):
+-# CHECK-NEXT: --
++#       CHECK: -- Testing:{{.*}}
++#  CHECK-NEXT: PASS: shtest-if-else :: test.txt (1 of 1)
++#  CHECK-NEXT: Exit Code: 0
++# CHECK-EMPTY:
++#  CHECK-NEXT: Command Output (stdout):
++#  CHECK-NEXT: --
+ 
+ # RUN: %if feature %{ echo "test-1" %}
+-#      CHECK: # {{RUN}}: at line [[#@LINE-1]]
+-# CHECK-NEXT: echo "test-1"
++#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-1]]"
++#       CHECK: # command output:
++#  CHECK-NEXT: test-1
++# CHECK-EMPTY:
+ 
+ # If %else is not present it is treated like %else %{%}. Empty commands
+ # are ignored.
+ #
+ # RUN: %if nofeature %{ echo "fail" %}
+-#     CHECK: # {{RUN}}: at line [[#@LINE-1]] has no command after substitutions
+-# CHECK-NOT: fail
++#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-1]]"
++#   CHECK-NOT: fail
+ 
+ # RUN: %if nofeature %{ echo "fail" %} %else %{ echo "test-2" %}
+-#      CHECK: # {{RUN}}: at line [[#@LINE-1]]
+-# CHECK-NEXT: echo "test-2"
++#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-1]]"
++#       CHECK: # command output:
++#  CHECK-NEXT: test-2
++# CHECK-EMPTY:
+ 
+ # Spaces inside curly braces are not ignored
+ #
+ # RUN: echo test-%if feature %{ 3 %} %else %{ fail %}-test
+ # RUN: echo test-%if feature %{ 4 4 %} %else %{ fail %}-test
+ # RUN: echo test-%if nofeature %{ fail %} %else %{ 5 5 %}-test
+-#      CHECK: # {{RUN}}: at line [[#@LINE-3]]
+-# CHECK-NEXT: echo test- 3 -test
+-#      CHECK: # {{RUN}}: at line [[#@LINE-4]]
+-# CHECK-NEXT: echo test- 4 4 -test
+-#      CHECK: # {{RUN}}: at line [[#@LINE-5]]
+-# CHECK-NEXT: echo test- 5 5 -test
++#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-3]]"
++#       CHECK: # command output:
++#  CHECK-NEXT: test- 3 -test
++# CHECK-EMPTY:
++#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-6]]"
++#       CHECK: # command output:
++#  CHECK-NEXT: test- 4 4 -test
++# CHECK-EMPTY:
++#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-9]]"
++#       CHECK: # command output:
++#  CHECK-NEXT: test- 5 5 -test
++# CHECK-EMPTY:
+ 
+ # Escape line breaks for multi-line expressions
+ #
+@@ -36,32 +48,42 @@
+ # RUN:   %{ echo     \
+ # RUN:     "test-5" \
+ # RUN:   %}
+-#      CHECK: # {{RUN}}: at line [[#@LINE-4]]
+-# CHECK-NEXT: echo "test-5"
++#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-4]]"
++#       CHECK: # command output:
++#  CHECK-NEXT: test-5
++# CHECK-EMPTY:
+ 
+ # RUN: %if nofeature       \
+ # RUN:   %{ echo "fail" %}   \
+ # RUN: %else               \
+ # RUN:   %{ echo "test-6" %}
+-#      CHECK: # {{RUN}}: at line [[#@LINE-4]]
+-# CHECK-NEXT: echo "test-6"
++#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-4]]"
++#       CHECK: # command output:
++#  CHECK-NEXT: test-6
++# CHECK-EMPTY:
+ 
+ # RUN: echo "test%if feature %{%} %else %{%}-7"
+-#      CHECK: # {{RUN}}: at line [[#@LINE-1]]
+-# CHECK-NEXT: echo "test-7"
++#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-1]]"
++#       CHECK: # command output:
++#  CHECK-NEXT: test-7
++# CHECK-EMPTY:
+ 
+ # Escape %if. Without %if..%else context '%{' and '%}' are treated
+ # literally.
+ #
+ # RUN: echo %%if feature %{ echo "test-8" %}
+-#      CHECK: # {{RUN}}: at line [[#@LINE-1]]
+-# CHECK-NEXT: echo %if feature %{ echo "test-8" %}
++#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-1]]"
++#       CHECK: # command output:
++#  CHECK-NEXT: %if feature %{ echo test-8 %}
++# CHECK-EMPTY:
+ 
+ # Nested expressions are supported:
+ #
+ # RUN: echo %if feature %{ %if feature %{ %if nofeature %{"fail"%} %else %{"test-9"%} %} %}
+-#      CHECK: # {{RUN}}: at line [[#@LINE-1]]
+-# CHECK-NEXT: echo "test-9"
++#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-1]]"
++#       CHECK: # command output:
++#  CHECK-NEXT: test-9
++# CHECK-EMPTY:
+ 
+ # Binary expression evaluation and regex match can be used as
+ # conditions.
+@@ -69,12 +91,18 @@
+ # RUN: echo %if feature && !nofeature %{ "test-10" %}
+ # RUN: echo %if feature && nofeature %{ "fail" %} %else %{ "test-11" %}
+ # RUN: echo %if {{fea.+}} %{ "test-12" %} %else %{ "fail" %}
+-#      CHECK: # {{RUN}}: at line [[#@LINE-3]]
+-# CHECK-NEXT: echo "test-10"
+-#      CHECK: # {{RUN}}: at line [[#@LINE-4]]
+-# CHECK-NEXT: echo "test-11"
+-#      CHECK: # {{RUN}}: at line [[#@LINE-5]]
+-# CHECK-NEXT: echo "test-12"
++#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-3]]"
++#       CHECK: # command output:
++#  CHECK-NEXT: test-10
++# CHECK-EMPTY:
++#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-6]]"
++#       CHECK: # command output:
++#  CHECK-NEXT: test-11
++# CHECK-EMPTY:
++#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-9]]"
++#       CHECK: # command output:
++#  CHECK-NEXT: test-12
++# CHECK-EMPTY:
+ 
+ # Spaces between %if and %else are ignored. If there is no %else -
+ # space after %if %{...%} is not ignored.
+@@ -82,27 +110,39 @@
+ # RUN: echo XX %if feature %{YY%} ZZ
+ # RUN: echo AA %if feature %{BB%} %else %{CC%} DD
+ # RUN: echo AA %if nofeature %{BB%} %else %{CC%} DD
+-#      CHECK: # {{RUN}}: at line [[#@LINE-3]]
+-# CHECK-NEXT: echo XX YY ZZ
+-#      CHECK: # {{RUN}}: at line [[#@LINE-4]]
+-# CHECK-NEXT: echo AA BB DD
+-#      CHECK: # {{RUN}}: at line [[#@LINE-5]]
+-# CHECK-NEXT: echo AA CC DD
++#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-3]]"
++#       CHECK: # command output:
++#  CHECK-NEXT: XX YY ZZ
++# CHECK-EMPTY:
++#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-6]]"
++#       CHECK: # command output:
++#  CHECK-NEXT: AA BB DD
++# CHECK-EMPTY:
++#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-9]]"
++#       CHECK: # command output:
++#  CHECK-NEXT: AA CC DD
++# CHECK-EMPTY:
+ 
+ # '{' and '}' can be used without escaping
+ #
+ # RUN: %if feature %{echo {}%}
+-#      CHECK: # {{RUN}}: at line [[#@LINE-1]]
+-# CHECK-NEXT: echo {}
++#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-1]]"
++#       CHECK: # command output:
++#  CHECK-NEXT: {}
++# CHECK-EMPTY:
+ 
+ # Spaces are not required
+ #
+ # RUN: echo %if feature%{"ok"%}%else%{"fail"%}
+-#      CHECK: # {{RUN}}: at line [[#@LINE-1]]
+-# CHECK-NEXT: echo "ok"
++#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-1]]"
++#       CHECK: # command output:
++#  CHECK-NEXT: ok
++# CHECK-EMPTY:
+ 
+ # Substitutions with braces are handled correctly
+ #
+ # RUN: echo %{sub} %if feature%{test-%{sub}%}%else%{"fail"%}
+-#      CHECK: # {{RUN}}: at line [[#@LINE-1]]
+-# CHECK-NEXT: echo ok test-ok
++#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-1]]"
++#       CHECK: # command output:
++#  CHECK-NEXT: ok test-ok
++# CHECK-EMPTY:
+diff --git a/llvm/utils/lit/tests/Inputs/shtest-output-printing/basic.txt b/llvm/utils/lit/tests/Inputs/shtest-output-printing/basic.txt
+index 5ff0c891450b..fb3a3e000789 100644
+--- a/llvm/utils/lit/tests/Inputs/shtest-output-printing/basic.txt
++++ b/llvm/utils/lit/tests/Inputs/shtest-output-printing/basic.txt
+@@ -1,4 +1,3 @@
+ # RUN: true
+ # RUN: echo hi
+-# RUN: not not wc missing-file &> %t.out || true
+-# RUN: not %{python} %S/write-a-lot.py &> %t.out
++# RUN: not not wc missing-file &> %t.out
+diff --git a/llvm/utils/lit/tests/Inputs/shtest-output-printing/lit.cfg b/llvm/utils/lit/tests/Inputs/shtest-output-printing/lit.cfg
+index c53fd157b6ae..b872854d21e6 100644
+--- a/llvm/utils/lit/tests/Inputs/shtest-output-printing/lit.cfg
++++ b/llvm/utils/lit/tests/Inputs/shtest-output-printing/lit.cfg
+@@ -2,5 +2,4 @@ import lit.formats
+ 
+ config.name = "shtest-output-printing"
+ config.suffixes = [".txt"]
+-config.substitutions.append(("%{python}", sys.executable))
+ config.test_format = lit.formats.ShTest(execute_external=False)
+diff --git a/llvm/utils/lit/tests/Inputs/shtest-output-printing/write-a-lot.py b/llvm/utils/lit/tests/Inputs/shtest-output-printing/write-a-lot.py
+deleted file mode 100644
+index ffcba7d517cd..000000000000
+--- a/llvm/utils/lit/tests/Inputs/shtest-output-printing/write-a-lot.py
++++ /dev/null
+@@ -1,6 +0,0 @@
+-#!/usr/bin/env python
+-
+-import sys
+-
+-sys.stdout.write("All work and no play makes Jack a dull boy.\n" * 1000);
+-sys.stdout.flush()
+diff --git a/llvm/utils/lit/tests/Inputs/shtest-shell/echo-at-redirect-stderr.txt b/llvm/utils/lit/tests/Inputs/shtest-shell/echo-at-redirect-stderr.txt
+deleted file mode 100644
+index 15a87aee46a3..000000000000
+--- a/llvm/utils/lit/tests/Inputs/shtest-shell/echo-at-redirect-stderr.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-RUN: @echo 2> %t
+diff --git a/llvm/utils/lit/tests/Inputs/shtest-shell/echo-at-redirect-stdin.txt b/llvm/utils/lit/tests/Inputs/shtest-shell/echo-at-redirect-stdin.txt
+deleted file mode 100644
+index 27fd0c4209fd..000000000000
+--- a/llvm/utils/lit/tests/Inputs/shtest-shell/echo-at-redirect-stdin.txt
++++ /dev/null
+@@ -1,2 +0,0 @@
+-RUN: touch %t
+-RUN: @echo < %t
+diff --git a/llvm/utils/lit/tests/Inputs/shtest-shell/echo-redirect-stderr.txt b/llvm/utils/lit/tests/Inputs/shtest-shell/echo-redirect-stderr.txt
+deleted file mode 100644
+index 9611918f7e12..000000000000
+--- a/llvm/utils/lit/tests/Inputs/shtest-shell/echo-redirect-stderr.txt
++++ /dev/null
+@@ -1 +0,0 @@
+-RUN: echo 2> %t
+diff --git a/llvm/utils/lit/tests/Inputs/shtest-shell/echo-redirect-stdin.txt b/llvm/utils/lit/tests/Inputs/shtest-shell/echo-redirect-stdin.txt
+deleted file mode 100644
+index bc771be6b22a..000000000000
+--- a/llvm/utils/lit/tests/Inputs/shtest-shell/echo-redirect-stdin.txt
++++ /dev/null
+@@ -1,2 +0,0 @@
+-RUN: touch %t
+-RUN: echo < %t
+diff --git a/llvm/utils/lit/tests/allow-retries.py b/llvm/utils/lit/tests/allow-retries.py
+index ef548534f082..b8abe0ba4fee 100644
+--- a/llvm/utils/lit/tests/allow-retries.py
++++ b/llvm/utils/lit/tests/allow-retries.py
+@@ -15,28 +15,9 @@
+ 
+ # This test does not succeed within the allowed retry limit
+ #
+-# Check that the execution trace isn't corrupt due to reprocessing the script
+-# multiple times (e.g., '%dbg(...)' processing used to accumulate across
+-# retries).
+-#
+-# RUN: not %{lit} %{inputs}/allow-retries/does-not-succeed-within-limit.py -v |\
+-# RUN:   FileCheck --check-prefix=CHECK-TEST3 -match-full-lines %s
+-#
+-#       CHECK-TEST3: FAIL: allow-retries :: does-not-succeed-within-limit.py (1 of 1)
+-#  CHECK-TEST3-NEXT: {{\**}} TEST 'allow-retries :: does-not-succeed-within-limit.py' FAILED {{\**}}
+-#  CHECK-TEST3-NEXT: Exit Code: 1
+-# CHECK-TEST3-EMPTY:
+-#  CHECK-TEST3-NEXT: Command Output (stdout):
+-#  CHECK-TEST3-NEXT: --
+-#  CHECK-TEST3-NEXT: # {{RUN}}: at line 3
+-#  CHECK-TEST3-NEXT: false
+-#  CHECK-TEST3-NEXT: # executed command: false
+-#  CHECK-TEST3-NEXT: # note: command had no output on stdout or stderr
+-#  CHECK-TEST3-NEXT: # error: command failed with exit status: 1
+-# CHECK-TEST3-EMPTY:
+-#  CHECK-TEST3-NEXT: --
+-#       CHECK-TEST3: Failed Tests (1):
+-#       CHECK-TEST3: allow-retries :: does-not-succeed-within-limit.py
++# RUN: not %{lit} %{inputs}/allow-retries/does-not-succeed-within-limit.py | FileCheck --check-prefix=CHECK-TEST3 %s
++# CHECK-TEST3: Failed Tests (1):
++# CHECK-TEST3: allow-retries :: does-not-succeed-within-limit.py
+ 
+ # This test should be UNRESOLVED since it has more than one ALLOW_RETRIES
+ # lines, and that is not allowed.
+diff --git a/llvm/utils/lit/tests/lit-opts.py b/llvm/utils/lit/tests/lit-opts.py
+index a533a59d9d12..d292ca74f3b9 100644
+--- a/llvm/utils/lit/tests/lit-opts.py
++++ b/llvm/utils/lit/tests/lit-opts.py
+@@ -8,7 +8,7 @@
+ #
+ # RUN: env LIT_OPTS=-a \
+ # RUN: %{lit} -s %{inputs}/lit-opts \
+-# RUN: | FileCheck -check-prefix=SHOW-ALL -DVAR=default %s
++# RUN: | FileCheck -check-prefix=SHOW-ALL -DVAR= %s
+ 
+ # Check that LIT_OPTS understands multiple options with arbitrary spacing.
+ #
+@@ -28,6 +28,6 @@
+ 
+ # SHOW-ALL:     Testing: 1 tests
+ # SHOW-ALL:     PASS: lit-opts :: test.txt (1 of 1)
+-# SHOW-ALL:     echo [[VAR]]
++# SHOW-ALL:     {{^}}[[VAR]]
+ # SHOW-ALL-NOT: PASS
+ # SHOW-ALL:     Passed: 1
+diff --git a/llvm/utils/lit/tests/shtest-define.py b/llvm/utils/lit/tests/shtest-define.py
+index 8c9309804cce..1d0997bbbaf8 100644
+--- a/llvm/utils/lit/tests/shtest-define.py
++++ b/llvm/utils/lit/tests/shtest-define.py
+@@ -136,15 +136,15 @@
+ # RUN: %{lit} -va %{my-inputs}/shared-substs-*.txt 2>&1 |                      \
+ # RUN:   FileCheck -check-prefix=SHARED-SUBSTS -match-full-lines %s
+ #
+-# SHARED-SUBSTS:# | shared-substs-0.txt
+-# SHARED-SUBSTS:# | GLOBAL: World
+-# SHARED-SUBSTS:# | LOCAL0: LOCAL0:Hello LOCAL0:World
+-# SHARED-SUBSTS:# | LOCAL0: subst
++# SHARED-SUBSTS: shared-substs-0.txt
++# SHARED-SUBSTS: GLOBAL: World
++# SHARED-SUBSTS: LOCAL0: LOCAL0:Hello LOCAL0:World
++# SHARED-SUBSTS: LOCAL0: subst
+ #
+-# SHARED-SUBSTS:# | shared-substs-1.txt
+-# SHARED-SUBSTS:# | GLOBAL: World
+-# SHARED-SUBSTS:# | LOCAL1: LOCAL1:Hello LOCAL1:World
+-# SHARED-SUBSTS:# | LOCAL1: subst
++# SHARED-SUBSTS: shared-substs-1.txt
++# SHARED-SUBSTS: GLOBAL: World
++# SHARED-SUBSTS: LOCAL1: LOCAL1:Hello LOCAL1:World
++# SHARED-SUBSTS: LOCAL1: subst
+ #
+ # REDEFINE: %{test} = shared-substs-0.txt
+ # RUN: %{record-test}
+diff --git a/llvm/utils/lit/tests/shtest-env.py b/llvm/utils/lit/tests/shtest-env.py
+index a4775ac6688d..f2e8216f7f4a 100644
+--- a/llvm/utils/lit/tests/shtest-env.py
++++ b/llvm/utils/lit/tests/shtest-env.py
+@@ -10,115 +10,88 @@
+ # CHECK: -- Testing: 16 tests{{.*}}
+ 
+ # CHECK: FAIL: shtest-env :: env-args-last-is-assign.txt ({{[^)]*}})
+-# CHECK: env FOO=1
+-# CHECK: # executed command: env FOO=1
+-# CHECK: # | Error: 'env' requires a subcommand
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "env" "FOO=1"
++# CHECK: Error: 'env' requires a subcommand
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ # CHECK: FAIL: shtest-env :: env-args-last-is-u-arg.txt ({{[^)]*}})
+-# CHECK: env -u FOO
+-# CHECK: # executed command: env -u FOO
+-# CHECK: # | Error: 'env' requires a subcommand
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "env" "-u" "FOO"
++# CHECK: Error: 'env' requires a subcommand
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ # CHECK: FAIL: shtest-env :: env-args-last-is-u.txt ({{[^)]*}})
+-# CHECK: env -u
+-# CHECK: # executed command: env -u
+-# CHECK: # | Error: 'env' requires a subcommand
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "env" "-u"
++# CHECK: Error: 'env' requires a subcommand
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ # CHECK: FAIL: shtest-env :: env-args-nested-none.txt ({{[^)]*}})
+-# CHECK: env env env
+-# CHECK: # executed command: env env env
+-# CHECK: # | Error: 'env' requires a subcommand
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "env" "env" "env"
++# CHECK: Error: 'env' requires a subcommand
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ # CHECK: FAIL: shtest-env :: env-args-none.txt ({{[^)]*}})
+-# CHECK: env
+-# CHECK: # executed command: env
+-# CHECK: # | Error: 'env' requires a subcommand
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "env"
++# CHECK: Error: 'env' requires a subcommand
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ # CHECK: FAIL: shtest-env :: env-calls-cd.txt ({{[^)]*}})
+-# CHECK: env -u FOO BAR=3 cd foobar
+-# CHECK: # executed command: env -u FOO BAR=3 cd foobar
+-# CHECK: # | Error: 'env' cannot call 'cd'
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "env" "-u" "FOO" "BAR=3" "cd" "foobar"
++# CHECK: Error: 'env' cannot call 'cd'
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ # CHECK: FAIL: shtest-env :: env-calls-colon.txt ({{[^)]*}})
+-# CHECK: env -u FOO BAR=3 :
+-# CHECK: # executed command: env -u FOO BAR=3 :
+-# CHECK: # | Error: 'env' cannot call ':'
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "env" "-u" "FOO" "BAR=3" ":"
++# CHECK: Error: 'env' cannot call ':'
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ # CHECK: FAIL: shtest-env :: env-calls-echo.txt ({{[^)]*}})
+-# CHECK: env -u FOO BAR=3 echo hello world
+-# CHECK: # executed command: env -u FOO BAR=3 echo hello world
+-# CHECK: # | Error: 'env' cannot call 'echo'
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "env" "-u" "FOO" "BAR=3" "echo" "hello" "world"
++# CHECK: Error: 'env' cannot call 'echo'
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ # CHECK: PASS: shtest-env :: env-calls-env.txt ({{[^)]*}})
+-# CHECK: env env [[PYTHON:.+]] print_environment.py | {{.*}}
+-# CHECK: # executed command: env env [[PYTHON_BARE:.+]] print_environment.py
+-# CHECK: env FOO=2 env BAR=1 [[PYTHON]] print_environment.py | {{.*}}
+-# CHECK: # executed command: env FOO=2 env BAR=1 [[PYTHON_BARE]] print_environment.py
+-# CHECK: env -u FOO env -u BAR [[PYTHON]] print_environment.py | {{.*}}
+-# CHECK: # executed command: env -u FOO env -u BAR [[PYTHON_BARE]] print_environment.py
+-# CHECK: env -u FOO BAR=1 env -u BAR FOO=2 [[PYTHON]] print_environment.py | {{.*}}
+-# CHECK: # executed command: env -u FOO BAR=1 env -u BAR FOO=2 [[PYTHON_BARE]] print_environment.py
+-# CHECK: env -u FOO BAR=1 env -u BAR FOO=2 env BAZ=3 [[PYTHON]] print_environment.py | {{.*}}
+-# CHECK: # executed command: env -u FOO BAR=1 env -u BAR FOO=2 env BAZ=3 [[PYTHON_BARE]] print_environment.py
+-# CHECK-NOT: {{^[^#]}}
+-# CHECK: --
++# CHECK: $ "env" "env" "{{[^"]*}}" "print_environment.py"
++# CHECK: $ "env" "FOO=2" "env" "BAR=1" "{{[^"]*}}" "print_environment.py"
++# CHECK: $ "env" "-u" "FOO" "env" "-u" "BAR" "{{[^"]*}}" "print_environment.py"
++# CHECK: $ "env" "-u" "FOO" "BAR=1" "env" "-u" "BAR" "FOO=2" "{{[^"]*}}" "print_environment.py"
++# CHECK: $ "env" "-u" "FOO" "BAR=1" "env" "-u" "BAR" "FOO=2" "env" "BAZ=3" "{{[^"]*}}" "print_environment.py"
++# CHECK-NOT: ${{.*}}print_environment.py
+ 
+ # CHECK: FAIL: shtest-env :: env-calls-export.txt ({{[^)]*}})
+-# CHECK: env -u FOO BAR=3 export BAZ=3
+-# CHECK: # executed command: env -u FOO BAR=3 export BAZ=3
+-# CHECK: # | Error: 'env' cannot call 'export'
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "env" "-u" "FOO" "BAR=3" "export" "BAZ=3"
++# CHECK: Error: 'env' cannot call 'export'
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ # CHECK: FAIL: shtest-env :: env-calls-mkdir.txt ({{[^)]*}})
+-# CHECK: env -u FOO BAR=3 mkdir foobar
+-# CHECK: # executed command: env -u FOO BAR=3 mkdir foobar
+-# CHECK: # | Error: 'env' cannot call 'mkdir'
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "env" "-u" "FOO" "BAR=3" "mkdir" "foobar"
++# CHECK: Error: 'env' cannot call 'mkdir'
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ # CHECK: FAIL: shtest-env :: env-calls-not-builtin.txt ({{[^)]*}})
+-# CHECK: env -u FOO BAR=3 not rm {{.+}}.no-such-file
+-# CHECK: # executed command: env -u FOO BAR=3 not rm {{.+}}.no-such-file
+-# CHECK: # | Error: 'env' cannot call 'rm'
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "env" "-u" "FOO" "BAR=3" "not" "rm" "{{.*}}.no-such-file"
++# CHECK: Error: 'env' cannot call 'rm'
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ # CHECK: FAIL: shtest-env :: env-calls-rm.txt ({{[^)]*}})
+-# CHECK: env -u FOO BAR=3 rm foobar
+-# CHECK: # executed command: env -u FOO BAR=3 rm foobar
+-# CHECK: # | Error: 'env' cannot call 'rm'
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "env" "-u" "FOO" "BAR=3" "rm" "foobar"
++# CHECK: Error: 'env' cannot call 'rm'
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ # CHECK: PASS: shtest-env :: env-u.txt ({{[^)]*}})
+-# CHECK: [[PYTHON]] print_environment.py | {{.*}}
+-# CHECK: env -u FOO [[PYTHON]] print_environment.py | {{.*}}
+-# CHECK: # executed command: env -u FOO [[PYTHON_BARE]] print_environment.py
+-# CHECK: env -u FOO -u BAR [[PYTHON]] print_environment.py | {{.*}}
+-# CHECK: # executed command: env -u FOO -u BAR [[PYTHON_BARE]] print_environment.py
+-# CHECK-NOT: {{^[^#]}}
+-# CHECK: --
++# CHECK: $ "{{[^"]*}}" "print_environment.py"
++# CHECK: $ "env" "-u" "FOO" "{{[^"]*}}" "print_environment.py"
++# CHECK: $ "env" "-u" "FOO" "-u" "BAR" "{{[^"]*}}" "print_environment.py"
++# CHECK-NOT: ${{.*}}print_environment.py
+ 
+ # CHECK: PASS: shtest-env :: env.txt ({{[^)]*}})
+-# CHECK: env A_FOO=999 [[PYTHON]] print_environment.py | {{.*}}
+-# CHECK: # executed command: env A_FOO=999 [[PYTHON_BARE]] print_environment.py
+-# CHECK: env A_FOO=1 B_BAR=2 C_OOF=3 [[PYTHON]] print_environment.py | {{.*}}
+-# CHECK: # executed command: env A_FOO=1 B_BAR=2 C_OOF=3 [[PYTHON_BARE]] print_environment.py
+-# CHECK-NOT: {{^[^#]}}
+-# CHECK: --
++# CHECK: $ "env" "A_FOO=999" "{{[^"]*}}" "print_environment.py"
++# CHECK: $ "env" "A_FOO=1" "B_BAR=2" "C_OOF=3" "{{[^"]*}}" "print_environment.py"
++# CHECK-NOT: ${{.*}}print_environment.py
+ 
+ # CHECK: PASS: shtest-env :: mixed.txt ({{[^)]*}})
+-# CHECK: env A_FOO=999 -u FOO [[PYTHON]] print_environment.py | {{.*}}
+-# CHECK: # executed command: env A_FOO=999 -u FOO [[PYTHON_BARE]] print_environment.py
+-# CHECK: env A_FOO=1 -u FOO B_BAR=2 -u BAR C_OOF=3 [[PYTHON]] print_environment.py | {{.*}}
+-# CHECK: # executed command: env A_FOO=1 -u FOO B_BAR=2 -u BAR C_OOF=3 [[PYTHON_BARE]] print_environment.py
+-# CHECK-NOT: {{^[^#]}}
+-# CHECK: --
++# CHECK: $ "env" "A_FOO=999" "-u" "FOO" "{{[^"]*}}" "print_environment.py"
++# CHECK: $ "env" "A_FOO=1" "-u" "FOO" "B_BAR=2" "-u" "BAR" "C_OOF=3" "{{[^"]*}}" "print_environment.py"
++# CHECK-NOT: ${{.*}}print_environment.py
+ 
+ # CHECK: Passed:  4
+ # CHECK: Failed: 12
+diff --git a/llvm/utils/lit/tests/shtest-format.py b/llvm/utils/lit/tests/shtest-format.py
+index 4a3d65b7bce4..621776ab7bc2 100644
+--- a/llvm/utils/lit/tests/shtest-format.py
++++ b/llvm/utils/lit/tests/shtest-format.py
+@@ -43,21 +43,13 @@
+ # CHECK-EMPTY:
+ #  CHECK-NEXT: Command Output (stdout):
+ #  CHECK-NEXT: --
+-#  CHECK-NEXT: # RUN: at line 1
+-#  CHECK-NEXT: printf "line 1: failed test output on stdout\nline 2: failed test output on stdout"
+-#  CHECK-NEXT: executed command: printf 'line 1: failed test output on stdout\nline 2: failed test output on stdout'
+-#  CHECK-NEXT: # .---command stdout------------
+-#  CHECK-NEXT: # | line 1: failed test output on stdout
+-#  CHECK-NEXT: # | line 2: failed test output on stdout
+-#  CHECK-NEXT: # `-----------------------------
+-#  CHECK-NEXT: # RUN: at line 2
+-#  CHECK-NEXT: false
+-#  CHECK-NEXT: # executed command: false
+-#  CHECK-NEXT: # note: command had no output on stdout or stderr
+-#  CHECK-NEXT: # error: command failed with exit status: 1
+-# CHECK-EMPTY:
+-#  CHECK-NEXT: --
+-
++#  CHECK-NEXT: $ ":" "RUN: at line 1"
++#  CHECK-NEXT: $ "printf"
++#  CHECK-NEXT: # command output:
++#  CHECK-NEXT: line 1: failed test output on stdout
++#  CHECK-NEXT: line 2: failed test output on stdout
++#  CHECK-NEXT: $ ":" "RUN: at line 2"
++#  CHECK-NEXT: $ "false"
+ 
+ # CHECK: UNRESOLVED: shtest-format :: no-test-line.txt
+ # CHECK: PASS: shtest-format :: pass.txt
+@@ -81,11 +73,8 @@
+ # CHECK-EMPTY:
+ #  CHECK-NEXT: Command Output (stdout):
+ #  CHECK-NEXT: --
+-#  CHECK-NEXT: # RUN: at line 1
+-#  CHECK-NEXT: true
+-#  CHECK-NEXT: # executed command: true
+-# CHECK-EMPTY:
+-#  CHECK-NEXT: --
++#  CHECK-NEXT: $ ":" "RUN: at line 1"
++#  CHECK-NEXT: $ "true"
+ 
+ # CHECK: Failed Tests (4)
+ # CHECK: shtest-format :: external_shell/fail.txt
+diff --git a/llvm/utils/lit/tests/shtest-if-else.py b/llvm/utils/lit/tests/shtest-if-else.py
+index c18da4abbcca..aaf94a6e2437 100644
+--- a/llvm/utils/lit/tests/shtest-if-else.py
++++ b/llvm/utils/lit/tests/shtest-if-else.py
+@@ -1,6 +1,5 @@
+ # RUN: %{lit} -v --show-all %{inputs}/shtest-if-else/test.txt \
+-# RUN:    | FileCheck %{inputs}/shtest-if-else/test.txt --match-full-lines \
+-# RUN:                --implicit-check-not='RUN:'
++# RUN:    | FileCheck %{inputs}/shtest-if-else/test.txt --match-full-lines
+ 
+ # RUN: not %{lit} -v --show-all %{inputs}/shtest-if-else/test-neg1.txt 2>&1 \
+ # RUN:    | FileCheck %{inputs}/shtest-if-else/test-neg1.txt
+diff --git a/llvm/utils/lit/tests/shtest-inject.py b/llvm/utils/lit/tests/shtest-inject.py
+index 3d34eb7161d4..17e293ea1a12 100644
+--- a/llvm/utils/lit/tests/shtest-inject.py
++++ b/llvm/utils/lit/tests/shtest-inject.py
+@@ -1,26 +1,9 @@
+-# Check that we can inject preamble commands at the beginning of a ShTest.
+-#
+-# For one case, check the execution trace as these preamble commands have
+-# "preamble command" instead of the usual "{{RUN}}: at line N".
++# Check that we can inject commands at the beginning of a ShTest.
+ 
+ # RUN: %{lit} %{inputs}/shtest-inject/test-empty.txt --show-all | FileCheck --check-prefix=CHECK-TEST1 %s
+ #
+-#       CHECK-TEST1: Command Output (stdout):
+-#  CHECK-TEST1-NEXT: --
+-#  CHECK-TEST1-NEXT: # preamble command line
+-#  CHECK-TEST1-NEXT: echo "THIS WAS"
+-#  CHECK-TEST1-NEXT: # executed command: echo 'THIS WAS'
+-#  CHECK-TEST1-NEXT: # .---command stdout{{-*}}
+-#  CHECK-TEST1-NEXT: # | THIS WAS
+-#  CHECK-TEST1-NEXT: # `---{{-*}}
+-#  CHECK-TEST1-NEXT: # preamble command line
+-#  CHECK-TEST1-NEXT: echo "INJECTED"
+-#  CHECK-TEST1-NEXT: # executed command: echo INJECTED
+-#  CHECK-TEST1-NEXT: # .---command stdout{{-*}}
+-#  CHECK-TEST1-NEXT: # | INJECTED
+-#  CHECK-TEST1-NEXT: # `---{{-*}}
+-# CHECK-TEST1-EMPTY:
+-#  CHECK-TEST1-NEXT: --
++# CHECK-TEST1: THIS WAS
++# CHECK-TEST1: INJECTED
+ #
+ # CHECK-TEST1: Passed: 1
+ 
+diff --git a/llvm/utils/lit/tests/shtest-not.py b/llvm/utils/lit/tests/shtest-not.py
+index 4590b9664b84..d23c9d0cffaf 100644
+--- a/llvm/utils/lit/tests/shtest-not.py
++++ b/llvm/utils/lit/tests/shtest-not.py
+@@ -10,158 +10,112 @@
+ # CHECK: -- Testing: 17 tests{{.*}}
+ 
+ # CHECK: FAIL: shtest-not :: exclamation-args-nested-none.txt {{.*}}
+-# CHECK: ! ! !
+-# CHECK: # executed command: ! ! !
+-# CHECK: # | Error: '!' requires a subcommand
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "!" "!" "!"
++# CHECK: Error: '!' requires a subcommand
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ # CHECK: FAIL: shtest-not :: exclamation-args-none.txt {{.*}}
+-# CHECK: !
+-# CHECK: # executed command: !
+-# CHECK: # | Error: '!' requires a subcommand
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "!"
++# CHECK: Error: '!' requires a subcommand
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ # CHECK: FAIL: shtest-not :: exclamation-calls-external.txt {{.*}}
+ 
+-# CHECK: ! [[PYTHON:.*]] fail.py
+-# CHECK: # executed command: ! [[PYTHON_BARE:.*]] fail.py
+-# CHECK: ! ! [[PYTHON]] pass.py
+-# CHECK: # executed command: ! ! [[PYTHON_BARE]] pass.py
+-# CHECK: ! ! ! [[PYTHON]] fail.py
+-# CHECK: # executed command: ! ! ! [[PYTHON_BARE]] fail.py
+-# CHECK: ! ! ! ! [[PYTHON]] pass.py
+-# CHECK: # executed command: ! ! ! ! [[PYTHON_BARE]] pass.py
++# CHECK: $ "!" "{{[^"]*}}" "fail.py"
++# CHECK: $ "!" "!" "{{[^"]*}}" "pass.py"
++# CHECK: $ "!" "!" "!" "{{[^"]*}}" "fail.py"
++# CHECK: $ "!" "!" "!" "!" "{{[^"]*}}" "pass.py"
+ 
+-# CHECK: ! [[PYTHON]] pass.py
+-# CHECK: # executed command: ! [[PYTHON_BARE]] pass.py
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "!" "{{[^"]*}}" "pass.py"
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ # CHECK: FAIL: shtest-not :: not-args-last-is-crash.txt {{.*}}
+-# CHECK: not --crash
+-# CHECK: # executed command: not --crash
+-# CHECK: # | Error: 'not' requires a subcommand
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "not" "--crash"
++# CHECK: Error: 'not' requires a subcommand
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ # CHECK: FAIL: shtest-not :: not-args-nested-none.txt {{.*}}
+-# CHECK: not not not
+-# CHECK: # executed command: not not not
+-# CHECK: # | Error: 'not' requires a subcommand
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "not" "not" "not"
++# CHECK: Error: 'not' requires a subcommand
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ # CHECK: FAIL: shtest-not :: not-args-none.txt {{.*}}
+-# CHECK: not
+-# CHECK: # executed command: not
+-# CHECK: # | Error: 'not' requires a subcommand
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "not"
++# CHECK: Error: 'not' requires a subcommand
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ # CHECK: FAIL: shtest-not :: not-calls-cd.txt {{.*}}
+-# CHECK: not not cd foobar
+-# CHECK: # executed command: not not cd foobar
+-# CHECK: not --crash cd foobar
+-# CHECK: # executed command: not --crash cd foobar
+-# CHECK: # | Error: 'not --crash' cannot call 'cd'
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "not" "not" "cd" "foobar"
++# CHECK: $ "not" "--crash" "cd" "foobar"
++# CHECK: Error: 'not --crash' cannot call 'cd'
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ # CHECK: FAIL: shtest-not :: not-calls-colon.txt {{.*}}
+-# CHECK: not not : foobar
+-# CHECK: # executed command: not not : foobar
+-# CHECK: not --crash :
+-# CHECK: # executed command: not --crash :
+-# CHECK: # | Error: 'not --crash' cannot call ':'
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "not" "not" ":" "foobar"
++# CHECK: $ "not" "--crash" ":"
++# CHECK: Error: 'not --crash' cannot call ':'
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ # CHECK: FAIL: shtest-not :: not-calls-diff-with-crash.txt {{.*}}
+-# CHECK: not --crash diff -u {{.*}}
+-# CHECK: # executed command: not --crash diff -u {{.*}}
+-# CHECK-NOT: # executed command: {{.*}}
++# CHECK: $ "not" "--crash" "diff" "-u" {{.*}}
++# CHECK-NOT: "$"
+ # CHECK-NOT: {{[Ee]rror}}
+-# CHECK: # error: command failed with exit status: {{.*}}
+-# CHECK-NOT: # executed command: {{.*}}
++# CHECK: error: command failed with exit status: {{.*}}
+ # CHECK-NOT: {{[Ee]rror}}
++# CHECK-NOT: "$"
+ 
+ # CHECK: FAIL: shtest-not :: not-calls-diff.txt {{.*}}
+-# CHECK: not diff {{.*}}
+-# CHECK: # executed command: not diff {{.*}}
+-# CHECK: not not not diff {{.*}}
+-# CHECK: # executed command: not not not diff {{.*}}
+-# CHECK: not not not not not diff {{.*}}
+-# CHECK: # executed command: not not not not not diff {{.*}}
+-# CHECK: diff {{.*}}
+-# CHECK: # executed command: diff {{.*}}
+-# CHECK: not not diff {{.*}}
+-# CHECK: # executed command: not not diff {{.*}}
+-# CHECK: not not not not diff {{.*}}
+-# CHECK: # executed command: not not not not diff {{.*}}
+-# CHECK: not diff {{.*}}
+-# CHECK: # executed command: not diff {{.*}}
+-# CHECK-NOT: # executed command: {{.*}}
++# CHECK: $ "not" "diff" {{.*}}
++# CHECK: $ "not" "not" "not" "diff" {{.*}}
++# CHECK: $ "not" "not" "not" "not" "not" "diff" {{.*}}
++# CHECK: $ "diff" {{.*}}
++# CHECK: $ "not" "not" "diff" {{.*}}
++# CHECK: $ "not" "not" "not" "not" "diff" {{.*}}
++# CHECK: $ "not" "diff" {{.*}}
++# CHECK-NOT: "$"
+ 
+ # CHECK: FAIL: shtest-not :: not-calls-echo.txt {{.*}}
+-# CHECK: not not echo hello world
+-# CHECK: # executed command: not not echo hello world
+-# CHECK: not --crash echo hello world
+-# CHECK: # executed command: not --crash echo hello world
+-# CHECK: # | Error: 'not --crash' cannot call 'echo'
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "not" "not" "echo" "hello" "world"
++# CHECK: $ "not" "--crash" "echo" "hello" "world"
++# CHECK: Error: 'not --crash' cannot call 'echo'
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ # CHECK: FAIL: shtest-not :: not-calls-env-builtin.txt {{.*}}
+-# CHECK: not --crash env -u FOO BAR=3 rm {{.*}}.no-such-file
+-# CHECK: # executed command: not --crash env -u FOO BAR=3 rm {{.*}}.no-such-file
+-# CHECK: # | Error: 'env' cannot call 'rm'
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "not" "--crash" "env" "-u" "FOO" "BAR=3" "rm" "{{.*}}.no-such-file"
++# CHECK: Error: 'env' cannot call 'rm'
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ # CHECK: FAIL: shtest-not :: not-calls-export.txt {{.*}}
+-# CHECK: not not export FOO=1
+-# CHECK: # executed command: not not export FOO=1
+-# CHECK: not --crash export BAZ=3
+-# CHECK: # executed command: not --crash export BAZ=3
+-# CHECK: # | Error: 'not --crash' cannot call 'export'
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "not" "not" "export" "FOO=1"
++# CHECK: $ "not" "--crash" "export" "BAZ=3"
++# CHECK: Error: 'not --crash' cannot call 'export'
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ 
+ # CHECK: PASS: shtest-not :: not-calls-external.txt {{.*}}
+ 
+-# CHECK: not [[PYTHON]] fail.py
+-# CHECK: # executed command: not [[PYTHON_BARE]] fail.py
+-# CHECK: not not [[PYTHON]] pass.py
+-# CHECK: # executed command: not not [[PYTHON_BARE]] pass.py
+-# CHECK: not not not [[PYTHON]] fail.py
+-# CHECK: # executed command: not not not [[PYTHON_BARE]] fail.py
+-# CHECK: not not not not [[PYTHON]] pass.py
+-# CHECK: # executed command: not not not not [[PYTHON_BARE]] pass.py
+-
+-# CHECK: not not --crash [[PYTHON]] pass.py
+-# CHECK: # executed command: not not --crash [[PYTHON_BARE]] pass.py
+-# CHECK: not not --crash [[PYTHON]] fail.py
+-# CHECK: # executed command: not not --crash [[PYTHON_BARE]] fail.py
+-# CHECK: not not --crash not [[PYTHON]] pass.py
+-# CHECK: # executed command: not not --crash not [[PYTHON_BARE]] pass.py
+-# CHECK: not not --crash not [[PYTHON]] fail.py
+-# CHECK: # executed command: not not --crash not [[PYTHON_BARE]] fail.py
+-
+-# CHECK: env not [[PYTHON]] fail.py | {{.*}}
+-# CHECK: # executed command: env not [[PYTHON_BARE]] fail.py
+-# CHECK: not env [[PYTHON]] fail.py | {{.*}}
+-# CHECK: # executed command: not env [[PYTHON_BARE]] fail.py
+-# CHECK: env FOO=1 not [[PYTHON]] fail.py | {{.*}}
+-# CHECK: # executed command: env FOO=1 not [[PYTHON_BARE]] fail.py
+-# CHECK: not env FOO=1 BAR=1 [[PYTHON]] fail.py | {{.*}}
+-# CHECK: # executed command: not env FOO=1 BAR=1 [[PYTHON_BARE]] fail.py
+-# CHECK: env FOO=1 BAR=1 not env -u FOO BAR=2 [[PYTHON]] fail.py | {{.*}}
+-# CHECK: # executed command: env FOO=1 BAR=1 not env -u FOO BAR=2 [[PYTHON_BARE]] fail.py
+-# CHECK: not env FOO=1 BAR=1 not env -u FOO -u BAR [[PYTHON]] pass.py | {{.*}}
+-# CHECK: # executed command: not env FOO=1 BAR=1 not env -u FOO -u BAR [[PYTHON_BARE]] pass.py
+-# CHECK: not not env FOO=1 env FOO=2 BAR=1 [[PYTHON]] pass.py | {{.*}}
+-# CHECK: # executed command: not not env FOO=1 env FOO=2 BAR=1 [[PYTHON_BARE]] pass.py
+-# CHECK: env FOO=1 -u BAR env -u FOO BAR=1 not not [[PYTHON]] pass.py | {{.*}}
+-# CHECK: # executed command: env FOO=1 -u BAR env -u FOO BAR=1 not not [[PYTHON_BARE]] pass.py
+-
+-# CHECK: not env FOO=1 BAR=1 env FOO=2 BAR=2 not --crash [[PYTHON]] pass.py | {{.*}}
+-# CHECK: # executed command: not env FOO=1 BAR=1 env FOO=2 BAR=2 not --crash [[PYTHON_BARE]] pass.py
+-# CHECK: not env FOO=1 BAR=1 not --crash not [[PYTHON]] pass.py | {{.*}}
+-# CHECK: # executed command: not env FOO=1 BAR=1 not --crash not [[PYTHON_BARE]] pass.py
+-# CHECK: not not --crash env -u BAR not env -u FOO BAR=1 [[PYTHON]] pass.py | {{.*}}
+-# CHECK: # executed command: not not --crash env -u BAR not env -u FOO BAR=1 [[PYTHON_BARE]] pass.py
++# CHECK: $ "not" "{{[^"]*}}" "fail.py"
++# CHECK: $ "not" "not" "{{[^"]*}}" "pass.py"
++# CHECK: $ "not" "not" "not" "{{[^"]*}}" "fail.py"
++# CHECK: $ "not" "not" "not" "not" "{{[^"]*}}" "pass.py"
++
++# CHECK: $ "not" "not" "--crash" "{{[^"]*}}" "pass.py"
++# CHECK: $ "not" "not" "--crash" "{{[^"]*}}" "fail.py"
++# CHECK: $ "not" "not" "--crash" "not" "{{[^"]*}}" "pass.py"
++# CHECK: $ "not" "not" "--crash" "not" "{{[^"]*}}" "fail.py"
++
++# CHECK: $ "env" "not" "{{[^"]*}}" "fail.py"
++# CHECK: $ "not" "env" "{{[^"]*}}" "fail.py"
++# CHECK: $ "env" "FOO=1" "not" "{{[^"]*}}" "fail.py"
++# CHECK: $ "not" "env" "FOO=1" "BAR=1" "{{[^"]*}}" "fail.py"
++# CHECK: $ "env" "FOO=1" "BAR=1" "not" "env" "-u" "FOO" "BAR=2" "{{[^"]*}}" "fail.py"
++# CHECK: $ "not" "env" "FOO=1" "BAR=1" "not" "env" "-u" "FOO" "-u" "BAR" "{{[^"]*}}" "pass.py"
++# CHECK: $ "not" "not" "env" "FOO=1" "env" "FOO=2" "BAR=1" "{{[^"]*}}" "pass.py"
++# CHECK: $ "env" "FOO=1" "-u" "BAR" "env" "-u" "FOO" "BAR=1" "not" "not" "{{[^"]*}}" "pass.py"
++
++# CHECK: $ "not" "env" "FOO=1" "BAR=1" "env" "FOO=2" "BAR=2" "not" "--crash" "{{[^"]*}}" "pass.py"
++# CHECK: $ "not" "env" "FOO=1" "BAR=1" "not" "--crash" "not" "{{[^"]*}}" "pass.py"
++# CHECK: $ "not" "not" "--crash" "env" "-u" "BAR" "not" "env" "-u" "FOO" "BAR=1" "{{[^"]*}}" "pass.py"
+ 
+ 
+ # CHECK: FAIL: shtest-not :: not-calls-fail2.txt {{.*}}
+@@ -169,20 +123,16 @@
+ # CHECK-NEXT: Exit Code: 1
+ 
+ # CHECK: FAIL: shtest-not :: not-calls-mkdir.txt {{.*}}
+-# CHECK: not mkdir {{.*}}
+-# CHECK: # executed command: not mkdir {{.*}}
+-# CHECK: not --crash mkdir foobar
+-# CHECK: # executed command: not --crash mkdir foobar
+-# CHECK: # | Error: 'not --crash' cannot call 'mkdir'
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "not" "mkdir" {{.*}}
++# CHECK: $ "not" "--crash" "mkdir" "foobar"
++# CHECK: Error: 'not --crash' cannot call 'mkdir'
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ # CHECK: FAIL: shtest-not :: not-calls-rm.txt {{.*}}
+-# CHECK: not rm {{.*}}
+-# CHECK: # executed command: not rm {{.*}}
+-# CHECK: not --crash rm foobar
+-# CHECK: # executed command: not --crash rm foobar
+-# CHECK: # | Error: 'not --crash' cannot call 'rm'
+-# CHECK: # error: command failed with exit status: {{.*}}
++# CHECK: $ "not" "rm" {{.*}}
++# CHECK: $ "not" "--crash" "rm" "foobar"
++# CHECK: Error: 'not --crash' cannot call 'rm'
++# CHECK: error: command failed with exit status: {{.*}}
+ 
+ # CHECK: Passed:  1
+ # CHECK: Failed: 16
+diff --git a/llvm/utils/lit/tests/shtest-output-printing.py b/llvm/utils/lit/tests/shtest-output-printing.py
+index 3e49197520a9..7cd975ba8d3c 100644
+--- a/llvm/utils/lit/tests/shtest-output-printing.py
++++ b/llvm/utils/lit/tests/shtest-output-printing.py
+@@ -1,45 +1,28 @@
+ # Check the various features of the ShTest format.
+ #
+ # RUN: not %{lit} -v %{inputs}/shtest-output-printing > %t.out
+-# RUN: FileCheck --input-file %t.out --match-full-lines %s
++# RUN: FileCheck --input-file %t.out %s
+ #
+ # END.
+ 
+-#       CHECK: -- Testing: {{.*}}
+-#       CHECK: FAIL: shtest-output-printing :: basic.txt {{.*}}
+-#  CHECK-NEXT: ***{{\**}} TEST 'shtest-output-printing :: basic.txt' FAILED ***{{\**}}
+-#  CHECK-NEXT: Exit Code: 1
+-# CHECK-EMPTY:
+-#  CHECK-NEXT: Command Output (stdout):
+-#  CHECK-NEXT: --
+-#  CHECK-NEXT: # RUN: at line 1
+-#  CHECK-NEXT: true
+-#  CHECK-NEXT: # executed command: true
+-#  CHECK-NEXT: # RUN: at line 2
+-#  CHECK-NEXT: echo hi
+-#  CHECK-NEXT: # executed command: echo hi
+-#  CHECK-NEXT: # .---command stdout------------
+-#  CHECK-NEXT: # | hi
+-#  CHECK-NEXT: # `-----------------------------
+-#  CHECK-NEXT: # RUN: at line 3
+-#  CHECK-NEXT: not not wc missing-file &> [[FILE:.*]] || true
+-#  CHECK-NEXT: # executed command: not not wc missing-file
+-#  CHECK-NEXT: # .---redirected output from '[[FILE]]'
+-#  CHECK-NEXT: # | wc: {{cannot open missing-file|missing-file.* No such file or directory}}
+-#  CHECK-NEXT: # `-----------------------------
+-#  CHECK-NEXT: # note: command had no output on stdout or stderr
+-#  CHECK-NEXT: # error: command failed with exit status: 1
+-#  CHECK-NEXT: # executed command: true
+-#  CHECK-NEXT: # RUN: at line 4
+-#  CHECK-NEXT: not {{.*}}/python{{.*}} {{.*}}/write-a-lot.py &> [[FILE:.*]]
+-#  CHECK-NEXT: # executed command: not {{.*}}/python{{.*}} {{.*}}/write-a-lot.py
+-#  CHECK-NEXT: # .---redirected output from '[[FILE]]'
+-#  CHECK-NEXT: # | All work and no play makes Jack a dull boy.
+-#  CHECK-NEXT: # | All work and no play makes Jack a dull boy.
+-#  CHECK-NEXT: # | All work and no play makes Jack a dull boy.
+-#       CHECK: # | ...
+-#  CHECK-NEXT: # `---data was truncated--------
+-#  CHECK-NEXT: # note: command had no output on stdout or stderr
+-#  CHECK-NEXT: # error: command failed with exit status: 1
+-# CHECK-EMPTY:
+-#  CHECK-NEXT:--
++# CHECK: -- Testing:
++
++# CHECK: FAIL: shtest-output-printing :: basic.txt
++# CHECK-NEXT: *** TEST 'shtest-output-printing :: basic.txt' FAILED ***
++# CHECK-NEXT: Exit Code: 1
++#
++# CHECK:      Command Output
++# CHECK-NEXT: --
++# CHECK-NEXT: $ ":" "RUN: at line 1"
++# CHECK-NEXT: $ "true"
++# CHECK-NEXT: $ ":" "RUN: at line 2"
++# CHECK-NEXT: $ "echo" "hi"
++# CHECK-NEXT: # command output:
++# CHECK-NEXT: hi
++#
++# CHECK:      $ ":" "RUN: at line 3"
++# CHECK-NEXT: $ "not" "not" "wc" "missing-file"
++# CHECK-NEXT: # redirected output from '{{.*(/|\\\\)}}basic.txt.tmp.out':
++# CHECK-NEXT: {{cannot open missing-file|missing-file.* No such file or directory}}
++# CHECK:      note: command had no output on stdout or stderr
++# CHECK-NEXT: error: command failed with exit status: 1
+diff --git a/llvm/utils/lit/tests/shtest-pushd-popd.py b/llvm/utils/lit/tests/shtest-pushd-popd.py
+index 6d7e93c74a05..26296a7ffcf5 100644
+--- a/llvm/utils/lit/tests/shtest-pushd-popd.py
++++ b/llvm/utils/lit/tests/shtest-pushd-popd.py
+@@ -8,16 +8,16 @@
+ # CHECK: -- Testing: 4 tests{{.*}}
+ 
+ # CHECK: FAIL: shtest-pushd-popd :: popd-args.txt ({{[^)]*}})
+-# CHECK: popd invalid
+-# CHECK: # | 'popd' does not support arguments
++# CHECK: $ "popd" "invalid"
++# CHECK: 'popd' does not support arguments
+ 
+ # CHECK: FAIL: shtest-pushd-popd :: popd-no-stack.txt ({{[^)]*}})
+-# CHECK: popd
+-# CHECK: # | popd: directory stack empty
++# CHECK: $ "popd"
++# CHECK: popd: directory stack empty
+ 
+ # CHECK: FAIL: shtest-pushd-popd :: pushd-too-many-args.txt ({{[^)]*}})
+-# CHECK: pushd a b
+-# CHECK: # | 'pushd' supports only one argument
++# CHECK: $ "pushd" "a" "b"
++# CHECK: 'pushd' supports only one argument
+ 
+ # CHECK: Passed:  1
+ # CHECK: Failed:  3
+diff --git a/llvm/utils/lit/tests/shtest-recursive-substitution.py b/llvm/utils/lit/tests/shtest-recursive-substitution.py
+index 65c177e65a3c..48f4b5b12491 100644
+--- a/llvm/utils/lit/tests/shtest-recursive-substitution.py
++++ b/llvm/utils/lit/tests/shtest-recursive-substitution.py
+@@ -3,7 +3,7 @@
+ 
+ # RUN: %{lit} %{inputs}/shtest-recursive-substitution/substitutes-within-limit --show-all | FileCheck --check-prefix=CHECK-TEST1 %s
+ # CHECK-TEST1: PASS: substitutes-within-limit :: test.py
+-# CHECK-TEST1: echo STOP
++# CHECK-TEST1: $ "echo" "STOP"
+ 
+ # RUN: not %{lit} %{inputs}/shtest-recursive-substitution/does-not-substitute-within-limit --show-all | FileCheck --check-prefix=CHECK-TEST2 %s
+ # CHECK-TEST2: UNRESOLVED: does-not-substitute-within-limit :: test.py
+@@ -11,7 +11,7 @@
+ 
+ # RUN: %{lit} %{inputs}/shtest-recursive-substitution/does-not-substitute-no-limit --show-all | FileCheck --check-prefix=CHECK-TEST3 %s
+ # CHECK-TEST3: PASS: does-not-substitute-no-limit :: test.py
+-# CHECK-TEST3: echo %rec4
++# CHECK-TEST3: $ "echo" "%rec4"
+ 
+ # RUN: not %{lit} %{inputs}/shtest-recursive-substitution/not-an-integer --show-all 2>&1 | FileCheck --check-prefix=CHECK-TEST4 %s
+ # CHECK-TEST4: recursiveExpansionLimit must be either None or an integer
+@@ -24,4 +24,4 @@
+ 
+ # RUN: %{lit} %{inputs}/shtest-recursive-substitution/escaping --show-all | FileCheck --check-prefix=CHECK-TEST7 %s
+ # CHECK-TEST7: PASS: escaping :: test.py
+-# CHECK-TEST7: echo %s %s %%s
++# CHECK-TEST7: $ "echo" "%s" "%s" "%%s"
+diff --git a/llvm/utils/lit/tests/shtest-run-at-line.py b/llvm/utils/lit/tests/shtest-run-at-line.py
+index a0626f872c4c..879cd64ebf6e 100644
+--- a/llvm/utils/lit/tests/shtest-run-at-line.py
++++ b/llvm/utils/lit/tests/shtest-run-at-line.py
+@@ -28,28 +28,21 @@
+ # CHECK-LABEL: FAIL: shtest-run-at-line :: internal-shell/basic.txt
+ 
+ # CHECK:      Command Output (stdout)
+-# CHECK-NEXT: --
+-# CHECK-NEXT: # RUN: at line 1
+-# CHECK-NEXT: true
+-# CHECK-NEXT: # executed command: true
+-# CHECK-NEXT: # RUN: at line 2
+-# CHECK-NEXT: false
+-# CHECK-NEXT: # executed command: false
++# CHECK:      $ ":" "RUN: at line 1"
++# CHECK-NEXT: $ "true"
++# CHECK-NEXT: $ ":" "RUN: at line 2"
++# CHECK-NEXT: $ "false"
+ # CHECK-NOT:  RUN
+ 
+ # CHECK-LABEL: FAIL: shtest-run-at-line :: internal-shell/line-continuation.txt
+ 
+ # CHECK:      Command Output (stdout)
+-# CHECK-NEXT: --
+-# CHECK-NEXT: # RUN: at line 1
+-# CHECK-NEXT: : first line continued to second line
+-# CHECK-NEXT: # executed command: : first line continued to second line
+-# CHECK-NEXT: # RUN: at line 3
+-# CHECK-NEXT: echo 'foo bar' | FileCheck {{.*}}
+-# CHECK-NEXT: # executed command: echo 'foo bar'
+-# CHECK-NEXT: # executed command: FileCheck {{.*}}
+-# CHECK-NEXT: # RUN: at line 5
+-# CHECK-NEXT: echo 'foo baz' | FileCheck {{.*}}
+-# CHECK-NEXT: # executed command: echo 'foo baz'
+-# CHECK-NEXT: # executed command: FileCheck {{.*}}
++# CHECK:      $ ":" "RUN: at line 1"
++# CHECK-NEXT: $ ":" "first" "line" "continued" "to" "second" "line"
++# CHECK-NEXT: $ ":" "RUN: at line 3"
++# CHECK-NEXT: $ "echo" "foo bar"
++# CHECK-NEXT: $ "FileCheck" "{{.*}}"
++# CHECK-NEXT: $ ":" "RUN: at line 5"
++# CHECK-NEXT: $ "echo" "foo baz"
++# CHECK-NEXT: $ "FileCheck" "{{.*}}"
+ # CHECK-NOT:  RUN
+diff --git a/llvm/utils/lit/tests/shtest-shell.py b/llvm/utils/lit/tests/shtest-shell.py
+index 8ce71296c144..93f05dbd35d0 100644
+--- a/llvm/utils/lit/tests/shtest-shell.py
++++ b/llvm/utils/lit/tests/shtest-shell.py
+@@ -20,212 +20,202 @@
+ 
+ # CHECK: FAIL: shtest-shell :: cat-error-0.txt
+ # CHECK: *** TEST 'shtest-shell :: cat-error-0.txt' FAILED ***
+-# CHECK: cat -b temp1.txt
+-# CHECK: # .---command stderr{{-*}}
+-# CHECK: # | Unsupported: 'cat':  option -b not recognized
+-# CHECK: # error: command failed with exit status: 1
++# CHECK: $ "cat" "-b" "temp1.txt"
++# CHECK: # command stderr:
++# CHECK: Unsupported: 'cat':  option -b not recognized
++# CHECK: error: command failed with exit status: 1
+ # CHECK: ***
+ 
+ # CHECK: FAIL: shtest-shell :: cat-error-1.txt
+ # CHECK: *** TEST 'shtest-shell :: cat-error-1.txt' FAILED ***
+-# CHECK: cat temp1.txt
+-# CHECK: # .---command stderr{{-*}}
+-# CHECK: # | [Errno 2] No such file or directory: 'temp1.txt'
+-# CHECK: # error: command failed with exit status: 1
++# CHECK: $ "cat" "temp1.txt"
++# CHECK: # command stderr:
++# CHECK: [Errno 2] No such file or directory: 'temp1.txt'
++# CHECK: error: command failed with exit status: 1
+ # CHECK: ***
+ 
+ # CHECK: FAIL: shtest-shell :: colon-error.txt
+ # CHECK: *** TEST 'shtest-shell :: colon-error.txt' FAILED ***
+-# CHECK: :
+-# CHECK: # .---command stderr{{-*}}
+-# CHECK: # | Unsupported: ':' cannot be part of a pipeline
+-# CHECK: # error: command failed with exit status: 127
++# CHECK: $ ":"
++# CHECK: # command stderr:
++# CHECK: Unsupported: ':' cannot be part of a pipeline
++# CHECK: error: command failed with exit status: 127
+ # CHECK: ***
+ 
+ # CHECK: PASS: shtest-shell :: continuations.txt
+ 
+ # CHECK: PASS: shtest-shell :: dev-null.txt
+ 
+-#      CHECK: FAIL: shtest-shell :: diff-b.txt
+-#      CHECK: *** TEST 'shtest-shell :: diff-b.txt' FAILED ***
+-#      CHECK: diff -b {{[^"]*}}.0 {{[^"]*}}.1
+-#      CHECK: # .---command stdout{{-*}}
+-#      CHECK: # | {{.*}}1,2
+-# CHECK-NEXT: # |   f o o
+-# CHECK-NEXT: # | ! b a r
+-# CHECK-NEXT: # | ---
+-# CHECK-NEXT: # |   f o o
+-# CHECK-NEXT: # | ! bar
+-# CHECK-NEXT: # `---{{-*}}
+-# CHECK-NEXT: # error: command failed with exit status: 1
+-#      CHECK: ***
++# CHECK: FAIL: shtest-shell :: diff-b.txt
++# CHECK: *** TEST 'shtest-shell :: diff-b.txt' FAILED ***
++# CHECK: $ "diff" "-b" "{{[^"]*}}.0" "{{[^"]*}}.1"
++# CHECK: # command output:
++# CHECK: 1,2
++# CHECK-NEXT: {{^  }}f o o
++# CHECK-NEXT: ! b a r
++# CHECK-NEXT: ---
++# CHECK-NEXT: {{^  }}f o o
++# CHECK-NEXT: ! bar
++# CHECK-EMPTY:
++# CHECK: error: command failed with exit status: 1
++# CHECK: ***
+ 
+ 
+ # CHECK: FAIL: shtest-shell :: diff-encodings.txt
+ # CHECK: *** TEST 'shtest-shell :: diff-encodings.txt' FAILED ***
+ 
+-#      CHECK: diff -u diff-in.bin diff-in.bin
+-# CHECK-NEXT: # executed command: diff -u diff-in.bin diff-in.bin
+-#  CHECK-NOT: error
+-
+-#      CHECK: diff -u diff-in.utf16 diff-in.bin && false || true
+-# CHECK-NEXT: # executed command: diff -u diff-in.utf16 diff-in.bin
+-# CHECK-NEXT: # .---command stdout{{-*}}
+-# CHECK-NEXT: # | ---
+-# CHECK-NEXT: # | +++
+-# CHECK-NEXT: # | @@
+-# CHECK-NEXT: # | {{.f.o.o.$}}
+-# CHECK-NEXT: # | {{-.b.a.r.$}}
+-# CHECK-NEXT: # | {{\+.b.a.r.}}
+-# CHECK-NEXT: # | {{.b.a.z.$}}
+-# CHECK-NEXT: # `---{{-*}}
+-# CHECK-NEXT: # error: command failed with exit status: 1
+-# CHECK-NEXT: # executed command: true
+-
+-#      CHECK: diff -u diff-in.utf8 diff-in.bin && false || true
+-# CHECK-NEXT: # executed command: diff -u diff-in.utf8 diff-in.bin
+-# CHECK-NEXT: # .---command stdout{{-*}}
+-# CHECK-NEXT: # | ---
+-# CHECK-NEXT: # | +++
+-# CHECK-NEXT: # | @@
+-# CHECK-NEXT: # | -foo
+-# CHECK-NEXT: # | -bar
+-# CHECK-NEXT: # | -baz
+-# CHECK-NEXT: # | {{\+.f.o.o.$}}
+-# CHECK-NEXT: # | {{\+.b.a.r.}}
+-# CHECK-NEXT: # | {{\+.b.a.z.$}}
+-# CHECK-NEXT: # `---{{-*}}
+-# CHECK-NEXT: # error: command failed with exit status: 1
+-# CHECK-NEXT: # executed command: true
+-
+-#      CHECK: diff -u diff-in.bin diff-in.utf8 && false || true
+-# CHECK-NEXT: # executed command: diff -u diff-in.bin diff-in.utf8
+-# CHECK-NEXT: # .---command stdout{{-*}}
+-# CHECK-NEXT: # | ---
+-# CHECK-NEXT: # | +++
+-# CHECK-NEXT: # | @@
+-# CHECK-NEXT: # | {{-.f.o.o.$}}
+-# CHECK-NEXT: # | {{-.b.a.r.}}
+-# CHECK-NEXT: # | {{-.b.a.z.$}}
+-# CHECK-NEXT: # | +foo
+-# CHECK-NEXT: # | +bar
+-# CHECK-NEXT: # | +baz
+-# CHECK-NEXT: # `---{{-*}}
+-# CHECK-NEXT: # error: command failed with exit status: 1
+-# CHECK-NEXT: # executed command: true
+-
+-#     CHECK: cat diff-in.bin | diff -u - diff-in.bin
++# CHECK: $ "diff" "-u" "diff-in.bin" "diff-in.bin"
+ # CHECK-NOT: error
+ 
+-#     CHECK: cat diff-in.bin | diff -u diff-in.bin -
++# CHECK: $ "diff" "-u" "diff-in.utf16" "diff-in.bin"
++# CHECK: # command output:
++# CHECK-NEXT: ---
++# CHECK-NEXT: +++
++# CHECK-NEXT: @@
++# CHECK-NEXT: {{^ .f.o.o.$}}
++# CHECK-NEXT: {{^-.b.a.r.$}}
++# CHECK-NEXT: {{^\+.b.a.r.}}
++# CHECK-NEXT: {{^ .b.a.z.$}}
++# CHECK: error: command failed with exit status: 1
++# CHECK: $ "true"
++
++# CHECK: $ "diff" "-u" "diff-in.utf8" "diff-in.bin"
++# CHECK: # command output:
++# CHECK-NEXT: ---
++# CHECK-NEXT: +++
++# CHECK-NEXT: @@
++# CHECK-NEXT: -foo
++# CHECK-NEXT: -bar
++# CHECK-NEXT: -baz
++# CHECK-NEXT: {{^\+.f.o.o.$}}
++# CHECK-NEXT: {{^\+.b.a.r.}}
++# CHECK-NEXT: {{^\+.b.a.z.$}}
++# CHECK: error: command failed with exit status: 1
++# CHECK: $ "true"
++
++# CHECK: $ "diff" "-u" "diff-in.bin" "diff-in.utf8"
++# CHECK: # command output:
++# CHECK-NEXT: ---
++# CHECK-NEXT: +++
++# CHECK-NEXT: @@
++# CHECK-NEXT: {{^\-.f.o.o.$}}
++# CHECK-NEXT: {{^\-.b.a.r.}}
++# CHECK-NEXT: {{^\-.b.a.z.$}}
++# CHECK-NEXT: +foo
++# CHECK-NEXT: +bar
++# CHECK-NEXT: +baz
++# CHECK: error: command failed with exit status: 1
++# CHECK: $ "true"
++
++# CHECK: $ "cat" "diff-in.bin"
++# CHECK-NOT: error
++# CHECK: $ "diff" "-u" "-" "diff-in.bin"
++# CHECK-NOT: error
++
++# CHECK: $ "cat" "diff-in.bin"
++# CHECK-NOT: error
++# CHECK: $ "diff" "-u" "diff-in.bin" "-"
++# CHECK-NOT: error
++
++# CHECK: $ "cat" "diff-in.bin"
++# CHECK-NOT: error
++# CHECK: $ "diff" "-u" "diff-in.utf16" "-"
++# CHECK: # command output:
++# CHECK-NEXT: ---
++# CHECK-NEXT: +++
++# CHECK-NEXT: @@
++# CHECK-NEXT: {{^ .f.o.o.$}}
++# CHECK-NEXT: {{^-.b.a.r.$}}
++# CHECK-NEXT: {{^\+.b.a.r.}}
++# CHECK-NEXT: {{^ .b.a.z.$}}
++# CHECK: error: command failed with exit status: 1
++# CHECK: $ "true"
++
++# CHECK: $ "cat" "diff-in.bin"
+ # CHECK-NOT: error
++# CHECK: $ "diff" "-u" "diff-in.utf8" "-"
++# CHECK: # command output:
++# CHECK-NEXT: ---
++# CHECK-NEXT: +++
++# CHECK-NEXT: @@
++# CHECK-NEXT: -foo
++# CHECK-NEXT: -bar
++# CHECK-NEXT: -baz
++# CHECK-NEXT: {{^\+.f.o.o.$}}
++# CHECK-NEXT: {{^\+.b.a.r.}}
++# CHECK-NEXT: {{^\+.b.a.z.$}}
++# CHECK: error: command failed with exit status: 1
++# CHECK: $ "true"
++
++# CHECK: $ "diff" "-u" "-" "diff-in.utf8"
++# CHECK: # command output:
++# CHECK-NEXT: ---
++# CHECK-NEXT: +++
++# CHECK-NEXT: @@
++# CHECK-NEXT: {{^\-.f.o.o.$}}
++# CHECK-NEXT: {{^\-.b.a.r.}}
++# CHECK-NEXT: {{^\-.b.a.z.$}}
++# CHECK-NEXT: +foo
++# CHECK-NEXT: +bar
++# CHECK-NEXT: +baz
++# CHECK: error: command failed with exit status: 1
++# CHECK: $ "true"
+ 
+-#      CHECK: cat diff-in.bin | diff -u diff-in.utf16 - && false || true
+-# CHECK-NEXT: # executed command: cat diff-in.bin
+-# CHECK-NEXT: # executed command: diff -u diff-in.utf16 -
+-# CHECK-NEXT: # .---command stdout{{-*}}
+-# CHECK-NEXT: # | ---
+-# CHECK-NEXT: # | +++
+-# CHECK-NEXT: # | @@
+-# CHECK-NEXT: # | {{.f.o.o.$}}
+-# CHECK-NEXT: # | {{-.b.a.r.$}}
+-# CHECK-NEXT: # | {{\+.b.a.r.}}
+-# CHECK-NEXT: # | {{.b.a.z.$}}
+-# CHECK-NEXT: # `---{{-*}}
+-# CHECK-NEXT: # error: command failed with exit status: 1
+-# CHECK-NEXT: # executed command: true
+-
+-#      CHECK: cat diff-in.bin | diff -u diff-in.utf8 - && false || true
+-# CHECK-NEXT: # executed command: cat diff-in.bin
+-# CHECK-NEXT: # executed command: diff -u diff-in.utf8 -
+-# CHECK-NEXT: # .---command stdout{{-*}}
+-# CHECK-NEXT: # | ---
+-# CHECK-NEXT: # | +++
+-# CHECK-NEXT: # | @@
+-# CHECK-NEXT: # | -foo
+-# CHECK-NEXT: # | -bar
+-# CHECK-NEXT: # | -baz
+-# CHECK-NEXT: # | {{\+.f.o.o.$}}
+-# CHECK-NEXT: # | {{\+.b.a.r.}}
+-# CHECK-NEXT: # | {{\+.b.a.z.$}}
+-# CHECK-NEXT: # `---{{-*}}
+-# CHECK-NEXT: # error: command failed with exit status: 1
+-# CHECK-NEXT: # executed command: true
+-
+-#      CHECK: cat diff-in.bin | diff -u - diff-in.utf8 && false || true
+-# CHECK-NEXT: # executed command: cat diff-in.bin
+-# CHECK-NEXT: # executed command: diff -u - diff-in.utf8
+-# CHECK-NEXT: # .---command stdout{{-*}}
+-# CHECK-NEXT: # | ---
+-# CHECK-NEXT: # | +++
+-# CHECK-NEXT: # | @@
+-# CHECK-NEXT: # | {{-.f.o.o.$}}
+-# CHECK-NEXT: # | {{-.b.a.r.}}
+-# CHECK-NEXT: # | {{-.b.a.z.$}}
+-# CHECK-NEXT: # | +foo
+-# CHECK-NEXT: # | +bar
+-# CHECK-NEXT: # | +baz
+-# CHECK-NEXT: # `---{{-*}}
+-# CHECK-NEXT: # error: command failed with exit status: 1
+-# CHECK-NEXT: # executed command: true
+-
+-# CHECK: false
++# CHECK: $ "false"
+ 
+ # CHECK: ***
+ 
+ 
+ # CHECK: FAIL: shtest-shell :: diff-error-1.txt
+ # CHECK: *** TEST 'shtest-shell :: diff-error-1.txt' FAILED ***
+-# CHECK: diff -B temp1.txt temp2.txt
+-# CHECK: # .---command stderr{{-*}}
+-# CHECK: # | Unsupported: 'diff': option -B not recognized
+-# CHECK: # error: command failed with exit status: 1
++# CHECK: $ "diff" "-B" "temp1.txt" "temp2.txt"
++# CHECK: # command stderr:
++# CHECK: Unsupported: 'diff': option -B not recognized
++# CHECK: error: command failed with exit status: 1
+ # CHECK: ***
+ 
+ # CHECK: FAIL: shtest-shell :: diff-error-2.txt
+ # CHECK: *** TEST 'shtest-shell :: diff-error-2.txt' FAILED ***
+-# CHECK: diff temp.txt 
+-# CHECK: # .---command stderr{{-*}}
+-# CHECK: # | Error: missing or extra operand
+-# CHECK: # error: command failed with exit status: 1
++# CHECK: $ "diff" "temp.txt"
++# CHECK: # command stderr:
++# CHECK: Error: missing or extra operand
++# CHECK: error: command failed with exit status: 1
+ # CHECK: ***
+ 
+ # CHECK: FAIL: shtest-shell :: diff-error-3.txt
+ # CHECK: *** TEST 'shtest-shell :: diff-error-3.txt' FAILED ***
+-# CHECK: diff temp.txt temp1.txt
+-# CHECK: # .---command stderr{{-*}}
+-# CHECK: # | Error: 'diff' command failed
++# CHECK: $ "diff" "temp.txt" "temp1.txt"
++# CHECK: # command stderr:
++# CHECK: Error: 'diff' command failed
+ # CHECK: error: command failed with exit status: 1
+ # CHECK: ***
+ 
+-#      CHECK: FAIL: shtest-shell :: diff-error-4.txt
+-#      CHECK: *** TEST 'shtest-shell :: diff-error-4.txt' FAILED ***
+-#      CHECK: Exit Code: 1
+-#      CHECK: # .---command stdout{{-*}}
+-# CHECK-NEXT: # | {{.*}}diff-error-4.txt.tmp
+-# CHECK-NEXT: # | {{.*}}diff-error-4.txt.tmp1
+-# CHECK-NEXT: # | {{\*+}}
+-# CHECK-NEXT: # | *** 1 ****
+-# CHECK-NEXT: # | ! hello-first
+-# CHECK-NEXT: # | --- 1 ----
+-# CHECK-NEXT: # | ! hello-second
+-# CHECK-NEXT: # `---{{-*}}
+-#      CHECK: ***
++# CHECK: FAIL: shtest-shell :: diff-error-4.txt
++# CHECK: *** TEST 'shtest-shell :: diff-error-4.txt' FAILED ***
++# CHECK: Exit Code: 1
++# CHECK: # command output:
++# CHECK: diff-error-4.txt.tmp
++# CHECK: diff-error-4.txt.tmp1
++# CHECK: *** 1 ****
++# CHECK: ! hello-first
++# CHECK: --- 1 ----
++# CHECK: ! hello-second
++# CHECK: ***
+ 
+ # CHECK: FAIL: shtest-shell :: diff-error-5.txt
+ # CHECK: *** TEST 'shtest-shell :: diff-error-5.txt' FAILED ***
+-# CHECK: diff
+-# CHECK: # .---command stderr{{-*}}
+-# CHECK: # | Error: missing or extra operand
+-# CHECK: # error: command failed with exit status: 1
++# CHECK: $ "diff"
++# CHECK: # command stderr:
++# CHECK: Error: missing or extra operand
++# CHECK: error: command failed with exit status: 1
+ # CHECK: ***
+ 
+ # CHECK: FAIL: shtest-shell :: diff-error-6.txt
+ # CHECK: *** TEST 'shtest-shell :: diff-error-6.txt' FAILED ***
+-# CHECK: diff
+-# CHECK: # .---command stderr{{-*}}
+-# CHECK: # | Error: missing or extra operand
+-# CHECK: # error: command failed with exit status: 1
++# CHECK: $ "diff"
++# CHECK: # command stderr:
++# CHECK: Error: missing or extra operand
++# CHECK: error: command failed with exit status: 1
+ # CHECK: ***
+ 
+ 
+@@ -233,130 +223,137 @@
+ 
+ # CHECK: *** TEST 'shtest-shell :: diff-pipes.txt' FAILED ***
+ 
+-# CHECK: diff {{[^ ]*}}.foo {{.*}}.foo | FileCheck {{.*}}
++# CHECK: $ "diff" "{{[^"]*}}.foo" "{{[^"]*}}.foo"
++# CHECK-NOT: note
++# CHECK-NOT: error
++# CHECK: $ "FileCheck"
+ # CHECK-NOT: note
+ # CHECK-NOT: error
+ 
+-#      CHECK: diff -u {{.*}}.foo {{.*}}.bar | FileCheck {{.*}} && false || true
+-# CHECK-NEXT: # executed command: diff -u {{.*}}.foo {{.*}}.bar
+-# CHECK-NEXT: # note: command had no output on stdout or stderr
+-# CHECK-NEXT: # error: command failed with exit status: 1
+-# CHECK-NEXT: # executed command: FileCheck
+-# CHECK-NEXT: # executed command: true
++# CHECK: $ "diff" "-u" "{{[^"]*}}.foo" "{{[^"]*}}.bar"
++# CHECK: note: command had no output on stdout or stderr
++# CHECK: error: command failed with exit status: 1
++# CHECK: $ "FileCheck"
++# CHECK-NOT: note
++# CHECK-NOT: error
++# CHECK: $ "true"
+ 
+-#     CHECK: cat {{.*}}.foo | diff -u - {{.*}}.foo
++# CHECK: $ "cat" "{{[^"]*}}.foo"
++# CHECK: $ "diff" "-u" "-" "{{[^"]*}}.foo"
+ # CHECK-NOT: note
+ # CHECK-NOT: error
+ 
+-#     CHECK: cat {{.*}}.foo | diff -u {{.*}}.foo -
++# CHECK: $ "cat" "{{[^"]*}}.foo"
++# CHECK: $ "diff" "-u" "{{[^"]*}}.foo" "-"
+ # CHECK-NOT: note
+ # CHECK-NOT: error
+ 
+-#      CHECK: cat {{.*}}.bar | diff -u {{.*}}.foo - && false || true
+-# CHECK-NEXT: # executed command: cat {{.*}}.bar
+-# CHECK-NEXT: # executed command: diff -u {{.*}}.foo -
+-# CHECK-NEXT: # .---command stdout{{-*}}
+-#      CHECK: # | @@
+-# CHECK-NEXT: # | -foo
+-# CHECK-NEXT: # | +bar
+-# CHECK-NEXT: # `---{{-*}}
+-# CHECK-NEXT: # error: command failed with exit status: 1
+-# CHECK-NEXT: # executed command: true
+-
+-#      CHECK: cat {{.*}}.bar | diff -u - {{.*}}.foo && false || true
+-# CHECK-NEXT: # executed command: cat {{.*}}.bar
+-# CHECK-NEXT: # executed command: diff -u - {{.*}}.foo
+-# CHECK-NEXT: # .---command stdout{{-*}}
+-#      CHECK: # | @@
+-# CHECK-NEXT: # | -bar
+-# CHECK-NEXT: # | +foo
+-# CHECK-NEXT: # `---{{-*}}
+-# CHECK-NEXT: # error: command failed with exit status: 1
+-# CHECK-NEXT: # executed command: true
+-
+-#     CHECK: cat {{.*}}.foo | diff - {{.*}}.foo | FileCheck {{.*}}
++# CHECK: $ "cat" "{{[^"]*}}.bar"
++# CHECK: $ "diff" "-u" "{{[^"]*}}.foo" "-"
++# CHECK: # command output:
++# CHECK: @@
++# CHECK-NEXT: -foo
++# CHECK-NEXT: +bar
++# CHECK: error: command failed with exit status: 1
++# CHECK: $ "true"
++
++# CHECK: $ "cat" "{{[^"]*}}.bar"
++# CHECK: $ "diff" "-u" "-" "{{[^"]*}}.foo"
++# CHECK: # command output:
++# CHECK: @@
++# CHECK-NEXT: -bar
++# CHECK-NEXT: +foo
++# CHECK: error: command failed with exit status: 1
++# CHECK: $ "true"
++
++# CHECK: $ "cat" "{{[^"]*}}.foo"
++# CHECK: $ "diff" "-" "{{[^"]*}}.foo"
++# CHECK-NOT: note
++# CHECK-NOT: error
++# CHECK: $ "FileCheck"
+ # CHECK-NOT: note
+ # CHECK-NOT: error
+ 
+-#      CHECK: cat {{.*}}.bar | diff -u {{.*}}.foo - | FileCheck {{.*}}
+-# CHECK-NEXT: # executed command: cat {{.*}}.bar
+-# CHECK-NEXT: # executed command: diff -u {{.*}}.foo -
+-# CHECK-NEXT: note: command had no output on stdout or stderr
+-# CHECK-NEXT: error: command failed with exit status: 1
+-# CHECK-NEXT: # executed command: FileCheck
+-# CHECK-NEXT: # executed command: true
++# CHECK: $ "cat" "{{[^"]*}}.bar"
++# CHECK: $ "diff" "-u" "{{[^"]*}}.foo" "-"
++# CHECK: note: command had no output on stdout or stderr
++# CHECK: error: command failed with exit status: 1
++# CHECK: $ "FileCheck"
++# CHECK-NOT: note
++# CHECK-NOT: error
++# CHECK: $ "true"
+ 
+-# CHECK: false
++# CHECK: $ "false"
+ 
+ # CHECK: ***
+ 
+ 
+ # CHECK: FAIL: shtest-shell :: diff-r-error-0.txt
+ # CHECK: *** TEST 'shtest-shell :: diff-r-error-0.txt' FAILED ***
+-# CHECK: diff -r
+-# CHECK: # .---command stdout{{-*}}
+-# CHECK: # | Only in {{.*}}dir1: dir1unique
+-# CHECK: # | Only in {{.*}}dir2: dir2unique
+-# CHECK: # error: command failed with exit status: 1
++# CHECK: $ "diff" "-r"
++# CHECK: # command output:
++# CHECK: Only in {{.*}}dir1: dir1unique
++# CHECK: Only in {{.*}}dir2: dir2unique
++# CHECK: error: command failed with exit status: 1
+ 
+ # CHECK: FAIL: shtest-shell :: diff-r-error-1.txt
+ # CHECK: *** TEST 'shtest-shell :: diff-r-error-1.txt' FAILED ***
+-# CHECK: diff -r
+-# CHECK: # .---command stdout{{-*}}
+-# CHECK: # | *** {{.*}}dir1{{.*}}subdir{{.*}}f01
+-# CHECK: # | --- {{.*}}dir2{{.*}}subdir{{.*}}f01
+-# CHECK: # | ! 12345
+-# CHECK: # | ! 00000
+-# CHECK: # error: command failed with exit status: 1
++# CHECK: $ "diff" "-r"
++# CHECK: # command output:
++# CHECK: *** {{.*}}dir1{{.*}}subdir{{.*}}f01
++# CHECK: --- {{.*}}dir2{{.*}}subdir{{.*}}f01
++# CHECK: 12345
++# CHECK: 00000
++# CHECK: error: command failed with exit status: 1
+ 
+ # CHECK: FAIL: shtest-shell :: diff-r-error-2.txt
+ # CHECK: *** TEST 'shtest-shell :: diff-r-error-2.txt' FAILED ***
+-# CHECK: diff -r
+-# CHECK: # .---command stdout{{-*}}
+-# CHECK: # | Only in {{.*}}dir2: extrafile
+-# CHECK: # error: command failed with exit status: 1
++# CHECK: $ "diff" "-r"
++# CHECK: # command output:
++# CHECK: Only in {{.*}}dir2: extrafile
++# CHECK: error: command failed with exit status: 1
+ 
+ # CHECK: FAIL: shtest-shell :: diff-r-error-3.txt
+ # CHECK: *** TEST 'shtest-shell :: diff-r-error-3.txt' FAILED ***
+-# CHECK: diff -r
+-# CHECK: # .---command stdout{{-*}}
+-# CHECK: # | Only in {{.*}}dir1: extra_subdir
+-# CHECK: # error: command failed with exit status: 1
++# CHECK: $ "diff" "-r"
++# CHECK: # command output:
++# CHECK: Only in {{.*}}dir1: extra_subdir
++# CHECK: error: command failed with exit status: 1
+ 
+ # CHECK: FAIL: shtest-shell :: diff-r-error-4.txt
+ # CHECK: *** TEST 'shtest-shell :: diff-r-error-4.txt' FAILED ***
+-# CHECK: diff -r
+-# CHECK: # .---command stdout{{-*}}
+-# CHECK: # | File {{.*}}dir1{{.*}}extra_subdir is a directory while file {{.*}}dir2{{.*}}extra_subdir is a regular file
+-# CHECK: # error: command failed with exit status: 1
++# CHECK: $ "diff" "-r"
++# CHECK: # command output:
++# CHECK: File {{.*}}dir1{{.*}}extra_subdir is a directory while file {{.*}}dir2{{.*}}extra_subdir is a regular file
++# CHECK: error: command failed with exit status: 1
+ 
+ # CHECK: FAIL: shtest-shell :: diff-r-error-5.txt
+ # CHECK: *** TEST 'shtest-shell :: diff-r-error-5.txt' FAILED ***
+-# CHECK: diff -r
+-# CHECK: # .---command stdout{{-*}}
+-# CHECK: # | Only in {{.*}}dir1: extra_subdir
+-# CHECK: # error: command failed with exit status: 1
++# CHECK: $ "diff" "-r"
++# CHECK: # command output:
++# CHECK: Only in {{.*}}dir1: extra_subdir
++# CHECK: error: command failed with exit status: 1
+ 
+ # CHECK: FAIL: shtest-shell :: diff-r-error-6.txt
+ # CHECK: *** TEST 'shtest-shell :: diff-r-error-6.txt' FAILED ***
+-# CHECK: diff -r
+-# CHECK: # .---command stdout{{-*}}
+-# CHECK: # | File {{.*}}dir1{{.*}}extra_file is a regular empty file while file {{.*}}dir2{{.*}}extra_file is a directory
+-# CHECK: # error: command failed with exit status: 1
++# CHECK: $ "diff" "-r"
++# CHECK: # command output:
++# CHECK: File {{.*}}dir1{{.*}}extra_file is a regular empty file while file {{.*}}dir2{{.*}}extra_file is a directory
++# CHECK: error: command failed with exit status: 1
+ 
+ # CHECK: FAIL: shtest-shell :: diff-r-error-7.txt
+ # CHECK: *** TEST 'shtest-shell :: diff-r-error-7.txt' FAILED ***
+-# CHECK: diff -r - {{.*}}
+-# CHECK: # .---command stderr{{-*}}
+-# CHECK: # | Error: cannot recursively compare '-'
+-# CHECK: # error: command failed with exit status: 1
++# CHECK: $ "diff" "-r" "-" "{{[^"]*}}"
++# CHECK: # command stderr:
++# CHECK: Error: cannot recursively compare '-'
++# CHECK: error: command failed with exit status: 1
+ 
+ # CHECK: FAIL: shtest-shell :: diff-r-error-8.txt
+ # CHECK: *** TEST 'shtest-shell :: diff-r-error-8.txt' FAILED ***
+-# CHECK: diff -r {{.*}} -
+-# CHECK: # .---command stderr{{-*}}
+-# CHECK: # | Error: cannot recursively compare '-'
+-# CHECK: # error: command failed with exit status: 1
++# CHECK: $ "diff" "-r" "{{[^"]*}}" "-"
++# CHECK: # command stderr:
++# CHECK: Error: cannot recursively compare '-'
++# CHECK: error: command failed with exit status: 1
+ 
+ # CHECK: PASS: shtest-shell :: diff-r.txt
+ 
+@@ -365,59 +362,51 @@
+ 
+ # CHECK: *** TEST 'shtest-shell :: diff-strip-trailing-cr.txt' FAILED ***
+ 
+-#      CHECK: diff -u diff-in.dos diff-in.unix && false || true
+-# CHECK-NEXT: # executed command: diff -u diff-in.dos diff-in.unix
+-# CHECK-NEXT: # .---command stdout{{-*}}
+-#      CHECK: # | @@
+-# CHECK-NEXT: # | -In this file, the
+-# CHECK-NEXT: # | -sequence "\r\n"
+-# CHECK-NEXT: # | -terminates lines.
+-# CHECK-NEXT: # | +In this file, the
+-# CHECK-NEXT: # | +sequence "\n"
+-# CHECK-NEXT: # | +terminates lines.
+-# CHECK-NEXT: # `---{{-*}}
+-# CHECK-NEXT: # error: command failed with exit status: 1
+-# CHECK-NEXT: # executed command: true
+-
+-#      CHECK: diff -u diff-in.unix diff-in.dos && false || true
+-# CHECK-NEXT: # executed command: diff -u diff-in.unix diff-in.dos
+-# CHECK-NEXT: # .---command stdout{{-*}}
+-#      CHECK: # | @@
+-# CHECK-NEXT: # | -In this file, the
+-# CHECK-NEXT: # | -sequence "\n"
+-# CHECK-NEXT: # | -terminates lines.
+-# CHECK-NEXT: # | +In this file, the
+-# CHECK-NEXT: # | +sequence "\r\n"
+-# CHECK-NEXT: # | +terminates lines.
+-# CHECK-NEXT: # `---{{-*}}
+-# CHECK-NEXT: # error: command failed with exit status: 1
+-# CHECK-NEXT: # executed command: true
+-
+-#      CHECK: diff -u --strip-trailing-cr diff-in.dos diff-in.unix && false || true
+-# CHECK-NEXT: executed command: diff -u --strip-trailing-cr diff-in.dos diff-in.unix
+-# CHECK-NEXT: # .---command stdout{{-*}}
+-#      CHECK: # | @@
+-# CHECK-NEXT: # |  In this file, the
+-# CHECK-NEXT: # | -sequence "\r\n"
+-# CHECK-NEXT: # | +sequence "\n"
+-# CHECK-NEXT: # |  terminates lines.
+-# CHECK-NEXT: # `---{{-*}}
+-# CHECK-NEXT: # error: command failed with exit status: 1
+-# CHECK-NEXT: # executed command: true
+-
+-#      CHECK: diff -u --strip-trailing-cr diff-in.unix diff-in.dos && false || true
+-# CHECK-NEXT: # executed command: diff -u --strip-trailing-cr diff-in.unix diff-in.dos
+-# CHECK-NEXT: # .---command stdout{{-*}}
+-#      CHECK: # | @@
+-# CHECK-NEXT: # |  In this file, the
+-# CHECK-NEXT: # | -sequence "\n"
+-# CHECK-NEXT: # | +sequence "\r\n"
+-# CHECK-NEXT: # |  terminates lines.
+-# CHECK-NEXT: # `---{{-*}}
+-# CHECK-NEXT: # error: command failed with exit status: 1
+-# CHECK-NEXT: # executed command: true
+-
+-# CHECK: false
++# CHECK: $ "diff" "-u" "diff-in.dos" "diff-in.unix"
++# CHECK: # command output:
++# CHECK: @@
++# CHECK-NEXT: -In this file, the
++# CHECK-NEXT: -sequence "\r\n"
++# CHECK-NEXT: -terminates lines.
++# CHECK-NEXT: +In this file, the
++# CHECK-NEXT: +sequence "\n"
++# CHECK-NEXT: +terminates lines.
++# CHECK: error: command failed with exit status: 1
++# CHECK: $ "true"
++
++# CHECK: $ "diff" "-u" "diff-in.unix" "diff-in.dos"
++# CHECK: # command output:
++# CHECK: @@
++# CHECK-NEXT: -In this file, the
++# CHECK-NEXT: -sequence "\n"
++# CHECK-NEXT: -terminates lines.
++# CHECK-NEXT: +In this file, the
++# CHECK-NEXT: +sequence "\r\n"
++# CHECK-NEXT: +terminates lines.
++# CHECK: error: command failed with exit status: 1
++# CHECK: $ "true"
++
++# CHECK: $ "diff" "-u" "--strip-trailing-cr" "diff-in.dos" "diff-in.unix"
++# CHECK: # command output:
++# CHECK: @@
++# CHECK-NEXT:  In this file, the
++# CHECK-NEXT: -sequence "\r\n"
++# CHECK-NEXT: +sequence "\n"
++# CHECK-NEXT:  terminates lines.
++# CHECK: error: command failed with exit status: 1
++# CHECK: $ "true"
++
++# CHECK: $ "diff" "-u" "--strip-trailing-cr" "diff-in.unix" "diff-in.dos"
++# CHECK: # command output:
++# CHECK: @@
++# CHECK-NEXT:  In this file, the
++# CHECK-NEXT: -sequence "\n"
++# CHECK-NEXT: +sequence "\r\n"
++# CHECK-NEXT:  terminates lines.
++# CHECK: error: command failed with exit status: 1
++# CHECK: $ "true"
++
++# CHECK: $ "false"
+ 
+ # CHECK: ***
+ 
+@@ -426,144 +415,106 @@
+ 
+ # CHECK: *** TEST 'shtest-shell :: diff-unified.txt' FAILED ***
+ 
+-#      CHECK: diff -u {{.*}}.foo {{.*}}.bar && false || true
+-# CHECK-NEXT: # executed command: diff -u {{.*}}.foo {{.*}}.bar
+-# CHECK-NEXT: # .---command stdout{{-*}}
+-#      CHECK: # | @@ {{.*}} @@
+-# CHECK-NEXT: # | 3
+-# CHECK-NEXT: # | 4
+-# CHECK-NEXT: # | 5
+-# CHECK-NEXT: # | -6 foo
+-# CHECK-NEXT: # | +6 bar
+-# CHECK-NEXT: # | 7
+-# CHECK-NEXT: # | 8
+-# CHECK-NEXT: # | 9
+-# CHECK-NEXT: # `---{{-*}}
+-# CHECK-NEXT: # error: command failed with exit status: 1
+-# CHECK-NEXT: # executed command: true
+-
+-#      CHECK: diff -U 2 {{.*}}.foo {{.*}}.bar && false || true
+-# CHECK-NEXT: # executed command: diff -U 2 {{.*}}.foo {{.*}}.bar
+-# CHECK-NEXT: # .---command stdout{{-*}}
+-#      CHECK: # | @@ {{.*}} @@
+-# CHECK-NEXT: # | 4
+-# CHECK-NEXT: # | 5
+-# CHECK-NEXT: # | -6 foo
+-# CHECK-NEXT: # | +6 bar
+-# CHECK-NEXT: # | 7
+-# CHECK-NEXT: # | 8
+-# CHECK-NEXT: # `---{{-*}}
+-# CHECK-NEXT: # error: command failed with exit status: 1
+-# CHECK-NEXT: # executed command: true
+-
+-#      CHECK: diff -U4 {{.*}}.foo {{.*}}.bar && false || true
+-# CHECK-NEXT: # executed command: diff -U4 {{.*}}.foo {{.*}}.bar
+-# CHECK-NEXT: # .---command stdout{{-*}}
+-#      CHECK: # | @@ {{.*}} @@
+-# CHECK-NEXT: # | 2
+-# CHECK-NEXT: # | 3
+-# CHECK-NEXT: # | 4
+-# CHECK-NEXT: # | 5
+-# CHECK-NEXT: # | -6 foo
+-# CHECK-NEXT: # | +6 bar
+-# CHECK-NEXT: # | 7
+-# CHECK-NEXT: # | 8
+-# CHECK-NEXT: # | 9
+-# CHECK-NEXT: # | 10
+-# CHECK-NEXT: # `---{{-*}}
+-# CHECK-NEXT: # error: command failed with exit status: 1
+-# CHECK-NEXT: # executed command: true
+-
+-#      CHECK: diff -U0 {{.*}}.foo {{.*}}.bar && false || true
+-# CHECK-NEXT: diff -U0 {{.*}}.foo {{.*}}.bar
+-# CHECK-NEXT: # .---command stdout{{-*}}
+-#      CHECK: # | @@ {{.*}} @@
+-# CHECK-NEXT: # | -6 foo
+-# CHECK-NEXT: # | +6 bar
+-# CHECK-NEXT: # `---{{-*}}
+-# CHECK-NEXT: # error: command failed with exit status: 1
+-# CHECK-NEXT: # executed command: true
+-
+-# CHECK: diff -U 30.1 {{.*}} {{.*}} && false || true
+-# CHECK: # executed command: diff -U 30.1 {{.*}} {{.*}}
+-# CHECK: # .---command stderr{{-*}}
+-# CHECK: # | Error: invalid '-U' argument: 30.1
+-# CHECK: # error: command failed with exit status: 1
+-# CHECK: # executed command: true
+-
+-# CHECK: diff -U-1 {{.*}} {{.*}} && false || true
+-# CHECK: # executed command: diff -U-1 {{.*}} {{.*}}
+-# CHECK: # .---command stderr{{-*}}
+-# CHECK: # | Error: invalid '-U' argument: -1
+-# CHECK: # error: command failed with exit status: 1
+-# CHECK: # executed command: true
+-
+-# CHECK: false
++# CHECK: $ "diff" "-u" "{{[^"]*}}.foo" "{{[^"]*}}.bar"
++# CHECK: # command output:
++# CHECK: @@ {{.*}} @@
++# CHECK-NEXT: 3
++# CHECK-NEXT: 4
++# CHECK-NEXT: 5
++# CHECK-NEXT: -6 foo
++# CHECK-NEXT: +6 bar
++# CHECK-NEXT: 7
++# CHECK-NEXT: 8
++# CHECK-NEXT: 9
++# CHECK-EMPTY:
++# CHECK-NEXT: error: command failed with exit status: 1
++# CHECK-NEXT: $ "true"
++
++# CHECK: $ "diff" "-U" "2" "{{[^"]*}}.foo" "{{[^"]*}}.bar"
++# CHECK: # command output:
++# CHECK: @@ {{.*}} @@
++# CHECK-NEXT: 4
++# CHECK-NEXT: 5
++# CHECK-NEXT: -6 foo
++# CHECK-NEXT: +6 bar
++# CHECK-NEXT: 7
++# CHECK-NEXT: 8
++# CHECK-EMPTY:
++# CHECK-NEXT: error: command failed with exit status: 1
++# CHECK-NEXT: $ "true"
++
++# CHECK: $ "diff" "-U4" "{{[^"]*}}.foo" "{{[^"]*}}.bar"
++# CHECK: # command output:
++# CHECK: @@ {{.*}} @@
++# CHECK-NEXT: 2
++# CHECK-NEXT: 3
++# CHECK-NEXT: 4
++# CHECK-NEXT: 5
++# CHECK-NEXT: -6 foo
++# CHECK-NEXT: +6 bar
++# CHECK-NEXT: 7
++# CHECK-NEXT: 8
++# CHECK-NEXT: 9
++# CHECK-NEXT: 10
++# CHECK-EMPTY:
++# CHECK-NEXT: error: command failed with exit status: 1
++# CHECK-NEXT: $ "true"
++
++# CHECK: $ "diff" "-U0" "{{[^"]*}}.foo" "{{[^"]*}}.bar"
++# CHECK: # command output:
++# CHECK: @@ {{.*}} @@
++# CHECK-NEXT: -6 foo
++# CHECK-NEXT: +6 bar
++# CHECK-EMPTY:
++# CHECK-NEXT: error: command failed with exit status: 1
++# CHECK-NEXT: $ "true"
++
++# CHECK: $ "diff" "-U" "30.1" "{{[^"]*}}" "{{[^"]*}}"
++# CHECK: # command stderr:
++# CHECK: Error: invalid '-U' argument: 30.1
++# CHECK: error: command failed with exit status: 1
++# CHECK: $ "true"
++
++# CHECK: $ "diff" "-U-1" "{{[^"]*}}" "{{[^"]*}}"
++# CHECK: # command stderr:
++# CHECK: Error: invalid '-U' argument: -1
++# CHECK: error: command failed with exit status: 1
++# CHECK: $ "true"
++
++# CHECK: $ "false"
+ 
+ # CHECK: ***
+ 
+ 
+-#      CHECK: FAIL: shtest-shell :: diff-w.txt
+-#      CHECK: *** TEST 'shtest-shell :: diff-w.txt' FAILED ***
+-#      CHECK: diff -w {{.*}}.0 {{.*}}.1
+-#      CHECK: # .---command stdout{{-*}}
+-#      CHECK: # | {{\*+}} 1,3
+-# CHECK-NEXT: # |   foo
+-# CHECK-NEXT: # |   bar
+-# CHECK-NEXT: # | ! baz
+-# CHECK-NEXT: # | ---
+-# CHECK-NEXT: # |   foo
+-# CHECK-NEXT: # |   bar
+-# CHECK-NEXT: # | ! bat
+-# CHECK-NEXT: # `---{{-*}}
+-# CHECK-NEXT: # error: command failed with exit status: 1
+-#      CHECK: ***
+-
+-# CHECK: FAIL: shtest-shell :: echo-at-redirect-stderr.txt
+-# CHECK: *** TEST 'shtest-shell :: echo-at-redirect-stderr.txt' FAILED ***
+-# CHECK: @echo 2> {{.*}}
+-# CHECK: # executed command: @echo
+-# CHECK: # .---command stderr{{-*}}
+-# CHECK: # | stdin and stderr redirects not supported for @echo
+-# CHECK: error: command failed with exit status:
+-
+-# CHECK: FAIL: shtest-shell :: echo-at-redirect-stdin.txt
+-# CHECK: *** TEST 'shtest-shell :: echo-at-redirect-stdin.txt' FAILED ***
+-# CHECK: @echo < {{.*}}
+-# CHECK: # executed command: @echo
+-# CHECK: # .---command stderr{{-*}}
+-# CHECK: # | stdin and stderr redirects not supported for @echo
+-# CHECK: error: command failed with exit status:
+-
+-# CHECK: FAIL: shtest-shell :: echo-redirect-stderr.txt
+-# CHECK: *** TEST 'shtest-shell :: echo-redirect-stderr.txt' FAILED ***
+-# CHECK: echo 2> {{.*}}
+-# CHECK: # executed command: echo
+-# CHECK: # .---command stderr{{-*}}
+-# CHECK: # | stdin and stderr redirects not supported for echo
+-# CHECK: error: command failed with exit status:
+-
+-# CHECK: FAIL: shtest-shell :: echo-redirect-stdin.txt
+-# CHECK: *** TEST 'shtest-shell :: echo-redirect-stdin.txt' FAILED ***
+-# CHECK: echo < {{.*}}
+-# CHECK: # executed command: echo
+-# CHECK: # .---command stderr{{-*}}
+-# CHECK: # | stdin and stderr redirects not supported for echo
+-# CHECK: error: command failed with exit status:
++# CHECK: FAIL: shtest-shell :: diff-w.txt
++# CHECK: *** TEST 'shtest-shell :: diff-w.txt' FAILED ***
++# CHECK: $ "diff" "-w" "{{[^"]*}}.0" "{{[^"]*}}.1"
++# CHECK: # command output:
++# CHECK: 1,3
++# CHECK-NEXT: {{^  }}foo
++# CHECK-NEXT: {{^  }}bar
++# CHECK-NEXT: ! baz
++# CHECK-NEXT: ---
++# CHECK-NEXT: {{^  }}foo
++# CHECK-NEXT: {{^  }}bar
++# CHECK-NEXT: ! bat
++# CHECK-EMPTY:
++# CHECK: error: command failed with exit status: 1
++# CHECK: ***
+ 
+ # CHECK: FAIL: shtest-shell :: error-0.txt
+ # CHECK: *** TEST 'shtest-shell :: error-0.txt' FAILED ***
+-# CHECK: not-a-real-command
+-# CHECK: # .---command stderr{{-*}}
+-# CHECK: # | 'not-a-real-command': command not found
+-# CHECK: # error: command failed with exit status: 127
++# CHECK: $ "not-a-real-command"
++# CHECK: # command stderr:
++# CHECK: 'not-a-real-command': command not found
++# CHECK: error: command failed with exit status: 127
+ # CHECK: ***
+ 
+ # FIXME: The output here sucks.
+ #
+ # CHECK: FAIL: shtest-shell :: error-1.txt
+ # CHECK: *** TEST 'shtest-shell :: error-1.txt' FAILED ***
+-# CHECK: shell parser error on RUN: at line 3: echo "missing quote
++# CHECK: shell parser error on: ': \'RUN: at line 3\'; echo "missing quote'
+ # CHECK: ***
+ 
+ # CHECK: FAIL: shtest-shell :: error-2.txt
+@@ -573,52 +524,52 @@
+ 
+ # CHECK: FAIL: shtest-shell :: mkdir-error-0.txt
+ # CHECK: *** TEST 'shtest-shell :: mkdir-error-0.txt' FAILED ***
+-# CHECK: mkdir -p temp | rm -rf temp
+-# CHECK: # .---command stderr{{-*}}
+-# CHECK: # | Unsupported: 'mkdir' cannot be part of a pipeline
+-# CHECK: # error: command failed with exit status: 127
++# CHECK: $ "mkdir" "-p" "temp"
++# CHECK: # command stderr:
++# CHECK: Unsupported: 'mkdir' cannot be part of a pipeline
++# CHECK: error: command failed with exit status: 127
+ # CHECK: ***
+ 
+ # CHECK: FAIL: shtest-shell :: mkdir-error-1.txt
+ # CHECK: *** TEST 'shtest-shell :: mkdir-error-1.txt' FAILED ***
+-# CHECK: mkdir -p -m 777 temp
+-# CHECK: # .---command stderr{{-*}}
+-# CHECK: # | Unsupported: 'mkdir': option -m not recognized
+-# CHECK: # error: command failed with exit status: 127
++# CHECK: $ "mkdir" "-p" "-m" "777" "temp"
++# CHECK: # command stderr:
++# CHECK: Unsupported: 'mkdir': option -m not recognized
++# CHECK: error: command failed with exit status: 127
+ # CHECK: ***
+ 
+ # CHECK: FAIL: shtest-shell :: mkdir-error-2.txt
+ # CHECK: *** TEST 'shtest-shell :: mkdir-error-2.txt' FAILED ***
+-# CHECK: mkdir -p
+-# CHECK: # .---command stderr{{-*}}
+-# CHECK: # | Error: 'mkdir' is missing an operand
+-# CHECK: # error: command failed with exit status: 127
++# CHECK: $ "mkdir" "-p"
++# CHECK: # command stderr:
++# CHECK: Error: 'mkdir' is missing an operand
++# CHECK: error: command failed with exit status: 127
+ # CHECK: ***
+ 
+ # CHECK: PASS: shtest-shell :: redirects.txt
+ 
+ # CHECK: FAIL: shtest-shell :: rm-error-0.txt
+ # CHECK: *** TEST 'shtest-shell :: rm-error-0.txt' FAILED ***
+-# CHECK: rm -rf temp | echo "hello"
+-# CHECK: # .---command stderr{{-*}}
+-# CHECK: # | Unsupported: 'rm' cannot be part of a pipeline
+-# CHECK: # error: command failed with exit status: 127
++# CHECK: $ "rm" "-rf" "temp"
++# CHECK: # command stderr:
++# CHECK: Unsupported: 'rm' cannot be part of a pipeline
++# CHECK: error: command failed with exit status: 127
+ # CHECK: ***
+ 
+ # CHECK: FAIL: shtest-shell :: rm-error-1.txt
+ # CHECK: *** TEST 'shtest-shell :: rm-error-1.txt' FAILED ***
+-# CHECK: rm -f -v temp
+-# CHECK: # .---command stderr{{-*}}
+-# CHECK: # | Unsupported: 'rm': option -v not recognized
+-# CHECK: # error: command failed with exit status: 127
++# CHECK: $ "rm" "-f" "-v" "temp"
++# CHECK: # command stderr:
++# CHECK: Unsupported: 'rm': option -v not recognized
++# CHECK: error: command failed with exit status: 127
+ # CHECK: ***
+ 
+ # CHECK: FAIL: shtest-shell :: rm-error-2.txt
+ # CHECK: *** TEST 'shtest-shell :: rm-error-2.txt' FAILED ***
+-# CHECK: rm -r hello
+-# CHECK: # .---command stderr{{-*}}
+-# CHECK: # | Error: 'rm' command failed
+-# CHECK: # error: command failed with exit status: 1
++# CHECK: $ "rm" "-r" "hello"
++# CHECK: # command stderr:
++# CHECK: Error: 'rm' command failed
++# CHECK: error: command failed with exit status: 1
+ # CHECK: ***
+ 
+ # CHECK: FAIL: shtest-shell :: rm-error-3.txt
+@@ -630,17 +581,16 @@
+ # CHECK: PASS: shtest-shell :: sequencing-0.txt
+ # CHECK: XFAIL: shtest-shell :: sequencing-1.txt
+ 
+-#      CHECK: FAIL: shtest-shell :: stdout-encoding.txt
+-#      CHECK: *** TEST 'shtest-shell :: stdout-encoding.txt' FAILED ***
+-#      CHECK: cat diff-in.bin
+-#      CHECK: # .---command stdout{{-*}}
+-# CHECK-NEXT: # | {{.f.o.o.$}}
+-# CHECK-NEXT: # | {{.b.a.r.}}
+-# CHECK-NEXT: # | {{.b.a.z.$}}
+-# CHECK-NEXT: # `---{{-*}}
+-#  CHECK-NOT: error
+-#      CHECK: false
+-#      CHECK: ***
++# CHECK: FAIL: shtest-shell :: stdout-encoding.txt
++# CHECK: *** TEST 'shtest-shell :: stdout-encoding.txt' FAILED ***
++# CHECK: $ "cat" "diff-in.bin"
++# CHECK: # command output:
++# CHECK-NEXT: {{^.f.o.o.$}}
++# CHECK-NEXT: {{^.b.a.r.}}
++# CHECK-NEXT: {{^.b.a.z.$}}
++# CHECK-NOT: error
++# CHECK: $ "false"
++# CHECK: ***
+ 
+ # CHECK: PASS: shtest-shell :: valid-shell.txt
+-# CHECK: Failed Tests (39)
++# CHECK: Failed Tests (35)

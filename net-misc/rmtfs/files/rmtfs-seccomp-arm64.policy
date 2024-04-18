@@ -1,6 +1,9 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
 
 faccessat: 1
 faccessat2: 1
@@ -45,6 +48,8 @@ setsockopt: 1
 set_tid_address: 1
 # Allow AF_UNIX or AF_QIPCRTR
 socket: arg0 == AF_UNIX || arg0 == AF_QIPCRTR
+symlinkat: 1
 getrlimit: 1
 uname: 1
 write: 1
+futex: 1

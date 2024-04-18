@@ -1,9 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE pkgmetadata SYSTEM "http://www.gentoo.org/dtd/metadata.dtd">
+<!DOCTYPE pkgmetadata SYSTEM "https://www.gentoo.org/dtd/metadata.dtd">
 <pkgmetadata>
-	<maintainer type="person">
-		<email>patrick@gentoo.org</email>
-		<name>Patrick Lauer</name>
+	<maintainer type="person" proxied="yes">
+		<email>kernlpanic@dennis-eisele.de</email>
+		<name>Dennis Eisele</name>
+	</maintainer>
+	<maintainer type="person" proxied="yes">
+		<email>rndxelement@protonmail.com</email>
+		<name>Philipp Rösner</name>
+	</maintainer>
+	<maintainer type="project" proxied="proxy">
+		<email>proxy-maint@gentoo.org</email>
+		<name>Proxy Maintainers</name>
 	</maintainer>
 	<longdescription lang="en">
 		StrongSwan is direct descendant of the discontinued FreeS/WAN project.
@@ -23,6 +31,7 @@
 		<flag name="openssl">Enable <pkg>dev-libs/openssl</pkg> plugin which is required for Elliptic Curve Cryptography (DH groups 19-21,25,26) and ECDSA. Also provides 3DES, AES, Blowfish, Camellia, CAST, DES, IDEA and RC5 ciphers along with MD2, MD4, MD5 and SHA1/2 hash algorithms, RSA and DH groups 1,2,5,14-18 and 22-24(4.4+) <pkg>dev-libs/openssl</pkg> has to be compiled with USE="-bindist".</flag>
 		<flag name="pkcs11">Enable pkcs11 support</flag>
 		<flag name="strongswan_plugins_aesni">Enable support for Intel AES-NI crypto plugin</flag>
+		<flag name="strongswan_plugins_bypass-lan">Enable support for the bypass-lan plugin</flag>
 		<flag name="strongswan_plugins_chapoly">Enable ChaCha20/Poly1305 AEAD implementation and ChaCha20 XOF plugin</flag>
 		<flag name="strongswan_plugins_forecast">Enable multicast and broadcast forwarding plugin</flag>
 		<flag name="strongswan_plugins_led">Enable support for the led plugin</flag>
@@ -43,6 +52,7 @@
 		<flag name="strongswan_plugins_save-keys">Enable plugin that saves IKE and/or ESP keys to files compatible with Wireshark (for debugging)</flag>
 		<flag name="strongswan_plugins_unbound">Enable support for the unbound plugin</flag>
 		<flag name="strongswan_plugins_whitelist">Enable support for the whitelist plugin</flag>
+		<flag name="strongswan_plugins_xauth-noauth">Enable support for the xauth-noauth plugin</flag>
 	</use>
 	<upstream>
 		<remote-id type="cpe">cpe:/a:strongswan:strongswan</remote-id>

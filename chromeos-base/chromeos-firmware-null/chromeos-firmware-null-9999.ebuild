@@ -1,7 +1,7 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=5
+EAPI=7
 CROS_WORKON_LOCALNAME="platform/firmware"
 CROS_WORKON_PROJECT="chromiumos/platform/firmware"
 
@@ -27,7 +27,7 @@ RDEPEND=""
 # MAIN_RW_IMAGE controls AP RW firmware when you need different RO & RW.
 # EC_IMAGE controls EC RO firmware (RW will be synced from MAIN_[RW_]IMAGE).
 # For more details, read
-# https://chromium.googlesource.com/chromiumos/platform/firmware/+/master/README.md
+# https://chromium.googlesource.com/chromiumos/platform/firmware/
 #
 # When you modify any image files below, please also update manifest file:
 #  (chroot) ebuild chromeos-firmware-${BOARD}-9999.ebuild manifest
@@ -46,14 +46,14 @@ cros-firmware_setup_source
 
 # Remove/Adapt script below here when using the template.
 src_unpack() {
-	einfo "Dummy implementation to replace cros-firmware.eclass"
+	einfo "Stub implementation to replace cros-firmware.eclass"
 	cros-workon_src_unpack
 }
 
 src_compile() {
-	einfo "Dummy implementation to replace cros-firmware.eclass"
+	einfo "Stub implementation to replace cros-firmware.eclass"
 }
 
 src_install() {
-	einfo "Dummy implementation to replace cros-firmware.eclass"
+	einfo "Stub implementation to replace cros-firmware.eclass"
 }

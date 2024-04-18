@@ -1,0 +1,15 @@
+BDEPEND=dev-lang/go
+DEFINED_PHASES=compile install nofetch postinst test unpack
+DEPEND=dev-go/errors
+DESCRIPTION=Utility package to work with network connections
+EAPI=7
+HOMEPAGE=https://github.com/docker/go-connections
+IUSE=test
+KEYWORDS=*
+LICENSE=Apache-2.0
+RDEPEND=!<=dev-go/docker-20.10.8-r1
+RESTRICT=binchecks strip
+SLOT=0
+SRC_URI=https://github.com/docker/go-connections/archive/88e5af338bb1e6c7f51b69cc1864249d1e8f4786.tar.gz -> github.com-docker-go-connections-88e5af338bb1e6c7f51b69cc1864249d1e8f4786.tar.gz
+_eclasses_=cros-go	77ba1c1ddf5c20dab7e47e19efeffef7	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=195e2f425989bf602170f7bb564cfd60

@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -7,43 +7,50 @@ CROS_WORKON_INCREMENTAL_BUILD="1"
 CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_OUTOFTREE_BUILD=1
-# TODO(crbug.com/809389): Avoid directly including headers from other packages.
-CROS_WORKON_SUBTREE="common-mk arc/setup chromeos-config metrics .gn"
+# TODO(b/187784160): Avoid directly including headers from other packages.
+CROS_WORKON_SUBTREE="common-mk arc/setup chromeos-config libsegmentation metrics net-base .gn"
 
 PLATFORM_NATIVE_TEST="yes"
 PLATFORM_SUBDIR="arc/setup"
 
+# Do not run test parallelly until unit tests are fixed.
+# shellcheck disable=SC2034
+PLATFORM_PARALLEL_GTEST_TEST="no"
+
 inherit tmpfiles cros-workon cros-unibuild platform
 
 DESCRIPTION="Set up environment to run ARC."
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/arc/setup"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/arc/setup"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
 IUSE="
+	arc_erofs
+	arc_hw_oemcrypto
 	arcpp
 	arcvm
-	esdfs
 	fuzzer
 	houdini
 	houdini64
-	iioservice
+	lvm_stateful_partition
 	ndk_translation
 	test"
 
 REQUIRED_USE="|| ( arcpp arcvm )"
 
 COMMON_DEPEND="
-	arcpp? (
-		esdfs? ( chromeos-base/arc-sdcard )
-	)
+	arcpp? ( chromeos-base/arc-sdcard )
 	chromeos-base/bootstat:=
 	chromeos-base/chromeos-config-tools:=
 	chromeos-base/cryptohome-client:=
 	>=chromeos-base/metrics-0.0.1-r3152:=
+	chromeos-base/libsegmentation:=[test?]
+	chromeos-base/net-base:=
 	chromeos-base/patchpanel-client:=
 	dev-libs/libxml2:=
+	dev-libs/openssl:=
 	dev-libs/protobuf:=
+	dev-libs/re2:=
 	sys-libs/libselinux:=
 	chromeos-base/minijail:=
 "
@@ -54,8 +61,8 @@ RDEPEND="${COMMON_DEPEND}
 	chromeos-base/patchpanel
 	arcvm? ( chromeos-base/crosvm )
 	arcpp? (
-		chromeos-base/swap-init
-		esdfs? ( sys-apps/restorecon )
+		chromeos-base/swap_management
+		sys-apps/restorecon
 	)
 "
 
@@ -65,18 +72,15 @@ DEPEND="${COMMON_DEPEND}
 "
 
 
-enable_esdfs() {
-	[[ -f "$1" ]] || die
-	local data=$(jq ".USE_ESDFS=true" "$1")
-	echo "${data}" > "$1" || die
-}
-
-
 src_install() {
+	platform_src_install
+
 	# Used for both ARCVM and ARC.
 	dosbin "${OUT}"/arc-prepare-host-generated-dir
 	dosbin "${OUT}"/arc-remove-data
 	dosbin "${OUT}"/arc-remove-stale-data
+	dolib.so "${OUT}"/lib/libarc_setup.so
+	dolib.so "${OUT}"/lib/libandroidxml.so
 	insinto /etc/init
 	doins init/arc-prepare-host-generated-dir.conf
 	doins init/arc-remove-data.conf
@@ -86,6 +90,10 @@ src_install() {
 
 	# Some binaries are only for ARCVM
 	if use arcvm; then
+		# ARCVM uses this binary via virtio-fs on /usr/bin.
+		# dobin instead of dosbin to install to /usr/bin.
+		dobin "${OUT}"/arc-packages-xml-reader
+
 		dosbin "${OUT}"/arc-apply-per-board-config
 		dosbin "${OUT}"/arc-create-data
 		dosbin "${OUT}"/arc-handle-upgrade
@@ -104,21 +112,16 @@ src_install() {
 		doins init/arc-boot-continue.conf
 		doins init/arc-lifetime.conf
 		doins init/arc-update-restorecon-last.conf
+		doins init/arcpp-media-sharing-services.conf
 		doins init/arcpp-post-login-services.conf
-		if use esdfs; then
-			doins init/arc-sdcard.conf
-			doins init/arc-sdcard-mount.conf
-		fi
+		doins init/arc-sdcard.conf
+		doins init/arc-sdcard-mount.conf
 		doins init/arc-system-mount.conf
 		insinto /etc/dbus-1/system.d
 		doins init/dbus-1/ArcSetupUpstart.conf
 
 		insinto /usr/share/arc-setup
 		doins init/arc-setup/config.json
-
-		if use esdfs; then
-			enable_esdfs "${D}/usr/share/arc-setup/config.json"
-		fi
 
 		insinto /opt/google/containers/arc-art
 		doins "${OUT}/dev-rootfs.squashfs"
@@ -130,15 +133,17 @@ src_install() {
 		keepdir /opt/google/containers/arc-art/mountpoints/container-root
 		keepdir /opt/google/containers/arc-art/mountpoints/dev-rootfs
 		keepdir /opt/google/containers/arc-art/mountpoints/vendor
-
-		local fuzzer_component_id="488493"
-		platform_fuzzer_install "${S}"/OWNERS "${OUT}"/arc_setup_util_find_all_properties_fuzzer \
-			--comp "${fuzzer_component_id}"
-		platform_fuzzer_install "${S}"/OWNERS "${OUT}"/arc_setup_util_find_fingerprint_and_sdk_version_fuzzer \
-			--comp "${fuzzer_component_id}"
-		platform_fuzzer_install "${S}"/OWNERS "${OUT}"/arc_property_util_expand_property_contents_fuzzer \
-			--comp "${fuzzer_component_id}"
 	fi
+
+	local fuzzer_component_id="488493"
+	platform_fuzzer_install "${S}"/OWNERS "${OUT}"/android_binary_xml_tokenizer_fuzzer \
+		--comp "${fuzzer_component_id}"
+	platform_fuzzer_install "${S}"/OWNERS "${OUT}"/android_xml_util_find_fingerprint_and_sdk_version_fuzzer \
+		--comp "${fuzzer_component_id}"
+	platform_fuzzer_install "${S}"/OWNERS "${OUT}"/arc_setup_util_find_all_properties_fuzzer \
+		--comp "${fuzzer_component_id}"
+	platform_fuzzer_install "${S}"/OWNERS "${OUT}"/arc_property_util_expand_property_contents_fuzzer \
+		--comp "${fuzzer_component_id}"
 }
 
 platform_pkg_test() {

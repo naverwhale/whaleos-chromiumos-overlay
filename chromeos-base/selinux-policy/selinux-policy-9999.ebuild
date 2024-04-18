@@ -1,4 +1,4 @@
-# Copyright 2018 The Chromium Authors. All rights reserved.
+# Copyright 2018 The Chromium Authors
 # Distributed under the terms of the GNU General Public License v2.
 
 EAPI=7
@@ -17,25 +17,36 @@ KEYWORDS="~*"
 # Keep this in sync with has_arc().
 IUSE="
 	android-container-pi
+	android-container-rvc
 	android-vm-master
 	android-vm-rvc
 	android-vm-sc
+	android-vm-tm
 	selinux_audit_all selinux_develop selinux_experimental
 	arc_first_release_n
 	nocheck
 	cheets_user cheets_user_64
 "
+#TODO(rebase114_whaleos) delete container-rvc, too?
 DEPEND="
-	android-container-pi? ( chromeos-base/android-container-pi:0= )
+	android-container-rvc? ( chromeos-base/android-container-rvc:0= )
 	android-vm-master? ( chromeos-base/android-vm-master:0= )
 	android-vm-rvc? ( chromeos-base/android-vm-rvc:0= )
 	android-vm-sc? ( chromeos-base/android-vm-sc:0= )
+	android-vm-tm? ( chromeos-base/android-vm-tm:0= )
 "
 
 RDEPEND="
 	${DEPEND}
 	sys-apps/restorecon
 	sys-process/audit
+"
+
+BDEPEND="
+	dev-lang/perl
+	sys-apps/checkpolicy
+	sys-apps/secilc
+	sys-devel/m4
 "
 
 SELINUX_VERSION="30"
@@ -125,24 +136,38 @@ version_cil() {
 # Keep this in sync with IUSE/DEPEND.
 has_arc() {
 	use android-container-pi ||
+	use android-container-rvc ||
 	use android-vm-rvc ||
 	use android-vm-sc ||
+	use android-vm-tm ||
 	use android-vm-master
 }
 
 gen_m4_flags() {
 	M4_COMMON_FLAGS=()
+	local arc_type="none"
 	local arc_version="none"
 	if use android-container-pi; then
+		arc_type="container"
 		arc_version="p"
+	elif use android-container-rvc; then
+		arc_type="container"
+		arc_version="r"
 	elif use android-vm-rvc; then
+		arc_type="vm"
 		arc_version="r"
 	elif use android-vm-sc; then
+		arc_type="vm"
 		arc_version="s"
+	elif use android-vm-tm; then
+		arc_type="vm"
+		arc_version="t"
 	elif use android-vm-master; then
+		arc_type="vm"
 		arc_version="master"
 	fi
 	M4_COMMON_FLAGS+=(
+		"-Darc_type=${arc_type}"
 		"-Darc_version=${arc_version}"
 		"-Duse_selinux_develop=$(usex selinux_develop y n)"
 		"-Duse_arc_first_release_n=$(usex arc_first_release_n y n)"
@@ -177,7 +202,7 @@ build_cil() {
 		-s "${policy_files[@]}" > "${output}.conf" \
 		|| die "failed to generate ${output}.conf"
 	checkpolicy -M -C -c "${SELINUX_VERSION}" "${output}.conf" \
-		-o "${output}" || die "failed to build $output"
+		-o "${output}" || die "failed to build ${output}"
 }
 
 build_android_reqd_cil() {
@@ -206,14 +231,14 @@ check_filetrans_defined_in_file_contexts() {
 	einfo "Verifying policy and file_contexts for filetrans_pattern"
 	_is_empty() {
 		local err=0
-		while read line; do
-			if [[ "$err" -eq "0" ]]; then
+		while read -r line; do
+			if [[ "${err}" -eq "0" ]]; then
 				ewarn "Expected to find these lines in file_contexts, but were not found:"
 				err=1
 			fi
-			ewarn "$line"
+			ewarn "${line}"
 		done
-		return $err
+		return ${err}
 	}
 	# filetrans is a kind of typetransition. Typetrasition is described like
 	# the following in a .cil file:
@@ -223,7 +248,7 @@ check_filetrans_defined_in_file_contexts() {
 	#  - both source and target are not tmpfs-related.
 	#  - source is not unconfined domain: chromeos
 	#  - type is not process since we only care file typetransition.
-	cat chromeos.cil | awk '
+	awk '
 		/^\(typetransition/	{
 						context=substr($NF,0,length($NF)-1)
 						if ($4=="process"||$2=="chromeos") next;
@@ -233,7 +258,7 @@ check_filetrans_defined_in_file_contexts() {
 						if(NF==6) { print substr($5,2,length($5)-2) ".*u:object_r:" context ":s0" }
 						else { print "u:object_r:" context ":s0" }
 					}
-	' | sort -u | xargs -d'\n' -n 1 sh -c 'grep $0 file_contexts >/dev/null || echo $0' | _is_empty
+	' chromeos.cil | sort -u | xargs -d'\n' -n 1 sh -c 'grep $0 file_contexts >/dev/null || echo $0' | _is_empty
 }
 
 # cat cil-file | get_attributed_type(attribute) => types separated by spaces
@@ -248,18 +273,18 @@ check_attribute_include() {
 	shift 1
 	einfo "Checking type set (attribute ${poolname}) equals to union of type sets of (attribute $@)"
 	local pool="$(cat chromeos.cil | get_attributed_type "${poolname}" | tr ' ' '\n')"
-	local remaining_types="$pool"
-	for attr in $@; do
-		remaining_types="$(echo "$remaining_types" | egrep -v "^$attr$")"
-		for t in `cat chromeos.cil | get_attributed_type "${attr}"`; do
-			if ! grep "$t" <(echo "$pool") >/dev/null; then
+	local remaining_types="${pool}"
+	for attr in "$@"; do
+		remaining_types="$(echo "${remaining_types}" | grep -E -v "^${attr}$")"
+		for t in $(cat chromeos.cil | get_attributed_type "${attr}"); do
+			if ! grep "${t}" <(echo "${pool}") >/dev/null; then
 				die "${t} type should have attribute ${poolname} to have attribute ${attr}"
 			fi
-			remaining_types="$(echo "$remaining_types" | egrep -v "^$t$")"
+			remaining_types="$(echo "${remaining_types}" | grep -E -v "^${t}$")"
 		done
 	done
-	if ! [[ -z "$remaining_types" ]]; then
-		die "Types with attribute $poolname should have at least one of $@, but these doesn't: \n$(echo "${remaining_types}" | tr '\n' ' ')"
+	if ! [[ -z "${remaining_types}" ]]; then
+		die "Types with attribute ${poolname} should have at least one of $@, but these doesn't: \n$(echo "${remaining_types}" | tr '\n' ' ')"
 	fi
 }
 
@@ -322,7 +347,9 @@ src_compile() {
 	if use nocheck; then
 		ewarn "Some post-compile checks are skipped. Please remove nocheck from your USE flag"
 	else
-		einfo 'Use USE="$USE nocheck" emerge-$BOARD selinux-policy to speed up emerge for development purpose'.
+		# We don't want to expand the variables in the help text.
+		#shellcheck disable=SC2016
+		einfo 'Use USE="$USE nocheck" emerge-$BOARD selinux-policy to speed up emerge for development purposes'
 		check_file_type_and_attribute
 	fi
 }
@@ -360,15 +387,28 @@ src_install() {
 # Check policy violation for neverallow rules extracted from CTS SELinuxNeverallowRulesTest.
 src_test() {
 	if ! use android-container-pi; then
-		# Skipping the test for ARCVM.
-		# We only run SELinux CTS against the guest-side policy of ARCVM.
+		ewarn "********************************************************"
+		ewarn "WARNING: Build-time SELinux policy tests only apply to"
+		ewarn "boards shipping android-container-pi."
+		ewarn "Test again using e.g. caroline or kevin to ensure full"
+		ewarn "test coverage."
+		ewarn "********************************************************"
+		return
+	fi
+
+	if ! ( use cheets_user || use cheets_user_64 ); then
+		ewarn "********************************************************"
+		ewarn "WARNING: Build-time SELinux policy tests are skipped on"
+		ewarn "boards shipping ARC userdebug builds (including betty)."
+		ewarn "Test again using e.g. caroline or kevin to ensure full"
+		ewarn "test coverage."
+		ewarn "********************************************************"
 		return
 	fi
 
 	local neverallowjava="${SYSROOT}/etc/selinux/intermediates/SELinuxNeverallowRulesTest.java"
-	if [ ! -f "${SYSROOT}/etc/selinux/intermediates/SELinuxNeverallowRulesTest.java" ]; then
-		ewarn "No SELinuxNeverallowRulesTest.java found. CTS neverallow pre-test is skipped."
-		return
+	if [ ! -f "${neverallowjava}" ]; then
+		die "No SELinuxNeverallowRulesTest.java found"
 	fi
 
 	# Extract 'String neverallowRule = "neverallow ...";' lines from the Java source code and
@@ -384,10 +424,18 @@ src_test() {
 	if [[ "${loc}" -lt "100" ]]; then
 		die "too few test cases. something is wrong."
 	fi
-	local cur=0
+	local fail
 	while read -r rule; do
-		cur=$((cur+1))
-		printf "Checking neverallow rules: %d/%d\r" "$cur" "$loc"
-		sepolicy-analyze "${SEPOLICY_FILENAME}" neverallow -n "$rule" || (echo failed for "$rule"; die)
+		if ! sepolicy-analyze "${SEPOLICY_FILENAME}" neverallow -n "${rule}"; then
+			eerror "sepolicy-analyze failed for rule: ${rule}"
+			fail=1
+		fi
 	done < neverallows
+
+	if [[ -n "${fail}" ]]; then
+		die "SELinux neverallow check(s) failed, see logs above." \
+			"If you're seeing this failure in CQ, make sure to" \
+			"use the same failing board(s) when testing locally" \
+			"as SELinux rules may differ by board."
+	fi
 }

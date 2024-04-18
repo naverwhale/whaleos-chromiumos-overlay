@@ -1,0 +1,16 @@
+BDEPEND==dev-lang/rust-host-1.72.1 sys-devel/llvm cross-armv7a-cros-linux-gnueabihf/compiler-rt cross-aarch64-cros-linux-gnu/compiler-rt cross-x86_64-cros-linux-gnu/binutils cross-x86_64-cros-linux-gnu/glibc cross-x86_64-cros-linux-gnu/libcxx cross-x86_64-cros-linux-gnu/libxcrypt cross-x86_64-cros-linux-gnu/linux-headers cross-x86_64-cros-linux-gnu/llvm-libunwind cross-armv7a-cros-linux-gnueabihf/binutils cross-armv7a-cros-linux-gnueabihf/glibc cross-armv7a-cros-linux-gnueabihf/libcxx cross-armv7a-cros-linux-gnueabihf/libxcrypt cross-armv7a-cros-linux-gnueabihf/linux-headers cross-armv7a-cros-linux-gnueabihf/llvm-libunwind cross-aarch64-cros-linux-gnu/binutils cross-aarch64-cros-linux-gnu/glibc cross-aarch64-cros-linux-gnu/libcxx cross-aarch64-cros-linux-gnu/libxcrypt cross-aarch64-cros-linux-gnu/linux-headers cross-aarch64-cros-linux-gnu/llvm-libunwind python_targets_python3_6? ( dev-python/dataclasses ) >=dev-vcs/git-1.8.2.1[curl] dev-vcs/git app-misc/jq dev-util/cmake dev-util/ninja
+DEFINED_PHASES=compile configure info install prepare setup unpack
+DEPEND=|| ( dev-lang/python:3.8 dev-lang/python:3.9 dev-lang/python:3.10 dev-lang/python:3.11 ) >=dev-libs/libxml2-2.9.6 >=dev-lang/perl-5.0 dev-lang/rust-bootstrap:1.71.1
+EAPI=7
+HOMEPAGE=https://www.rust-lang.org/
+IUSE=continue-on-patch-failure python_targets_python3_6 cros_host cros_workon_tree_fbfdaa24e61c4e41d8110a3851ddc0968bf525c6 rust_profile_frontend_generate rust_profile_llvm_generate rust_profile_frontend_use_local rust_profile_llvm_use_local +rust_profile_frontend_use +rust_profile_llvm_use +rust_cros_llvm
+KEYWORDS=*
+LICENSE=|| ( MIT Apache-2.0 ) BSD-1 BSD-2 BSD-4 UoI-NCSA
+PROPERTIES=live live
+RDEPEND==dev-lang/rust-host-1.72.1
+REQUIRED_USE=rust_profile_frontend_generate? ( !rust_profile_frontend_use !rust_profile_frontend_use_local !rust_profile_llvm_use !rust_profile_llvm_use_local ) rust_profile_llvm_generate? ( !rust_profile_frontend_use !rust_profile_frontend_use_local !rust_profile_llvm_use !rust_profile_llvm_use_local ) rust_profile_llvm_use? ( !rust_profile_llvm_use_local ) rust_profile_frontend_use? ( !rust_profile_frontend_use_local )
+RESTRICT=binchecks strip
+SLOT=stable/1.72
+SRC_URI=https://static.rust-lang.org/dist/rustc-1.72.1-src.tar.gz -> rustc-1.72.1-src.tar.gz rust_profile_frontend_use? ( gs://chromeos-localmirror/distfiles/rust-pgo-1.72.1-frontend.profdata.xz ) rust_profile_llvm_use? ( gs://chromeos-localmirror/distfiles/distfiles/rust-pgo-1.72.1-llvm.profdata.xz )
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-llvm	994e8d2dc3e05acc1b942f0fd3a85b27	cros-rustc	a25fa8a13d6e4a360ab93d963770ede7	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	git-r3	c8f4649ab5a3c07ee2b75b12bc446f6a	multilib	2477ebe553d3e4d2c606191fe6c33602	python-any-r1	54a3178500786b0a7ede4a23b7f2a6ad	python-utils-r1	76252008070e69454f51fa80c07638c9	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=6dc00bf0f43711bae45afdccb00438dd

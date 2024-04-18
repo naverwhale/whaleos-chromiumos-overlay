@@ -1,0 +1,13 @@
+BDEPEND=dev-vcs/git app-misc/jq
+DEFINED_PHASES=configure info prepare setup unpack
+DESCRIPTION=Library for Android sync objects
+EAPI=7
+HOMEPAGE=https://chromium.googlesource.com/aosp/platform/system/core/libsync
+IUSE=cros_host cros_workon_tree_6735ede3571072051f02df69fdf53bb239ebe6bd
+KEYWORDS=*
+LICENSE=BSD-Google
+PROPERTIES=live
+RDEPEND=!media-libs/arc-camera3-libsync
+SLOT=0
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=aa2661847154151109fe791085f774a9

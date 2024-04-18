@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -8,9 +8,13 @@ CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_OUTOFTREE_BUILD=1
 # TODO(crbug.com/809389): Avoid directly including headers from other packages.
-CROS_WORKON_SUBTREE="common-mk crash-reporter metrics .gn"
+CROS_WORKON_SUBTREE="common-mk crash-reporter libec libcrossystem metrics .gn"
 
 PLATFORM_SUBDIR="crash-reporter"
+
+# Do not run test parallelly until unit tests are fixed.
+# shellcheck disable=SC2034
+PLATFORM_PARALLEL_GTEST_TEST="no"
 
 inherit cros-arm64 cros-i686 cros-workon platform systemd udev user
 
@@ -19,26 +23,32 @@ HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/crash-re
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
-IUSE="arcpp arcvm chromeless_tty cros_ec cros_embedded -direncryption kvm_guest systemd fuzzer test vm-containers"
+IUSE="arcpp arcvm chromeless_tty cros_embedded -direncryption hw_details kvm_guest systemd fuzzer test vm-containers force_breakpad"
 
 COMMON_DEPEND="
+	chromeos-base/libcrossystem:=[test?]
+	chromeos-base/libec:=
 	chromeos-base/minijail:=
+	chromeos-base/redaction_tool:=
 	chromeos-base/google-breakpad:=[cros_i686?,cros_arm64?]
 	>=chromeos-base/metrics-0.0.1-r3152:=
+	dev-cpp/abseil-cpp:=
 	dev-libs/protobuf:=
 	dev-libs/re2:=
+	direncryption? ( sys-apps/keyutils:= )
 	kvm_guest? ( net-libs/grpc:= )
 	net-misc/curl:=
 	sys-libs/zlib:=
+	sys-apps/dbus:=
+	dev-libs/openssl:=
 "
 RDEPEND="${COMMON_DEPEND}
 	chromeos-base/chromeos-ca-certificates
-	direncryption? ( sys-apps/keyutils:= )
-	cros_ec? ( chromeos-base/ec-utils )
 "
 DEPEND="
 	${COMMON_DEPEND}
 	chromeos-base/debugd-client:=
+	chromeos-base/protofiles:=
 	chromeos-base/session_manager-client:=
 	chromeos-base/shill-client:=
 	chromeos-base/system_api:=[fuzzer?]
@@ -47,6 +57,10 @@ DEPEND="
 	test? (
 		app-arch/gzip
 	)
+"
+
+BDEPEND="
+	dev-libs/protobuf
 "
 
 src_configure() {
@@ -75,11 +89,16 @@ pkg_setup() {
 }
 
 src_install() {
+	platform_src_install
+
 	into /
 	dosbin "${OUT}"/crash_reporter
 	if ! use vm-containers; then
 		dosbin "${OUT}"/crash_sender
 	fi
+
+	into /usr
+	dobin "${OUT}"/bluetooth_devcd_parser
 
 	insinto /etc/dbus-1/system.d
 	doins dbus/org.chromium.AnomalyEventService.conf
@@ -121,6 +140,7 @@ src_install() {
 		doins init/crash-boot-collect.conf
 		if ! use vm-containers; then
 			doins init/crash-sender.conf
+			doins init/crash-sender-login.conf
 		fi
 		use cros_embedded || doins init/anomaly-detector.conf
 	fi
@@ -135,6 +155,10 @@ src_install() {
 	# an include-link.
 	local fuzzer_component_id="1032705"
 	platform_fuzzer_install "${S}"/../metrics/OWNERS \
+		"${OUT}"/crash_sender_base_fuzzer \
+		--comp "${fuzzer_component_id}"
+
+	platform_fuzzer_install "${S}"/../metrics/OWNERS \
 		"${OUT}"/crash_sender_fuzzer \
 		--dict "${S}"/crash_sender_fuzzer.dict \
 		--comp "${fuzzer_component_id}"
@@ -145,13 +169,27 @@ src_install() {
 		--comp "${fuzzer_component_id}"
 
 	platform_fuzzer_install "${S}"/../metrics/OWNERS \
+		"${OUT}"/kernel_collector_fuzzer \
+		--dict "${S}"/kernel_collector_fuzzer.dict \
+		--comp "${fuzzer_component_id}"
+
+	platform_fuzzer_install "${S}"/../metrics/OWNERS \
 		"${OUT}"/anomaly_detector_fuzzer \
 		--dict "${S}"/anomaly_detector_fuzzer.dict \
 		--comp "${fuzzer_component_id}"
 
+	platform_fuzzer_install "${S}"/../metrics/OWNERS \
+		"${OUT}"/missed_crash_collector_fuzzer \
+		--comp "${fuzzer_component_id}"
+
+	platform_fuzzer_install "${S}"/../metrics/OWNERS \
+		"${OUT}"/bluetooth_devcd_parser_fuzzer \
+		--dict "${S}"/bluetooth_devcd_parser_util_fuzzer.dict \
+		--comp "${fuzzer_component_id}"
+
 	# Install crash_serializer into /usr/local/sbin, which is only present
 	# on test images. See:
-	# https://chromium.googlesource.com/chromiumos/platform2/+/refs/heads/master/dev-install/README.md#Environments
+	# https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/dev-install/README.md#Environments
 	into /usr/local
 	dosbin "${OUT}"/crash_serializer
 }

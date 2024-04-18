@@ -1,6 +1,9 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
 
 getpid: 1
 writev: 1
@@ -13,6 +16,7 @@ lstat: 1
 futex: 1
 fstat: 1
 close: 1
+close_range: 1
 openat: 1
 getrandom: 1
 readlinkat: 1
@@ -39,9 +43,9 @@ socket: arg0 == AF_NETLINK || arg0 == AF_UNIX || arg0 == AF_QIPCRTR || \
 # 0x8BE3 == QMI_GET_MEID_IOCTL
 # 0x8BE4 == SIOCIWFIRSTPRIV_CLEANUP
 ioctl: arg1 == TCGETS || arg1 == SIOCGIFINDEX || arg1 == TIOCEXCL || \
-       arg1 == TIOCNXCL || arg1 == TIOCGSERIAL || arg1 == 0x800248a0 || \
-       arg1 == 0x8BE1 || arg1 == 0x8BE2 || arg1 == 0x8BE3 || arg1 == 0x8BE4 || \
-       arg1 == TCFLSH || arg1 == TCSETS
+       arg1 == TIOCNXCL || arg1 == TIOCGSERIAL || arg1 == TIOCSSERIAL || \
+       arg1 == 0x800248a0 || arg1 == 0x8BE1 || arg1 == 0x8BE2 || \
+       arg1 == 0x8BE3 || arg1 == 0x8BE4 || arg1 == TCFLSH || arg1 == TCSETS
 connect: 1
 clone: 1
 set_robust_list: 1
@@ -55,6 +59,7 @@ munmap: 1
 setsockopt: 1
 pipe2: 1
 getdents64: 1
+sched_getaffinity: 1
 sched_getattr: 1
 bind: 1
 getsockname: 1
@@ -72,6 +77,7 @@ prlimit64: 1
 getsockopt: 1
 listen: 1
 accept: 1
+accept4: 1
 getpeername: 1
 exit_group: 1
 setpgid: 1
@@ -85,3 +91,6 @@ clock_gettime: 1
 gettimeofday: 1
 newfstatat: 1
 tgkill: 1
+sysinfo: 1
+unlink: 1
+unlinkat: 1

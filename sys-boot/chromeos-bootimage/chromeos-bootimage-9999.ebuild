@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright 2011 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -6,14 +6,14 @@ EAPI=7
 CROS_WORKON_PROJECT="chromiumos/infra/build/empty-project"
 CROS_WORKON_LOCALNAME="../platform/empty-project"
 
-inherit cros-debug cros-unibuild cros-workon
+inherit cros-debug cros-unibuild cros-workon eutils
 
 DESCRIPTION="ChromeOS firmware image builder"
 HOMEPAGE="http://www.chromium.org"
 LICENSE="GPL-2"
 SLOT="0"
 KEYWORDS="~*"
-IUSE="seabios wilco_ec zephyr_ec"
+IUSE="wilco_ec zephyr_ec"
 IUSE="${IUSE} fsp unibuild u-boot tianocore cros_ec pd_sync +bmpblk"
 
 # 'ec_ro_sync' can be a solution for devices that will fail to complete recovery
@@ -22,10 +22,18 @@ IUSE="${IUSE} fsp unibuild u-boot tianocore cros_ec pd_sync +bmpblk"
 # this option.
 IUSE="${IUSE} ec_ro_sync"
 IUSE="${IUSE} +depthcharge"
-IUSE="${IUSE} payload-align-64 +payload-compress-lzma payload-compress-lz4"
+IUSE="${IUSE} payload-align-64"
+IUSE="${IUSE} +ro-payload-compress-lzma ro-payload-compress-lz4"
+IUSE="${IUSE} +rw-payload-compress-lzma rw-payload-compress-lz4"
+IUSE="${IUSE} +include_altfw"
 
-REQUIRED_USE="^^ ( payload-compress-lzma payload-compress-lz4 )"
+# SOC
+IUSE="${IUSE} intel_cpu"
 
+REQUIRED_USE="
+  ^^ ( ro-payload-compress-lzma ro-payload-compress-lz4 )
+  ^^ ( rw-payload-compress-lzma rw-payload-compress-lz4 )
+"
 
 # No pre-unibuild boards build firmware on ToT anymore.  Assume
 # unibuild to keep ebuild clean.
@@ -38,7 +46,6 @@ DEPEND="
 	depthcharge? ( sys-boot/depthcharge:= )
 	bmpblk? ( sys-boot/chromeos-bmpblk:= )
 	tianocore? ( sys-boot/edk2:= )
-	seabios? ( sys-boot/chromeos-seabios:= )
 	chromeos-base/chromeos-config:=
 	u-boot? ( sys-boot/u-boot:= )
 	cros_ec? ( chromeos-base/chromeos-ec:= )
@@ -59,64 +66,30 @@ RDEPEND="${DEPEND}"
 CROS_FIRMWARE_IMAGE_DIR="/firmware"
 CROS_FIRMWARE_ROOT="${SYSROOT}${CROS_FIRMWARE_IMAGE_DIR}"
 
+# Drop below locales from the serial image to save space for developer features.
+# The below list is list of random (non English) locales because it affects
+# serial image only.
+SERIAL_DROP_LOCALES="de|fr|es|zh-CN"
+
 do_cbfstool() {
-	local output
 	einfo cbfstool "$@"
-	output=$(cbfstool "$@" 2>&1)
-	if [ $? != 0 ]; then
-		die "Failed cbfstool invocation: cbfstool $@\n${output}"
-	fi
-	printf "${output}"
+	cbfstool "$@" 2>&1 || die "Failed cbfstool invocation: cbfstool $*"
 }
 
-sign_region() {
-	local fw_image=$1
-	local keydir=$2
-	local slot=$3
-
-	local tmpfile=`mktemp`
-	local cbfs=FW_MAIN_${slot}
-	local vblock=VBLOCK_${slot}
-
-	do_cbfstool ${fw_image} read -r ${cbfs} -f ${tmpfile}
-	local size=$(do_cbfstool ${fw_image} print -k -r ${cbfs} | \
-		tail -1 | \
-		sed "/(empty).*null/ s,^(empty)[[:space:]]\(0x[0-9a-f]*\)\tnull\t.*$,\1,")
-	size=$(printf "%d" ${size})
-
-	# If the last entry is called "(empty)" and of type "null", remove it from
-	# the section so it isn't part of the signed data, to improve boot speed
-	# if (as often happens) there's a large unused suffix.
-	if [ -n "${size}" ] && [ ${size} -gt 0 ]; then
-		head -c ${size} ${tmpfile} > ${tmpfile}.2
-		mv ${tmpfile}.2 ${tmpfile}
-		# Use 255 (aka 0xff) as the filler, this greatly reduces
-		# memory areas which need to be programmed for spi flash
-		# chips, because the erase value is 0xff.
-		do_cbfstool ${fw_image} write --force -u -i 255 \
-			-r ${cbfs} -f ${tmpfile}
-	fi
-
-	futility vbutil_firmware \
-		--vblock ${tmpfile}.out \
-		--keyblock ${keydir}/firmware.keyblock \
-		--signprivate ${keydir}/firmware_data_key.vbprivk \
-		--version 1 \
-		--fv ${tmpfile} \
-		--kernelkey ${keydir}/kernel_subkey.vbpubk \
-		--flags 0
-
-	do_cbfstool ${fw_image} write -u -i 255 -r ${vblock} -f ${tmpfile}.out
-
-	rm -f ${tmpfile} ${tmpfile}.out
+do_futility() {
+	einfo futility "$@"
+	futility "$@" 2>&1 || die "Failed futility invocation: futility $*"
 }
 
 sign_image() {
 	local fw_image=$1
 	local keydir=$2
 
-	sign_region "${fw_image}" "${keydir}" A
-	sign_region "${fw_image}" "${keydir}" B
+	do_futility sign \
+		--keyset "${keydir}" \
+		--version 1 \
+		--flags 0 \
+		"${fw_image}"
 }
 
 add_payloads() {
@@ -124,12 +97,19 @@ add_payloads() {
 	local ro_payload=$2
 	local rw_payload=$3
 
-	local -a args=(-n fallback/payload)
+	local -a ro_args=(-n fallback/payload)
+	local -a rw_args=(-n fallback/payload)
 
-	if use payload-compress-lzma; then
-		args+=(-c lzma)
-	elif use payload-compress-lz4; then
-		args+=(-c lz4)
+	if use ro-payload-compress-lzma; then
+		ro_args+=(-c lzma)
+	elif use ro-payload-compress-lz4; then
+		ro_args+=(-c lz4)
+	fi
+
+	if use rw-payload-compress-lzma; then
+		rw_args+=(-c lzma)
+	elif use rw-payload-compress-lz4; then
+		rw_args+=(-c lz4)
 	fi
 
 	if use payload-align-64; then
@@ -138,12 +118,12 @@ add_payloads() {
 
 	if [ -n "${ro_payload}" ]; then
 		do_cbfstool "${fw_image}" add-payload \
-			-f "${ro_payload}" "${args[@]}"
+			-f "${ro_payload}" "${ro_args[@]}"
 	fi
 
 	if [ -n "${rw_payload}" ]; then
 		do_cbfstool "${fw_image}" add-payload -f "${rw_payload}" \
-			"${args[@]}" -r FW_MAIN_A,FW_MAIN_B
+			"${rw_args[@]}" -r FW_MAIN_A,FW_MAIN_B
 	fi
 }
 
@@ -189,11 +169,12 @@ add_ec() {
 	einfo "Padding ${name}{ro,rw} ${pad} byte."
 
 	local rw_file="${ecroot}/ec.RW.bin"
-	# TODO(jrosenth): can we do this for all EC's (not just Zephyr)?
-	if use zephyr_ec; then
-		( cd "${T}" && dump_fmap -x "${ecroot}/zephyr.bin" RW_FW ) || \
-			die "Unable to extract RW region from FMAP"
-		rw_file="${T}/RW_FW"
+	if [[ ! -f "${rw_file}" ]]; then
+		if [[ -f "${ecroot}/ec.bin" ]]; then
+			( cd "${T}" && dump_fmap -x "${ecroot}/ec.bin" RW_FW ) || \
+				die "Unable to extract RW region from FMAP"
+			rw_file="${T}/RW_FW"
+		fi
 	fi
 	openssl dgst -sha256 -binary "${rw_file}" > "${T}/ecrw.hash" || \
 		die "Unable to compute RW hash"
@@ -225,9 +206,9 @@ add_ec() {
 # This takes the base image and creates a new signed one with the given
 # payloads added to it.
 # The image is placed in directory ${outdir} ("" for current directory).
-# An image suffix is added is ${suffix} is non-empty (e.g. "dev", "net").
+# An image suffix is added is ${suffix} is non-empty (e.g. "serial", "net").
 # Args:
-#   $1: Image type (e,g. "" for standard image, "dev" for dev image)
+#   $1: Image type (e,g. "" for standard image, "serial" for debug image)
 #   $2: Source image to start from.
 #   $3: Payload to add to read-only image portion
 #   $4: Payload to add to read-write image portion
@@ -242,9 +223,9 @@ build_image() {
 	local dst_image="${outdir}image${suffix}${image_type}.bin"
 
 	einfo "Building image ${dst_image}"
-	cp ${src_image} ${dst_image}
-	add_payloads ${dst_image} ${ro_payload} ${rw_payload}
-	sign_image ${dst_image} "${devkeys_dir}"
+	cp "${src_image}" "${dst_image}" || die
+	add_payloads "${dst_image}" "${ro_payload}" "${rw_payload}"
+	sign_image "${dst_image}" "${devkeys_dir}"
 }
 
 # Hash the payload of an altfw alternative bootloader
@@ -285,9 +266,9 @@ hash_altfw_payload() {
 #   $1: coreboot build target to use for prefix on target-specific payloads
 #   $2: coreboot file to add alternative bootloaders to
 setup_altfw() {
-	local target="$1"
 	local rom="$2"
 	local bl_list="${T}/altfw"
+	local altfw_default=""
 
 	einfo "Adding alternative firmware"
 
@@ -297,7 +278,7 @@ setup_altfw() {
 		-t "cbfs header" -b -4
 	do_cbfstool "${rom}" add-master-header -r RW_LEGACY
 	rm "${T}/ptr"
-	> "${bl_list}"
+	: > "${bl_list}"
 
 	# Add U-Boot if enabled
 	if use u-boot; then
@@ -307,10 +288,11 @@ setup_altfw() {
 			-c lzma -l 0x1110000 -e 0x1110000 \
 			-f "${CROS_FIRMWARE_ROOT}/u-boot.bin"
 		hash_altfw_payload "${rom}" u-boot
-		echo "1;altfw/u-boot;U-Boot;U-Boot bootloader" >> "${bl_list}"
+		altfw_default="altfw/u-boot;U-Boot;U-Boot bootloader"
+		echo "1;${altfw_default}" >> "${bl_list}"
 	fi
 
-	# Add TianoCore if enabled
+	# Add TianoCore if enabled: please see b/295019776 first
 	if use tianocore; then
 		einfo "- Adding TianoCore"
 
@@ -320,44 +302,17 @@ setup_altfw() {
 				-n altfw/tianocore -c lzma -f \
 				"${CROS_FIRMWARE_ROOT}/tianocore/UEFIPAYLOAD.fd"; then
 			hash_altfw_payload "${rom}" tianocore
-			echo "2;altfw/tianocore;TianoCore;TianoCore bootloader" \
-				>> "${bl_list}"
-
-			# For now, use TianoCore as the default.
-			echo "0;altfw/tianocore;TianoCore;TianoCore bootloader" \
-				>> "${bl_list}"
-			einfo "  (sing TianoCore as default)"
+			altfw_default="altfw/tianocore;TianoCore;TianoCore bootloader"
+			echo "2;${altfw_default}" >> "${bl_list}"
 		else
 			ewarn "Not enough space for TianoCore: omitted"
 		fi
 	fi
 
-	# Add SeaBIOS if enabled
-	if use seabios; then
-		local root="${CROS_FIRMWARE_ROOT}/seabios/"
-		einfo "- Adding SeaBIOS"
-
-		do_cbfstool "${rom}" add-payload -r RW_LEGACY -n altfw/seabios -c lzma \
-			-f "${root}/seabios.elf"
-		hash_altfw_payload "${rom}" seabios
-		for f in "${root}oprom/"*; do
-			if [[ -f "${f}" ]]; then
-				do_cbfstool "${rom}" add -r RW_LEGACY -f "${f}" \
-					-n "${f#${root}oprom/}" -t optionrom
-			fi
-		done
-		for f in "${root}cbfs/"*; do
-			if [[ -f "${f}" ]]; then
-				do_cbfstool "${rom}" add -r RW_LEGACY -f "${f}" \
-					-n "${f#${root}cbfs/}" -t raw
-			fi
-		done
-		for f in "${root}"etc/*; do
-			do_cbfstool "${rom}" add -r RW_LEGACY -f "${f}" \
-				-n "${f#$root}" -t raw
-		done
-		echo "3;altfw/seabios;SeaBIOS;SeaBIOS bootloader" \
-			>> "${bl_list}"
+	# Set the default
+	if [[ -n "${altfw_default}" ]]; then
+		einfo "Setting altfw default: ${altfw_default##*;}"
+		echo "0;${altfw_default}" >> "${bl_list}"
 	fi
 
 	# Add the list
@@ -424,6 +379,12 @@ add_compressed_assets() {
 	# duplicate assets.
 	if [ -n "${build_name}" ]; then
 		while IFS= read -r -d '' file; do
+			if [[ "${rom}" == *.serial && "${file}" =~ locale_(${SERIAL_DROP_LOCALES}).bin ]]; then
+				# Serial images are bulkier than other images due to extra debug features it has.
+				# Skip adding above locales to serial image in order to save space for these
+				# exclusive debug features.
+				continue
+			fi
 			do_cbfstool "${rom}" add -r "${cbfs_regions}" -f "${file}" \
 				-n "$(basename "${file}")" -t raw -c precompression
 		done < <(find "${asset_path}/${build_name}" -maxdepth 1 -type f -print0 \
@@ -515,8 +476,7 @@ compress_assets() {
 # Build firmware images for a given board
 # Creates image*.bin for the following images:
 #    image.bin          - production image (no serial console)
-#    image.serial.bin   - production image with serial console enabled
-#    image.dev.bin      - developer image with serial console enabled
+#    image.serial.bin   - developer image with serial console enabled
 #    image.net.bin      - netboot image with serial console enabled
 #
 # If $2 is set, then it uses "image-$2" instead of "image" and puts images in
@@ -589,9 +549,23 @@ build_images() {
 	fi
 
 	if use cros_ec || use wilco_ec || use zephyr_ec; then
-		einfo "Adding EC for ${ec_build_target}"
-		add_ec "${depthcharge_config}" "${coreboot_config}" "${coreboot_file}" "ec" "${froot}/${ec_build_target}"
-		add_ec "${depthcharge_config}" "${coreboot_config}" "${coreboot_file}.serial" "ec" "${froot}/${ec_build_target}"
+		if [[ -n "${ec_build_target}" ]]; then
+			einfo "Adding EC for ${ec_build_target}"
+			add_ec \
+				"${depthcharge_config}" \
+				"${coreboot_config}" \
+				"${coreboot_file}" \
+				"ec" \
+				"${froot}/${ec_build_target}"
+			add_ec \
+				"${depthcharge_config}" \
+				"${coreboot_config}" \
+				"${coreboot_file}.serial" \
+				"ec" \
+				"${froot}/${ec_build_target}"
+		else
+			einfo "Skip adding EC for ${build_name}, no EC target defined."
+		fi
 	fi
 
 	local pd_folder="${froot}/${ec_build_target}_pd"
@@ -601,8 +575,10 @@ build_images() {
 		add_ec "${depthcharge_config}" "${coreboot_config}" "${coreboot_file}.serial" "pd" "${pd_folder}"
 	fi
 
-	setup_altfw "${coreboot_build_target}" "${coreboot_file}"
-	setup_altfw "${coreboot_build_target}" "${coreboot_file}.serial"
+	if use include_altfw; then
+		setup_altfw "${coreboot_build_target}" "${coreboot_file}"
+		setup_altfw "${coreboot_build_target}" "${coreboot_file}.serial"
+	fi
 
 	# Keeps the find commands from failing with directory not found
 	mkdir -p "raw-assets-rw/${build_name}"
@@ -613,10 +589,12 @@ build_images() {
 
 	build_image "" "${coreboot_file}" "${depthcharge}" "${depthcharge}"
 
+	# Regenerate the file "locales" to match the locales present in the serial image.
+	do_cbfstool "${coreboot_file}.serial" extract -r COREBOOT -n "locales" -f "locales.serial"
+	do_cbfstool "${coreboot_file}.serial" remove -r COREBOOT -n "locales"
+	sed -i -E "/(${SERIAL_DROP_LOCALES}),/ d" locales.serial || die "Failed to update locales.serial"
+	do_cbfstool "${coreboot_file}.serial" add -r COREBOOT -f "locales.serial" -n "locales" -t raw -c lzma
 	build_image serial "${coreboot_file}.serial" \
-		"${depthcharge}" "${depthcharge}"
-
-	build_image dev "${coreboot_file}.serial" \
 		"${depthcharge_dev}" "${depthcharge_dev}"
 
 	# Build a netboot image.
@@ -626,16 +604,35 @@ build_images() {
 	# to boot from USB through recovery mode if necessary.
 	build_image net "${coreboot_file}.serial" "${depthcharge}" "${netboot}"
 
+	# Netboot coreboot image is almost the same as the serial one, except that
+	# the ME region should be unlocked and GPR0 should be disabled.
+	# TODO(phoebewang): Disable GPR0 once ifdtool supports it.
+	# ME and GRP0 is only available on Intel platform.
+	if use intel_cpu; then
+		einfo "Disabling netboot firmware ME lock via ifdtool"
+		local ifd_chipset=$( awk \
+			'BEGIN{FS="\""} /CONFIG_IFD_CHIPSET=/ { print $2 }' \
+			"${coreboot_config}" )
+		einfo "Chipset name: ${ifd_chipset}"
+		local locked_fw="${outdir}image${suffix}.net.bin"
+		local unlocked_fw="${outdir}image${suffix}.net_unlock.bin"
+		ifdtool -p "${ifd_chipset}" -u -O "${unlocked_fw}" "${locked_fw}" ||
+			die "Failed to unlock ME via ifdtool."
+		mv "${unlocked_fw}" "${locked_fw}" ||
+			die "Failed to rename ${unlocked_fw} to ${locked_fw}."
+	fi
+
 	# Set convenient netboot parameter defaults for developers.
 	local name="${build_name:-"${BOARD_USE}"}"
 	local bootfile="${PORTAGE_USERNAME}/${name}/vmlinuz"
 	local argsfile="${PORTAGE_USERNAME}/${name}/cmdline"
 	"${FILESDIR}/netboot_firmware_settings.py" \
 		-i "${outdir}image${suffix}.net.bin" \
-		--bootfile="${bootfile}" --argsfile="${argsfile}" &&
-		"${FILESDIR}/netboot_firmware_settings.py" \
-			-i "${outdir}image${suffix}.dev.bin" \
-			--bootfile="${bootfile}" --argsfile="${argsfile}" ||
+		--bootfile="${bootfile}" --argsfile="${argsfile}" ||
+		die "failed to preset netboot parameter defaults."
+	"${FILESDIR}/netboot_firmware_settings.py" \
+		-i "${outdir}image${suffix}.serial.bin" \
+		--bootfile="${bootfile}" --argsfile="${argsfile}" ||
 		die "failed to preset netboot parameter defaults."
 	einfo "Netboot configured to boot ${bootfile}, fetch kernel command" \
 		"line from ${argsfile}, and use the DHCP-provided TFTP server IP."
@@ -659,20 +656,27 @@ src_compile() {
 
 	compress_assets "${froot}"
 
-	local fields="coreboot,depthcharge,ec"
+	local fields="coreboot,depthcharge,ec,zephyr-ec"
 	local cmd="get-firmware-build-combinations"
+	local zephyr_ec
 	(cros_config_host "${cmd}" "${fields}" || die) |
 	while read -r name; do
 		read -r coreboot
 		read -r depthcharge
 		read -r ec
+		read -r zephyr_ec
 		einfo "Compressing target assets for: ${name}"
 		compress_assets "${froot}" "${name}"
 		einfo "Building image for: ${name}"
 		if use zephyr_ec; then
-			# Zephyr installs under ${froot}/${name}/zephyr.bin,
+			# Zephyr installs under ${froot}/${name}/ec.bin,
 			# instead of using the EC build target name.
-			ec="${name}"
+			if [[ -n "${zephyr_ec}" ]]; then
+				ec="${name}"
+			elif ! use cros_ec; then
+				# Only fallback to legacy EC only if its build is enabled.
+				ec=""
+			fi
 		fi
 		build_images "${froot}" "${name}" "${coreboot}" "${depthcharge}" "${ec}"
 	done
@@ -686,6 +690,6 @@ src_install() {
 	while read -r name; do
 		read -r coreboot
 		read -r depthcharge
-		doins "${name}"/image-${name}*.bin
+		doins "${name}/image-${name}"*.bin
 	done
 }

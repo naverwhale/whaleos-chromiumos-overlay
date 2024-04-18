@@ -11,7 +11,7 @@ CROS_WORKON_EGIT_BRANCH="master"
 
 KEYWORDS="~*"
 
-inherit base meson flag-o-matic cros-workon
+inherit meson flag-o-matic cros-workon
 
 DESCRIPTION="The Mesa 3D Graphics Library"
 HOMEPAGE="http://mesa3d.org/"
@@ -20,7 +20,7 @@ HOMEPAGE="http://mesa3d.org/"
 # GLES[2]/gl[2]{,ext,platform}.h are SGI-B-2.0
 LICENSE="MIT SGI-B-2.0"
 
-IUSE="debug vulkan libglvnd"
+IUSE="debug libglvnd vulkan zstd"
 
 COMMON_DEPEND="
 	dev-libs/expat:=
@@ -30,6 +30,7 @@ COMMON_DEPEND="
 RDEPEND="${COMMON_DEPEND}
 	libglvnd? ( media-libs/libglvnd )
 	!libglvnd? ( !media-libs/libglvnd )
+	zstd? ( app-arch/zstd )
 "
 
 DEPEND="${COMMON_DEPEND}
@@ -42,6 +43,8 @@ BDEPEND="
 "
 
 src_configure() {
+	cros_optimize_package_for_speed
+
 	emesonargs+=(
 		-Dexecmem=false
 		-Dglvnd=$(usex libglvnd true false)
@@ -58,6 +61,7 @@ src_configure() {
 		-Dgallium-drivers=panfrost
 		-Dgallium-vdpau=disabled
 		-Dgallium-xa=disabled
+		$(meson_feature zstd)
 		-Dplatforms=
 		-Dtools=panfrost
 		--buildtype $(usex debug debug release)

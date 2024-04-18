@@ -1,16 +1,18 @@
-// Copyright 2019 The Chromium OS Authors. All rights reserved.
+// Copyright 2019 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 type command struct {
@@ -63,6 +65,26 @@ func runCmd(env env, cmd *command, stdin io.Reader, stdout io.Writer, stderr io.
 	return execCmd.Run()
 }
 
+func runCmdWithTimeout(env env, cmd *command, t time.Duration) error {
+	ctx, cancel := context.WithTimeout(context.Background(), t)
+	defer cancel()
+	cmdCtx := exec.CommandContext(ctx, cmd.Path, cmd.Args...)
+	cmdCtx.Env = mergeEnvValues(env.environ(), cmd.EnvUpdates)
+	cmdCtx.Dir = env.getwd()
+	cmdCtx.Stdin = env.stdin()
+	cmdCtx.Stdout = env.stdout()
+	cmdCtx.Stderr = env.stderr()
+
+	if err := cmdCtx.Start(); err != nil {
+		return fmt.Errorf("exec error: %w", err)
+	}
+	err := cmdCtx.Wait()
+	if ctx.Err() == nil {
+		return err
+	}
+	return ctx.Err()
+}
+
 func resolveAgainstPathEnv(env env, cmd string) (string, error) {
 	path, _ := env.getenv("PATH")
 	for _, path := range strings.Split(path, ":") {
@@ -71,7 +93,7 @@ func resolveAgainstPathEnv(env env, cmd string) (string, error) {
 			return resolvedPath, nil
 		}
 	}
-	return "", fmt.Errorf("Couldn't find cmd %q in path", cmd)
+	return "", fmt.Errorf("couldn't find cmd %q in path", cmd)
 }
 
 func getAbsCmdPath(env env, cmd *command) string {
@@ -238,6 +260,21 @@ func (builder *commandBuilder) transformArgs(transform func(arg builderArg) stri
 				value:    newArg,
 				fromUser: arg.fromUser,
 			})
+		}
+	}
+	builder.args = newArgs
+}
+
+// Allows to filter arg pairs, useful for eg when having adjacent unsupported args
+// like "-Wl,-z -Wl,defs"
+func (builder *commandBuilder) filterArgPairs(keepPair func(arg1, arg2 builderArg) bool) {
+	newArgs := builder.args[:0]
+	for i := 0; i < len(builder.args); i++ {
+		if i == len(builder.args)-1 || keepPair(builder.args[i], builder.args[i+1]) {
+			newArgs = append(newArgs, builder.args[i])
+		} else {
+			// skip builder.args[i]) as well as next item
+			i++
 		}
 	}
 	builder.args = newArgs

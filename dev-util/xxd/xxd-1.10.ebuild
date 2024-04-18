@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header: $
 
-EAPI="4"
+EAPI="7"
 
 inherit toolchain-funcs
 
@@ -16,8 +16,12 @@ KEYWORDS="*"
 IUSE=""
 
 src_prepare() {
+	default
 	# use implicit make rules as they're better than the makefile
 	echo 'all: xxd' > Makefile
+}
+
+src_configure() {
 	tc-export CC
 }
 

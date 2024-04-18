@@ -11,14 +11,14 @@ should not supported, or that we need to fix an actual issue.
 Autotest capability works with autotest. While autotest runs, the component
 on DUT should be like the following.
 
-- /etc/autotest-capabilities/
-  Installed by this package "autotest-capability". The configuration files which
+- `/usr/local/etc/autotest-capabilities/`
+  Installed by this package `autotest-capability`. The configuration files which
   defines the capabilities on the device.
 
-- /usr/local/autotest/cros/video/detectors
-  - DeviceCapability.py
+- `/usr/local/autotest/cros/video/detectors/`
+  - `device_capability.py`
     Utility to parse the configuration and get the capabilities on the DUT.
-  - detectors/
+  - `detectors/`
     scripts to detect the hardware configuration on DUT.
 
 This document describes how the components work.
@@ -26,33 +26,32 @@ This document describes how the components work.
 ## Gentoo Package: autotest-capability
 
 This package will install the configuration files into
-"/etc/autotest-capability/". Take board "jecht" as an example, there could be
+`/usr/local/etc/autotest-capability/`. Take board `jecht` as an example, there could be
 the following files in the directory:
 
+*   [`managed-capabilities.yaml`](https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/chromeos-base/autotest-capability-default/files/managed-capabilities.yaml)
+*   [`15-chipset-bdw-capabilities.yaml`](https://chromium.googlesource.com/chromiumos/overlays/board-overlays/+/HEAD/chipset-bdw/chromeos-base/autotest-capability-chipset-bdw/files/15-chipset-bdw-capabilities.yaml)
+*   [`18-baseboard-jecht-capabilities.yaml`](https://chromium.googlesource.com/chromiumos/overlays/board-overlays/+/HEAD/baseboard-jecht/chromeos-base/autotest-capability-baseboard-jecht/files/18-baseboard-jecht-capabilities.yaml)
+*   [`20-guado-capabilities.yaml`](https://chromium.googlesource.com/chromiumos/overlays/board-overlays/+/HEAD/overlay-guado/chromeos-base/autotest-capability-guado/files/20-guado-capabilities.yaml)
 
-*   managed-capabilities.yaml
-*   15-chipset-bdw-capabilities.yaml
-*   18-baseboard-jecht-capabilities.yaml
-*   20-guado-capabilities.yaml
-
-managed-capabilities.yaml lists all possible capabilities managed
+`managed-capabilities.yaml` lists all possible capabilities managed
 by the package. If an unexpected capability is found while discovering
 board-specific capability definition files,
-video\_VideoCapability (explained later) will fail.
+[`device_capability.DeviceCapability()`](#devicecapability) will fail.
 
 The remaining files contain capability configurations for the particular
 board hierarchy and will be loaded in the order of their priorities (The first
 number of the filename). Each of the file is installed by different overlays:
 
-*   15-chipset-bdw-capabilities.yaml: installed by "chipset-bdw" overlay
-*   18-baseboard-jecht-capabilities.yaml: installed by "baseboard-jecht" overlay
-*   20-guado-capabilities.yaml: installed by "overlay-guado" overlay
+*   `15-chipset-bdw-capabilities.yaml`: installed by `chipset-bdw` overlay
+*   `18-baseboard-jecht-capabilities.yaml`: installed by `baseboard-jecht` overlay
+*   `20-guado-capabilities.yaml`: installed by `overlay-guado` overlay
 
 
 ## Capabilities Configuration
 
 We list all the the managed capabilities line by line in
-"managed-capabilities.yaml". For example,
+`managed-capabilities.yaml`. For example,
 
 
 ```
@@ -74,7 +73,7 @@ exceptions while parsing the configuration yaml files.
 
 In the configuration of each level, it defines the most general capabilities.
 For example, there could be the following capabilities defined
-in 15-chipset-bsw-capabilities.yaml,
+in `15-chipset-bsw-capabilities.yaml`,
 
 
 ```
@@ -87,10 +86,10 @@ in 15-chipset-bsw-capabilities.yaml,
 ```
 
 
-It defines common capabilities for all chipset-bsw platforms.
+It defines common capabilities for all `chipset-bsw` platforms.
 We may override those settings in baseboard and board specific settings,
-for example, removing camera capabilities and adding "hw\_dec\_h264\_2160\_30" in
-"18-baseboard-jecht-capabilities.yaml".
+for example, removing camera capabilities and adding `hw_dec_h264_2160_30` in
+`18-baseboard-jecht-capabilities.yaml`.
 
 
 ```
@@ -115,9 +114,9 @@ hw_dec_h264_2160_30
 
 In some cases, we may like to disable a capability temporarily,
 while fixing a known issue, to prevent lab tests from failing.
-Depending on how we disable the feature, the "avtest\_label\_detect" may or may
-not detect the capability. To ignore the result of avtest\_label\_detect for it,
-"disable _capability_" can be added in the configuration yaml, e.g.,
+Depending on how we disable the feature, the `avtest_label_detect` may or may
+not detect the capability. To ignore the result of `avtest_label_detect` for it,
+`disable `*`capability`* can be added in the configuration yaml, e.g.,
 
 
 ```
@@ -126,7 +125,7 @@ not detect the capability. To ignore the result of avtest\_label\_detect for it,
 
 
 If a capability will be disabled forever, it should either be removed from
-the applicable configuration file, or overriden using the "no _capability_"
+the applicable configuration file, or overridden using the `no `*`capability`*
 syntax instead.
 
 
@@ -144,7 +143,7 @@ detected in runtime matches the condition.
 
 We use detectors to detect the hardware type or the existence of the hardware.
 Those detectors are installed by autotest package on
-the DUT directory: /usr/local/autotest/cros/video/detectors.
+the DUT directory: `/usr/local/autotest/cros/video/detectors.`
 
 
 #### Detector: CPU Type
@@ -163,17 +162,17 @@ type is intel celeron. The information is written in
     - no hw_enc_h264_1080_30
 ```
 
-'detector' is the name of the running detector. In this case, "intel\_cpu.py"
+`detector` is the name of the running detector. In this case, `intel_cpu.py`
 in the detector directory will be executed.
-'match' is a list of all acceptable values, if the results of detector is one
-of the values, then all capabilities in 'capability' will be applied.
+`match` is a list of all acceptable values, if the results of detector is one
+of the values, then all capabilities in `capability` will be applied.
 
-In this example, if intel\_cpu.py returns 'intel\_celeron\_2955U',
+In this example, if `intel_cpu.py` returns `intel_celeron_2955U`,
 we disable HW h264 encoding.
 
 Detectors are python scripts which return a string.
-It must have the function detect().
-For example, the following cpu detectors return "i5" or "m3" to indicate
+It must have the function `detect()`.
+For example, the following cpu detectors return `i5` or `m3` to indicate
 the CPU on the DUT.
 
 
@@ -196,35 +195,33 @@ The goal of this work is to replace this mechanism and the need for autotest
 labels with capability checks. All available tests would be executed
 on all boards. Each test would first check if the required capabilities for it
 are present. If a capability is found, the actual test is performed; if not,
-the test returns TEST\_NA as a test result.
+the test returns `TEST_NA` as a test result.
 
-This is realized by calling DeviceCapability().check\_capability().
+This is realized by calling [`DeviceCapability().check_capability()`](https://chromium.googlesource.com/chromiumos/third\_party/autotest/+/HEAD/client/cros/video/device\_capability.py).
 
-[device\_capability.py](https://chromium.googlesource.com/chromiumos/third\_party/autotest/+/master/client/cros/video/device\_capability.py)
+### DeviceCapability
 
-### DeviceCapability: decide if a test should run on DUT
-
-DeviceCapability is a class to check, based on static capability,
+`DeviceCapability` is a class to check, based on static capability,
 if a required capability is available on DUT. It constructs all the capabilities
 from yaml files installed in the specified directory
-(default path is /etc/autotest-capability).
+(default path is `/usr/local/etc/autotest-capability`).
 A running detector is specified by a configuration file.
 
-A user of DeviceCapability mainly call the following two functions.
+A user of `DeviceCapability` mainly calls the following two functions.
 
 __get_capability(cap)__
 
-Query the status of a capability, |cap|. |cap| must be one of capabilities in
-managed-capabilities.yaml. The return value is 'yes', 'disable' and 'no.'
+Query the status of a capability, `|cap|`. `|cap|` must be one of capabilities in
+`managed-capabilities.yaml`. The return value is either `yes`, `disable` or `no`.
 
-Obviously 'yes' means available, 'no' means unavailable.
-'disable' may be detectable and supported by hardware but we disable it due to
+`yes` means available, `no` means unavailable.
+`disable` may be detectable and supported by hardware but we disable it due to
 hardware/software issues.
 
 __ensure\_capability(cap)__
 
-This is a similar to get\_capability. The difference is this throws
-test.TestNAError unless the status of |cap| is 'yes'.
+This is a similar to `get_capability`. The difference is this throws
+`test.TestNAError` unless the status of `|cap|` is `yes`.
 
 
 ### How to modify static capability
@@ -239,9 +236,9 @@ For example, since IvyBridge doesn't support HW VP8 encoding, HW VP8 encoding
 test will fail if it runs on IvyBridge device.
 Following this observation, we should maximize the available capability rather
 than minimize them when we set up the configuration.
-Concretely, when one writes 'no _capability_', we should minimize the targeted
+Concretely, when one writes `no `*`capability`*, we should minimize the targeted
 devices.
-For example, in '20-peppy-capabilities.yaml', we disable HW h264 encoding
+For example, in `20-peppy-capabilities.yaml`, we disable HW h264 encoding
 only if the CPU type is intel celeron 2955U. In other words, this describes
 HW h264 encoding is available on all the peppy whose CPU type isn't intel
 celeron 2955U.
@@ -255,12 +252,12 @@ celeron 2955U.
    - no hw_enc_h264_1080_30
 ```
 
-Conversely, when one writes '_capability_', we should maximize the targeted
+Conversely, when one writes *`capability`*, we should maximize the targeted
 devices.
 
 __add an existing to chipset/baseboard/board__
 
-Example of adding a new chipset overlay,  "chipset-mhl" (standing for
+Example of adding a fictitional new chipset overlay, `chipset-mhl` (standing for
 Meihua Lake).
 
 Please create the following files.
@@ -273,23 +270,23 @@ chipset-mhl/virtual/autotest-capability/autotest-capability-1.5.ebuild
 ```
 
 
-The capabilities applicable to all boards for chipset-mhl should be listed
+The capabilities applicable to all boards for `chipset-mhl` should be listed
 in the yaml file.
 
-The first two digits of yaml file, here 15, will be 18 and 20 for baseboard and
+The first two digits of yaml file, here `15`, will be `18` and `20` for baseboard and
 board, respectively.
 
-The PV of ebuild in virtual, here 1.5, will be 1.8 and 2.0 for baseboard and
+The PV of ebuild in virtual, here `1.5`, will be `1.8` and `2.0` for baseboard and
 board, respectively.
 
 __add a new capability__
 
 First of all, you need to add the new capability to
-//third\_party/chromiumos-overlay/chromeos-base/autotest-capability-default/files/managed-capabilities.yaml.
-Set up the capability in applicable //overlays following two above ways.
+[`//third_party/chromiumos-overlay/chromeos-base/autotest-capability-default/files/managed-capabilities.yaml`](https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/chromeos-base/autotest-capability-default/files/managed-capabilities.yaml).
+Set up the capability in applicable [`//overlays`](https://chromium.googlesource.com/chromiumos/overlays/board-overlays/+/HEAD/) following two above ways.
 
 __add a new detector__
 
 If some capabilities depend on the hardware configuration, it is necessary
 to create a new detector if it is not available yet. All the detectors are put
-in //third\_party/autotest/files/client/cros/video/detectors.
+in [`//third_party/autotest/files/client/cros/video/detectors`](https://chromium.googlesource.com/chromiumos/third_party/autotest/+/HEAD/client/cros/video/detectors/).

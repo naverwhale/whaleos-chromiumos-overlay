@@ -1,13 +1,13 @@
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Copyright 2016 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 # @ECLASS: cros-factory.eclass
 # @MAINTAINER:
-# The Chromium OS Authors <chromium-os-dev@chromium.org>
+# The ChromiumOS Authors <chromium-os-dev@chromium.org>
 # @BUGREPORTS:
 # Please report bugs via http://crbug.com/new (with label Build)
-# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/master/eclass/@ECLASS@
+# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/eclass/@ECLASS@
 # @BLURB: Eclass to help creating per-board factory resources.
 
 # Check for EAPI 3+
@@ -15,6 +15,12 @@ case "${EAPI:-0}" in
 	0|1|2)
 		die "unsupported EAPI (${EAPI}) in eclass (${ECLASS})" ;;
 esac
+
+IUSE="cheets factory_branch"
+
+REQUIRED_USE="
+	factory_branch? ( !cheets )
+"
 
 # @ECLASS-VARIABLE: CROS_FACTORY_BOARD_RESOURCES_DIR
 # @DESCRIPTION: Folder of factory resources to current board.

@@ -1,0 +1,90 @@
+From 67dc687c42316b109d4662631ef609bd68fc91b9 Mon Sep 17 00:00:00 2001
+From: Jie Jiang <jiejiang@chromium.org>
+Date: Wed, 13 Sep 2023 10:55:24 +0900
+Subject: [PATCH] Add option to set DSCP on egress packets
+
+Add a `--apply_dscp` option to set the value of DSCP field to 48 on
+all egress packets, for the purposed of better QoS. See b/296959012.
+---
+ src/dhcp.c       | 6 ++++--
+ src/if-options.c | 5 +++++
+ src/if-options.h | 2 +-
+ 3 files changed, 10 insertions(+), 3 deletions(-)
+
+diff --git a/src/dhcp.c b/src/dhcp.c
+index bc98e45d..a9525619 100644
+--- a/src/dhcp.c
++++ b/src/dhcp.c
+@@ -1733,7 +1733,7 @@ checksum(const void *data, size_t len)
+ 
+ static struct bootp_pkt *
+ dhcp_makeudppacket(size_t *sz, const uint8_t *data, size_t length,
+-	struct in_addr source, struct in_addr dest)
++	struct in_addr source, struct in_addr dest, uint8_t tos)
+ {
+ 	struct bootp_pkt *udpp;
+ 	struct ip *ip;
+@@ -1770,6 +1770,7 @@ dhcp_makeudppacket(size_t *sz, const uint8_t *data, size_t length,
+ 
+ 	ip->ip_v = IPVERSION;
+ 	ip->ip_hl = sizeof(*ip) >> 2;
++	ip->ip_tos = tos;
+ 	ip->ip_id = (uint16_t)arc4random_uniform(UINT16_MAX);
+ 	ip->ip_ttl = IPDEFTTL;
+ 	ip->ip_len = htons((uint16_t)(sizeof(*ip) + sizeof(*udp) + length));
+@@ -1883,7 +1884,8 @@ send_message(struct interface *ifp, uint8_t type,
+ 	if (dhcp_openbpf(ifp) == -1)
+ 		goto out;
+ 
+-	udp = dhcp_makeudppacket(&ulen, (uint8_t *)bootp, len, from, to);
++	udp = dhcp_makeudppacket(&ulen, (uint8_t *)bootp, len, from, to,
++		  (ifo->options & DHCPCD_APPLY_DSCP) ? (48 << 2) : 0);
+ 	if (udp == NULL) {
+ 		logerr("%s: dhcp_makeudppacket", ifp->name);
+ 		r = 0;
+diff --git a/src/if-options.c b/src/if-options.c
+index 7aeed7ff..bfe6b6af 100644
+--- a/src/if-options.c
++++ b/src/if-options.c
+@@ -106,6 +106,7 @@
+ #define O_INACTIVE		O_BASE + 47
+ #define	O_MUDURL		O_BASE + 48
+ #define	O_UNICASTGW		O_BASE + 49
++#define O_APPLY_DSCP		O_BASE + 50
+ 
+ const struct option cf_options[] = {
+ 	{"background",      no_argument,       NULL, 'b'},
+@@ -207,6 +208,7 @@ const struct option cf_options[] = {
+ 	{"inactive",        no_argument,       NULL, O_INACTIVE},
+ 	{"mudurl",          required_argument, NULL, O_MUDURL},
+ 	{"unicast",         no_argument,       NULL, O_UNICASTGW},
++	{"apply_dscp",      no_argument,       NULL, O_APPLY_DSCP},
+ 	{NULL,              0,                 NULL, '\0'}
+ };
+ 
+@@ -1320,6 +1322,9 @@ parse_option(struct dhcpcd_ctx *ctx, const char *ifname, struct if_options *ifo,
+ 	case O_NOALIAS:
+ 		ifo->options |= DHCPCD_NOALIAS;
+ 		break;
++	case O_APPLY_DSCP:
++		ifo->options |= DHCPCD_APPLY_DSCP;
++		break;
+ #ifdef DHCP6
+ 	case O_IA_NA:
+ 		i = D6_OPTION_IA_NA;
+diff --git a/src/if-options.h b/src/if-options.h
+index 3ef02c2e..a610162f 100644
+--- a/src/if-options.h
++++ b/src/if-options.h
+@@ -90,7 +90,7 @@
+ #define DHCPCD_IPV6RS			(1ULL << 31)
+ #define DHCPCD_IPV6RA_REQRDNSS		(1ULL << 32)
+ // unused				(1ULL << 33)
+-// unused				(1ULL << 34)
++#define DHCPCD_APPLY_DSCP		(1ULL << 34)
+ #define DHCPCD_IPV4			(1ULL << 35)
+ #define DHCPCD_FORKED			(1ULL << 36)
+ #define DHCPCD_IPV6			(1ULL << 37)
+-- 
+2.42.0.283.g2d96d420d3-goog
+

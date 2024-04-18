@@ -1,0 +1,14 @@
+DEFINED_PHASES=configure prepare
+DEPEND=dev-libs/libxml2:= virtual/libudev:=
+DESCRIPTION=QDL flash loader for USB devices
+EAPI=7
+HOMEPAGE=https://github.com/andersson/qdl
+IUSE=asan asan cfi cfi_diag cfi_recover coverage fuzzer msan thinlto tsan ubsan
+KEYWORDS=*
+LICENSE=BSD
+RDEPEND=dev-libs/libxml2:= virtual/libudev:=
+REQUIRED_USE=cfi? ( thinlto ) cfi_diag? ( cfi ) cfi_recover? ( cfi_diag )
+SLOT=0
+SRC_URI=https://github.com/andersson/qdl/archive/2021b303a81ca1bcf21b7f1f23674b5c8747646f.tar.gz -> qdl-0.1_p20211103.tar.gz
+_eclasses_=cros-sanitizers	4504f3661db0fe02309acd3555785cf2	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=34e458ad01d1d718c6f56f6289cd45a3

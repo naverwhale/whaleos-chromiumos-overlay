@@ -26,6 +26,8 @@ app-vim
 app-xemacs
 brillo-base
 chromeos-base
+chromeos-borealis
+chromeos-languagepacks
 chromeos-soda
 dev-ada
 dev-cpp

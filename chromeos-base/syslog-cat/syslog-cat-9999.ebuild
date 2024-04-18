@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -14,18 +14,13 @@ PLATFORM_SUBDIR="syslog-cat"
 inherit cros-workon platform
 
 DESCRIPTION="Simple command to forward stdout/err to syslog"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/syslog-cat"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/syslog-cat"
 
 LICENSE="BSD-Google"
 SLOT="0/0"
 KEYWORDS="~*"
 IUSE=""
 
-src_install() {
-	platform_install
-}
-
 platform_pkg_test() {
 	platform test_all
 }
-

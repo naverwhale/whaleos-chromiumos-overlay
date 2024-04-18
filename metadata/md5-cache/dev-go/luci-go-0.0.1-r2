@@ -1,0 +1,13 @@
+BDEPEND=dev-lang/go
+DEFINED_PHASES=compile install nofetch postinst test unpack
+DEPEND=dev-go/appengine dev-go/gapi dev-go/go-homedir dev-go/go-logging dev-go/gofslock dev-go/grpc dev-go/httprouter dev-go/klauspost-compress dev-go/protobuf dev-go/protobuf-legacy-api dev-go/starlark-go dev-go/txtpbfmt dev-go/yaml:0
+DESCRIPTION=LUCI-related packages
+EAPI=7
+HOMEPAGE=https://chromium.googlesource.com/infra/luci/luci-go
+KEYWORDS=*
+LICENSE=Apache-2.0
+RDEPEND=dev-go/appengine dev-go/gapi dev-go/go-homedir dev-go/go-logging dev-go/gofslock dev-go/grpc dev-go/httprouter dev-go/klauspost-compress dev-go/protobuf dev-go/protobuf-legacy-api dev-go/starlark-go dev-go/txtpbfmt dev-go/yaml:0 !dev-go/luci-go-common !dev-go/luci-go-cipd
+SLOT=0
+SRC_URI=https://chromium.googlesource.com/infra/luci/luci-go/+archive/cf043d12a8d3221e5dd7705a69b066c064f9f829.tar.gz -> chromium.googlesource.com-infra-luci-luci-go-cf043d12a8d3221e5dd7705a69b066c064f9f829.tar.gz
+_eclasses_=cros-go	77ba1c1ddf5c20dab7e47e19efeffef7	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=8c9c7dc3594a1e29f76ab8c7fe9526f8

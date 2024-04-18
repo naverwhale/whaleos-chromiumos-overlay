@@ -1,1 +1,0 @@
-qca-nss-firmware-1.0.00158.ebuild

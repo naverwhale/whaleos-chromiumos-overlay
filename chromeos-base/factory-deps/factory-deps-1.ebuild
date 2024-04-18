@@ -1,7 +1,7 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="6"
+EAPI="7"
 
 DESCRIPTION="List of packages that are needed for Chrome OS factory software."
 HOMEPAGE="http://dev.chromium.org/"
@@ -29,13 +29,10 @@ FACTORY_FRAMEWORK_RDEPEND="
 # Note: dbus-python may be temporarily broken on embedded platform.
 
 # Packages shared by several pytests inside factory.
-# TODO(itspeter): Might remove cryptohome once a conclusion
-#                 comes in http://crosbug.com/p/31800.
 FACTORY_TEST_RDEPEND="
 	app-arch/lbzip2
 	app-arch/pigz
 	app-arch/xz-utils
-	chromeos-base/cryptohome
 	dev-python/numpy
 	dev-python/pyserial
 	dev-python/python-evdev
@@ -46,6 +43,7 @@ FACTORY_TEST_RDEPEND="
 	net-misc/htpdate
 	sys-apps/iproute2
 	sys-apps/lshw
+	sys-apps/mosys
 "
 
 # Packages used by audio related tests
@@ -102,6 +100,17 @@ FACTORY_TEST_RDEPEND+="
 # Packages used to read config.binaryproto.
 FACTORY_TEST_RDEPEND+="
 	chromeos-base/cros-config-api
+"
+
+# Packages used for Widevine keybox provisioning tests.
+FACTORY_TEST_RDEPEND+="
+	dev-python/crcmod
+	dev-python/pycryptodome
+"
+
+# Install Factory FAI on test image for tast test.
+FACTORY_TEST_RDEPEND+="
+	chromeos-base/factory_fai
 "
 
 ################################################################################

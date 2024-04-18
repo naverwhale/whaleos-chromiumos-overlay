@@ -1,7 +1,0 @@
-DEFINED_PHASES=-
-DESCRIPTION=Virtual for fingerprint support libraries
-EAPI=7
-KEYWORDS=*
-LICENSE=metapackage
-SLOT=0
-_md5_=8cc63cbfdd9ada0c83c7fe919c4cb2be

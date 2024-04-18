@@ -1,4 +1,4 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2012 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -7,20 +7,26 @@ CROS_WORKON_INCREMENTAL_BUILD=1
 CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_OUTOFTREE_BUILD=1
-# TODO(crbug.com/809389): Avoid directly including headers from other packages.
-CROS_WORKON_SUBTREE="common-mk chromeos-config libcontainer libpasswordprovider login_manager metrics .gn"
+# TODO(b/187784160): Avoid directly including headers from other packages.
+CROS_WORKON_SUBTREE="common-mk chromeos-config libcontainer libcrossystem libpasswordprovider login_manager libsegmentation metrics .gn"
 
 PLATFORM_SUBDIR="login_manager"
+
+# Do not run test parallelly until unit tests are fixed.
+# shellcheck disable=SC2034
+PLATFORM_PARALLEL_GTEST_TEST="no"
 
 inherit tmpfiles cros-workon cros-unibuild platform systemd user
 
 DESCRIPTION="Login manager for Chromium OS."
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/chromeos-login/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/login_manager/"
 SRC_URI=""
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
-IUSE="arc_adb_sideloading cheets fuzzer systemd user_session_isolation"
+IUSE="apply_landlock_policy arc_adb_sideloading cheets flex_id fuzzer
+	+apply_landlock_policy +login_apply_no_new_privs login_enable_crosh_sudo systemd test
+	user_session_isolation"
 
 COMMON_DEPEND="chromeos-base/bootstat:=
 	chromeos-base/chromeos-config-tools:=
@@ -28,20 +34,39 @@ COMMON_DEPEND="chromeos-base/bootstat:=
 	chromeos-base/cryptohome:=
 	chromeos-base/libchromeos-ui:=
 	chromeos-base/libcontainer:=
+	chromeos-base/libcrossystem:=[test?]
 	chromeos-base/libpasswordprovider:=
+	chromeos-base/libsegmentation:=[test?]
 	>=chromeos-base/metrics-0.0.1-r3152:=
+	dev-libs/nspr:=
 	dev-libs/nss:=
 	dev-libs/protobuf:=
 	fuzzer? ( dev-libs/libprotobuf-mutator:= )
+	sys-apps/dbus:=
 	sys-apps/util-linux:=
 "
 
-RDEPEND="${COMMON_DEPEND}"
+RDEPEND="${COMMON_DEPEND}
+	acct-group/session_manager
+	acct-user/session_manager
+	flex_id? ( chromeos-base/flex_id:= )
+"
 
 DEPEND="${COMMON_DEPEND}
 	>=chromeos-base/protofiles-0.0.43:=
 	chromeos-base/system_api:=[fuzzer?]
 	chromeos-base/vboot_reference:=
+	test? (
+		dev-util/shunit2
+		sys-process/procps
+		sys-process/lsof
+	)
+"
+
+BDEPEND="
+	app-crypt/nss
+	chromeos-base/chromeos-dbus-bindings
+	dev-libs/protobuf
 "
 
 pkg_preinst() {
@@ -64,9 +89,15 @@ platform_pkg_test() {
 	for test_bin in "${tests[@]}"; do
 		platform_test "run" "${OUT}/${test_bin}" "0" "" "${gtest_qemu_filter}"
 	done
+
+	if use x86 || use amd64; then
+		platform_test "run" "./init/scripts/ui-killers-helper_unittest"
+	fi
 }
 
 src_install() {
+	platform_src_install
+
 	into /
 	dosbin "${OUT}/keygen"
 	dosbin "${OUT}/session_manager"

@@ -1,4 +1,4 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -14,7 +14,7 @@ PLATFORM_SUBDIR="arc/vm/libvda"
 inherit cros-workon platform
 
 DESCRIPTION="libvda CrOS video decoding library"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/arc/vm/libvda"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/arc/vm/libvda"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
@@ -32,6 +32,8 @@ DEPEND="
 "
 
 src_install() {
+	platform_src_install
+
 	dolib.so "${OUT}"/lib/libvda.so
 	insinto "/usr/$(get_libdir)/pkgconfig"
 	doins "${OUT}"/obj/arc/vm/libvda/libvda.pc
@@ -43,6 +45,4 @@ src_install() {
 
 platform_pkg_test() {
 	platform_test "run" "${OUT}/libvda_fake_unittest"
-
-	platform_fuzzer_test "${OUT}"/libvda_fuzzer
 }

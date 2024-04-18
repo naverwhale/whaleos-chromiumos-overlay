@@ -1,0 +1,35 @@
+commit a5bf28e2c7be90d11a63d84fb9a87af9d432c8b9
+Author: Benjamin Gordon <bmgordon@chromium.org>
+Date:   Thu Jun 29 08:09:08 2023 -0600
+
+    CHROMIUM: Restrict reverse lookups to 169.254.x.x
+    
+    mdns4_minimal only does reverse lookups for 169.254.0.0/16, so it
+    doesn't cause delays for other IPs that don't have a reverse DNS
+    entry.  Apply the same logic to the full mdns module so we can enable
+    full forward lookups without introducing reverse lookup delays.
+    
+    Bug: b/283011330
+    Test: time getent hosts 1.2.3.4
+
+diff --git a/src/nss.c b/src/nss.c
+index 55f95c2..b6bdafe 100644
+--- a/src/nss.c
++++ b/src/nss.c
+@@ -301,15 +301,13 @@ enum nss_status _nss_mdns_gethostbyaddr_r(
+         return NSS_STATUS_UNAVAIL;
+     }
+ 
+-#ifdef MDNS_MINIMAL
+-    /* Only query for 169.254.0.0/16 IPv4 in minimal mode */
++    /* Only query for 169.254.0.0/16 IPv4 */
+     if ((af == AF_INET && ((ntohl(*(const uint32_t*)addr) & 0xFFFF0000UL) != 0xA9FE0000UL)) ||
+         (af == AF_INET6 && !(((const uint8_t*)addr)[0] == 0xFE && (((const uint8_t*)addr)[1] >> 6) == 2))) {
+         *errnop = EINVAL;
+         *h_errnop = NO_RECOVERY;
+         return NSS_STATUS_UNAVAIL;
+     }
+-#endif
+ 
+     /* Lookup using Avahi */
+     buffer_t buf;

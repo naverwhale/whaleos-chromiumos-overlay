@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -26,10 +26,9 @@ RDEPEND=">=chromeos-base/croslog-0.0.1-r45"
 DEPEND="${RDEPEND}"
 
 src_install() {
-	platform_install
+	platform_src_install
 
-	insinto /etc/init
-	doins log-bootid-on-boot.conf
+	platform_fuzzer_install "${S}"/../croslog/OWNERS "${OUT}"/bootid_logger_fuzzer
 }
 
 platform_pkg_test() {

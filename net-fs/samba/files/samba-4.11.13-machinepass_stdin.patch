@@ -16,7 +16,7 @@ index c83aced..ea67432 100644
  		   "                             quadrupled. It is not used as a separator.\n"));
  	d_printf(_("   machinepass=PASS      Set the machine password to a specific value during\n"
  		   "                         the join. The default password is random.\n"));
-+-	d_printf(_("   machinepassStdin      Reads the machine password from stdin.\n"));
++	d_printf(_("   machinepassStdin      Reads the machine password from stdin.\n"));
  	d_printf(_("   osName=string         Set the operatingSystem attribute during the join.\n"));
  	d_printf(_("   osVer=string          Set the operatingSystemVersion attribute during join.\n"
  		   "                         NB: osName and osVer must be specified together for\n"
@@ -34,7 +34,7 @@ index c83aced..ea67432 100644
 +				goto fail;
 +			}
 +			int ret = 0;
-+			char *buf = talloc_zero_array(ctx, char, 1024);
++			char *buf = talloc_zero_array(tmp_ctx, char, 1024);
 +			if (buf == NULL) {
 +				werr = WERR_NOT_ENOUGH_MEMORY;
 +				goto fail;
@@ -52,7 +52,7 @@ index c83aced..ea67432 100644
 +				goto fail;
 +			}
 +			machine_password = buf;
-+		}		
++		}
  		else if ( !strncasecmp_m(argv[i], "machinepass", strlen("machinepass")) ) {
 +			if ( machine_password ) {
 +				d_fprintf(stderr,

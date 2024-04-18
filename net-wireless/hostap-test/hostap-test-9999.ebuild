@@ -1,12 +1,13 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 EAPI="7"
 CROS_WORKON_PROJECT="chromiumos/third_party/hostap"
+CROS_WORKON_EGIT_BRANCH="wpa_supplicant-2.10.0"
 CROS_WORKON_LOCALNAME="../third_party/wpa_supplicant-cros/current"
 
-PYTHON_COMPAT=( python3_{6,7} )
+PYTHON_COMPAT=( python3_{6..9} )
 
 inherit cros-sanitizers cros-workon distutils-r1 flag-o-matic toolchain-funcs
 
@@ -33,16 +34,17 @@ DEPEND="
 # libraries aren't available.
 RDEPEND="${DEPEND}
 	${PYTHON_DEPS}
+	dev-db/sqlite
 	dbus? (
 		dev-python/dbus-python[${PYTHON_USEDEP}]
 		dev-python/pygobject[${PYTHON_USEDEP}]
-		sys-apps/dbus
 	)
 	dev-python/pycryptodome[${PYTHON_USEDEP}]
 	dev-python/pyrad[${PYTHON_USEDEP}]
 	net-analyzer/wireshark
 
 	net-wireless/crda
+	sys-apps/dbus
 "
 
 src_unpack() {

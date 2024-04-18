@@ -9,7 +9,7 @@ CROS_WORKON_EGIT_BRANCH="chromeos-freedreno"
 
 KEYWORDS="~*"
 
-inherit base meson flag-o-matic cros-workon
+inherit meson flag-o-matic cros-workon
 
 DESCRIPTION="The Mesa 3D Graphics Library"
 HOMEPAGE="http://mesa3d.org/"
@@ -18,7 +18,7 @@ HOMEPAGE="http://mesa3d.org/"
 # GLES[2]/gl[2]{,ext,platform}.h are SGI-B-2.0
 LICENSE="MIT SGI-B-2.0"
 
-IUSE="debug vulkan libglvnd"
+IUSE="debug vulkan libglvnd perfetto zstd"
 
 COMMON_DEPEND="
 	dev-libs/expat:=
@@ -28,9 +28,11 @@ COMMON_DEPEND="
 RDEPEND="${COMMON_DEPEND}
 	libglvnd? ( media-libs/libglvnd )
 	!libglvnd? ( !media-libs/libglvnd )
+	zstd? ( app-arch/zstd )
 "
 
 DEPEND="${COMMON_DEPEND}
+	perfetto? ( >=chromeos-base/perfetto-29.0 )
 "
 
 BDEPEND="
@@ -40,6 +42,8 @@ BDEPEND="
 "
 
 src_configure() {
+	cros_optimize_package_for_speed
+
 	emesonargs+=(
 		-Dexecmem=false
 		-Dglvnd=$(usex libglvnd true false)
@@ -52,10 +56,11 @@ src_configure() {
 		-Dgles1=disabled
 		-Dgles2=enabled
 		-Dshared-glapi=enabled
-		-Ddri-drivers=
 		-Dgallium-drivers=freedreno
 		-Dgallium-vdpau=disabled
 		-Dgallium-xa=disabled
+		-Dperfetto=$(usex perfetto true false)
+		$(meson_feature zstd)
 		-Dplatforms=
 		-Dtools=freedreno
 		--buildtype $(usex debug debug release)

@@ -1,4 +1,4 @@
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Copyright 2016 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # @ECLASS: arc-build.eclass
@@ -6,7 +6,7 @@
 # Chromium OS Build Team
 # @BUGREPORTS:
 # Please report bugs via http://crbug.com/new (with label Build)
-# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/master/eclass/@ECLASS@
+# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/eclass/@ECLASS@
 # @BLURB: helper eclass for building packages to run under ARC (Android Runtime)
 # @DESCRIPTION:
 # We want to build some libraries to run under ARC.  These funcs will help
@@ -40,10 +40,8 @@
 if [[ -z ${_ARC_BUILD_ECLASS} ]]; then
 _ARC_BUILD_ECLASS=1
 
-# Check for EAPI 4+.
 case "${EAPI:-0}" in
-4|5|6|7) ;;
-*) die "unsupported EAPI (${EAPI}) in eclass (${ECLASS})" ;;
+[012345]) die "Unsupported EAPI=${EAPI:-0} (too old) for ${ECLASS}" ;;
 esac
 
 inherit multilib-build flag-o-matic cros-constants arc-build-constants
@@ -72,11 +70,6 @@ arc-build-select-clang() {
 
 	case ${ARCH} in
 	arm|arm64)
-		ARC_GCC_TUPLE_arm64=aarch64-linux-android
-		ARC_GCC_BASE_arm64="${ARC_BASE}/arc-gcc/aarch64/${ARC_GCC_TUPLE_arm64}-4.9"
-		ARC_GCC_TUPLE_arm=arm-linux-androideabi
-		ARC_GCC_BASE_arm="${ARC_BASE}/arc-gcc/arm/${ARC_GCC_TUPLE_arm}-4.9"
-
 		# multilib.eclass does not use CFLAGS_${DEFAULT_ABI}, but
 		# we need to add some flags valid only for arm/arm64, so we trick
 		# it to think that neither arm nor arm64 is the default.
@@ -92,23 +85,53 @@ arc-build-select-clang() {
 		CFLAGS_arm64="${CFLAGS_arm64} -I${ARC_SYSROOT}/usr/include/arch-arm64/include/"
 		CFLAGS_arm="${CFLAGS_arm} -I${ARC_SYSROOT}/usr/include/arch-arm/include/"
 
-		export CFLAGS_arm64="${CFLAGS_arm64} -target ${CHOST_arm64} --gcc-toolchain=${ARC_GCC_BASE_arm64}"
-		export CFLAGS_arm="${CFLAGS_arm} -target ${CHOST_arm} --gcc-toolchain=${ARC_GCC_BASE_arm}"
+		if (( ARC_VERSION_MAJOR <= 11 )); then
+			# Add GCC toolchain for older Android branches
+			ARC_GCC_TUPLE_arm64=aarch64-linux-android
+			ARC_GCC_BASE_arm64="${ARC_BASE}/arc-gcc/aarch64/${ARC_GCC_TUPLE_arm64}-4.9"
+			ARC_GCC_TUPLE_arm=arm-linux-androideabi
+			ARC_GCC_BASE_arm="${ARC_BASE}/arc-gcc/arm/${ARC_GCC_TUPLE_arm}-4.9"
 
-		# Add Android related utilities location to ${PATH}.
-		export PATH="${ARC_GCC_BASE_arm64}/bin:${ARC_GCC_BASE_arm}/bin:${PATH}"
+			CFLAGS_arm64="${CFLAGS_arm64} --gcc-toolchain=${ARC_GCC_BASE_arm64}"
+			CFLAGS_arm="${CFLAGS_arm} --gcc-toolchain=${ARC_GCC_BASE_arm}"
+			export PATH="${ARC_GCC_BASE_arm64}/bin:${ARC_GCC_BASE_arm}/bin:${PATH}"
+		fi
+
+		if (( ARC_VERSION_MAJOR >= 11 )); then
+			# For newer branches, ensure that the LLVM linker is used
+			CFLAGS_arm64="${CFLAGS_arm64} -fuse-ld=lld"
+			CFLAGS_arm="${CFLAGS_arm} -fuse-ld=lld"
+		fi
+
+		export CFLAGS_arm64="${CFLAGS_arm64} -target ${CHOST_arm64}"
+		export CFLAGS_arm="${CFLAGS_arm} -target ${CHOST_arm}"
 		;;
 	amd64)
-		ARC_GCC_TUPLE=x86_64-linux-android
-		ARC_GCC_BASE="${ARC_BASE}/arc-gcc/x86_64/${ARC_GCC_TUPLE}-4.9"
-
-		# The clang version used by ARC is too old to recognize certain
-		# recent microarchitectures like tremont. Filter it out for now.
-		# TODO(b/161353194,b/181375275) If clang is uprevved, please
-		# remove this filter and see if the build succeeds.
-		filter-flags -march=tremont -march=alderlake
-		# Ignore unwindlib flag for ARC++.
-		filter-flags --unwindlib=libunwind
+		# Old versions of clang cannot recognize new CPU flags. Replace
+		# them with the latest Atom available on each version.
+		case ${ARC_VERSION_MAJOR} in
+		9)
+		# ARC P uses llvm 6.0
+			replace-flags -march=goldmont-plus -march=goldmont
+			replace-flags -march=tremont -march=goldmont
+			replace-flags -march=alderlake -march=goldmont
+			# x86_64 Microarchitecture Levels support was added with Clang 12
+			replace-flags "-march=x86-64-v*" -march=x86-64
+			;;
+		11)
+		# ARC R uses llvm 11.0.2
+			replace-flags -march=alderlake -march=tremont
+			# x86_64 Microarchitecture Levels support was added with Clang 12
+			replace-flags "-march=x86-64-v*" -march=x86-64
+			# znver3 support was added with Clang 13
+			replace-flags -march=znver3 -march=znver2
+			;;
+		13)
+		# ARC T uses llvm 14.0.5
+			# meteorlake was added with Clang 18
+			replace-flags -march=meteorlake -march=skylake
+			;;
+		esac
 
 		# multilib.eclass does not use CFLAGS_${DEFAULT_ABI}, but
 		# we need to add some flags valid only for amd64, so we trick
@@ -121,11 +144,24 @@ arc-build-select-clang() {
 		CFLAGS_amd64="${CFLAGS_amd64} -I${ARC_SYSROOT}/usr/include/arch-x86_64/include/"
 		CFLAGS_x86="${CFLAGS_x86} -I${ARC_SYSROOT}/usr/include/arch-x86/include/"
 
-		export CFLAGS_amd64="${CFLAGS_amd64} -target ${CHOST_amd64} --gcc-toolchain=${ARC_GCC_BASE}"
-		export CFLAGS_x86="${CFLAGS_x86} -target ${CHOST_x86} --gcc-toolchain=${ARC_GCC_BASE}"
+		if (( ARC_VERSION_MAJOR <= 11 )); then
+			# Add GCC toolchain for older Android branches
+			ARC_GCC_TUPLE=x86_64-linux-android
+			ARC_GCC_BASE="${ARC_BASE}/arc-gcc/x86_64/${ARC_GCC_TUPLE}-4.9"
 
-		# Add Android related utilities location to ${PATH}.
-		export PATH="${ARC_GCC_BASE}/bin:${PATH}"
+			CFLAGS_amd64="${CFLAGS_amd64} --gcc-toolchain=${ARC_GCC_BASE}"
+			CFLAGS_x86="${CFLAGS_x86} --gcc-toolchain=${ARC_GCC_BASE}"
+			export PATH="${ARC_GCC_BASE}/bin:${PATH}"
+		fi
+
+		if (( ARC_VERSION_MAJOR >= 11 )); then
+			# For newer branches, ensure that the LLVM linker is used
+			CFLAGS_amd64="${CFLAGS_amd64} -fuse-ld=lld"
+			CFLAGS_x86="${CFLAGS_x86} -fuse-ld=lld"
+		fi
+
+		export CFLAGS_amd64="${CFLAGS_amd64} -target ${CHOST_amd64}"
+		export CFLAGS_x86="${CFLAGS_x86} -target ${CHOST_x86}"
 		;;
 	esac
 
@@ -146,6 +182,9 @@ arc-build-select-clang() {
 	# Some linkers (such as ARM64's bfd linker) doesn't recognize or link
 	# correctly with this flag, filter it out.
 	filter-flags -Wl,--icf=all
+
+	# Ignore unwindlib flag for ARC++.
+	filter-flags --unwindlib=libunwind
 
 	# Set up flags for the android sysroot.
 	append-flags --sysroot="${ARC_SYSROOT}"
@@ -171,11 +210,12 @@ arc-build-select-clang() {
 	append-cflags -Qunused-arguments -Wno-unknown-warning-option
 	append-cxxflags -Qunused-arguments -Wno-unknown-warning-option
 
-	if (( ${ARC_VERSION_MAJOR} == 9 )); then
+	if (( ARC_VERSION_MAJOR == 9 )); then
 		# TODO(crbug.com/922335): Remove "-stdlib=libc++" after bug resolved.
 		export CXX="${CXX} -stdlib=libc++"
 		append-cxxflags -stdlib=libc++
 	else
+		export CXX="${CXX} -nostdinc++ -I${ARC_SYSROOT}/usr/include/c++/4.9"
 		append-cxxflags -nostdinc++ -I${ARC_SYSROOT}/usr/include/c++/4.9
 	fi
 }

@@ -1,7 +1,7 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=5
+EAPI=7
 
 inherit udev user
 
@@ -10,10 +10,13 @@ DESCRIPTION="Ebuild to support the Chrome OS Cr50 device."
 LICENSE="BSD-Google"
 SLOT="0"
 KEYWORDS="*"
-IUSE="generic_tpm2"
+IUSE="generic_tpm2 cr50_onboard ti50_onboard cr50_disable_sleep_in_suspend"
+
+DEPEND="chromeos-base/hwsec-utils"
 
 RDEPEND="
 	chromeos-base/ec-utils
+	chromeos-base/vboot_reference:=
 	!<chromeos-base/chromeos-cr50-0.0.1-r38
 "
 
@@ -23,6 +26,21 @@ pkg_preinst() {
 	enewuser "rma_fw_keeper"
 	enewgroup "rma_fw_keeper"
 	enewgroup "suzy-q"
+}
+
+create_cr50_script_soft_link() {
+	local GSC_BINARY_NAME="$1"
+	local CR50_BINARY_NAME="${GSC_BINARY_NAME/gsc/cr50}"
+	local CR50_SCRIPT_NAME="$(echo "${CR50_BINARY_NAME}" | sed 's/_/-/g' | \
+		sed 's/$/.sh/g')"
+
+	local GSC_BINARY_DIR="/usr/share/cros/hwsec-utils"
+	local CR50_SCRIPT_DIR="/usr/share/cros"
+
+	dosym "${GSC_BINARY_DIR}/${GSC_BINARY_NAME}" \
+		"${GSC_BINARY_DIR}/${CR50_BINARY_NAME}"
+	dosym "${GSC_BINARY_DIR}/${GSC_BINARY_NAME}" \
+		"${CR50_SCRIPT_DIR}/${CR50_SCRIPT_NAME}"
 }
 
 src_install() {
@@ -39,32 +57,34 @@ src_install() {
 		doins "${FILESDIR}/${f}"
 	done
 
+	if use cr50_disable_sleep_in_suspend; then
+		doins "${FILESDIR}/cr50-disable-sleep.conf"
+	fi
+
 	udev_dorules "${FILESDIR}"/99-cr50.rules
 
 	exeinto /usr/share/cros
-	files=(
-		cr50-flash-log.sh
-		cr50-get-name.sh
-		cr50-read-board-id.sh
-		cr50-read-rma-sn-bits.sh
-		cr50-reset.sh
-		cr50-set-board-id.sh
-		cr50-set-sn-bits.sh
-		cr50-update.sh
-		cr50-verify-ro.sh
-		tpm2-lock-space.sh
-		tpm2-nv-utils.sh
-		tpm2-read-space.sh
-		tpm2-write-space.sh
-	)
-	for f in "${files[@]}"; do
-		doexe "${FILESDIR}/${f}"
-	if use generic_tpm2; then
-		sed -i 's/PLATFORM_INDEX=false/PLATFORM_INDEX=true/' \
-			"${D}/usr/share/cros/${f}" ||
-			die "Can't set PLATFORM_INDEX to true for ${f}"
+
+	# TODO(b/289003370): The gsc-constants.sh is referenced in multiple
+	# locations in the factory related flow.
+	if use ti50_onboard; then
+		f="ti50-constants.sh"
+	elif use cr50_onboard || use generic_tpm2; then
+		f="cr50-constants.sh"
+	else
+		die "Neither GSC nor generic TPM2 is used"
 	fi
-	done
+	newexe "${FILESDIR}/${f}" "gsc-constants.sh"
+
+	# TODO(b/289003370): Remove the script symlink one all callers are calling
+	# rust binaries directly.
+	create_cr50_script_soft_link "gsc_flash_log"
+	create_cr50_script_soft_link "gsc_read_rma_sn_bits"
+	create_cr50_script_soft_link "gsc_reset"
+	create_cr50_script_soft_link "gsc_set_board_id"
+	create_cr50_script_soft_link "gsc_set_sn_bits"
+	create_cr50_script_soft_link "gsc_update"
+	create_cr50_script_soft_link "gsc_verify_ro"
 
 	insinto /opt/google/cr50/ro_db
 	doins "${FILESDIR}"/ro_db/*.db

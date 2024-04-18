@@ -16,6 +16,8 @@
 - hw_dec_h264_1080_60
 - hw_dec_h264_2160_30
 - hw_dec_h264_2160_60
+- hw_dec_h264_4320_30
+- hw_dec_h264_4320_60
 
 ## VP8
 - hw_dec_vp8_1080_30
@@ -28,32 +30,44 @@
 - hw_dec_vp9_1080_60
 - hw_dec_vp9_2160_30
 - hw_dec_vp9_2160_60
+- hw_dec_vp9_4320_30
+- hw_dec_vp9_4320_60
 
 ## VP9-2
 - hw_dec_vp9-2_1080_30
 - hw_dec_vp9-2_1080_60
 - hw_dec_vp9-2_2160_30
 - hw_dec_vp9-2_2160_60
+- hw_dec_vp9-2_4320_30
+- hw_dec_vp9-2_4320_60
 
 ## AV1 (Profile Main)
 - hw_dec_av1_1080_30
 - hw_dec_av1_1080_60
 - hw_dec_av1_2160_30
 - hw_dec_av1_2160_60
+- hw_dec_av1_4320_30
+- hw_dec_av1_4320_60
 - hw_dec_av1_1080_30_10bpp
 - hw_dec_av1_1080_60_10bpp
 - hw_dec_av1_2160_30_10bpp
 - hw_dec_av1_2160_60_10bpp
+- hw_dec_av1_4320_30_10bpp
+- hw_dec_av1_4320_60_10bpp
 
 ## HEVC (Profile Main)
 - hw_dec_hevc_1080_30
 - hw_dec_hevc_1080_60
 - hw_dec_hevc_2160_30
 - hw_dec_hevc_2160_60
+- hw_dec_hevc_4320_30
+- hw_dec_hevc_4320_60
 - hw_dec_hevc_1080_30_10bpp
 - hw_dec_hevc_1080_60_10bpp
 - hw_dec_hevc_2160_30_10bpp
 - hw_dec_hevc_2160_60_10bpp
+- hw_dec_hevc_4320_30_10bpp
+- hw_dec_hevc_4320_60_10bpp
 
 ## JPEG
 ## hw_dec_jpeg is marked if a device supports JPEG HW decoding.
@@ -87,8 +101,11 @@
 ## HW encoding for 1080p@30fps h264 formatted videos. Same for vp8 and vp9.
 ## We mark a device with hw_enc_h264_2160_30 capability if it supports
 ## HW h264 encoding for 2160p but may not guarantee 30fps. Same for vp8 and vp9.
+## We mark a device with hw_enc_h264_vbr if it supports H264 variable bitrate
+## (VBR) encoding. Same for vp8 and vp9.
 - hw_enc_h264_1080_30
 - hw_enc_h264_2160_30
+- hw_enc_h264_vbr
 ## Add hw_enc_h264_odd_dimension when video.EncodeAccel has a test
 ## exercising odd-dimension encoding.
 
@@ -96,11 +113,19 @@
 - hw_enc_vp8_1080_30
 - hw_enc_vp8_2160_30
 - hw_enc_vp8_odd_dimension
+- hw_enc_vp8_vbr
 
 ## VP9
 - hw_enc_vp9_1080_30
 - hw_enc_vp9_2160_30
 - hw_enc_vp9_odd_dimension
+- hw_enc_vp9_vbr
+
+## AV1
+- hw_enc_av1_1080_30
+- hw_enc_av1_2160_30
+- hw_enc_av1_odd_dimension
+- hw_enc_av1_vbr
 
 ## JPEG
 ## hw_enc_jpeg is marked if a device supports JPEG HW encoding.

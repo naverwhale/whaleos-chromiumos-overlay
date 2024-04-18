@@ -1,0 +1,27 @@
+From 255127fac09ba84cbef8a4f8acf3c11a76223893 Mon Sep 17 00:00:00 2001
+From: Satoshi Niwa <niwa@chromium.org>
+Date: Tue, 17 Oct 2023 12:00:00 +0900
+Subject: [PATCH] HACK: Update max value of platform-sdk-version to 30
+
+BUG=b:299827246
+
+Change-Id: If35808365d9c6bf3269f0070e3c70b883ea08cdc
+---
+ meson_options.txt | 2 +-
+ 1 file changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/meson_options.txt b/meson_options.txt
+index 8130c3e9321..b1f460de5f6 100644
+--- a/meson_options.txt
++++ b/meson_options.txt
+@@ -530,7 +530,7 @@ option(
+   'platform-sdk-version',
+   type : 'integer',
+   min : 25,
+-  max : 28,
++  max : 30,
+   value : 25,
+   description : 'Android Platform SDK version. Default: Nougat version.'
+ )
+--
+2.20.1

@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Don't use Makefile.external here as it fetches from the network.
@@ -19,7 +19,7 @@ inherit cros-workon platform
 DESCRIPTION="quipper: chromiumos wide profiling"
 HOMEPAGE="http://www.chromium.org/chromium-os/profiling-in-chromeos"
 
-GIT_SHA1="9876dd56d3d337f481812f9f7d0be632a23e3266"
+GIT_SHA1="b1c2b82a8ec75b016c36da31c845491c75b9adae"
 SRC="quipper-${GIT_SHA1}.tar.gz"
 SRC_URI="gs://chromeos-localmirror/distfiles/${SRC}"
 SRC_DIR="src/${PN}"
@@ -35,6 +35,7 @@ COMMON_DEPEND="
 	dev-libs/protobuf:=
 	dev-libs/re2:=
 	dev-util/perf:=
+	virtual/libelf:=
 "
 
 RDEPEND="${COMMON_DEPEND}"
@@ -44,17 +45,21 @@ DEPEND="${COMMON_DEPEND}
 	test? ( app-shells/dash )
 "
 
+BDEPEND="
+	dev-libs/protobuf
+"
+
 src_unpack() {
 	platform_src_unpack
 	mkdir "${S}"
 
-	pushd "${S}" >/dev/null
+	pushd "${S}" >/dev/null || die
 	unpack ${SRC}
 	mv "${SRC_DIR}"/{.[!.],}* ./ || die
 	eapply "${FILESDIR}"/quipper-disable-flaky-tests.patch
-	eapply "${FILESDIR}"/quipper-arraysize.patch
 	eapply "${FILESDIR}"/quipper-check-header.patch
-	popd >/dev/null
+	eapply "${FILESDIR}"/quipper-inject-timeout.patch
+	popd >/dev/null || die
 }
 
 src_compile() {
@@ -68,6 +73,8 @@ src_compile() {
 }
 
 src_install() {
+	platform_src_install
+
 	dobin "${OUT}"/quipper
 }
 

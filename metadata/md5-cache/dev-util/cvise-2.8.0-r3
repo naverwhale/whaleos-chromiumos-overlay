@@ -1,0 +1,16 @@
+BDEPEND=python_single_target_python3_9? ( dev-lang/python:3.9 >=dev-lang/python-exec-2:=[python_targets_python3_9] ) python_single_target_python3_8? ( dev-lang/python:3.8 >=dev-lang/python-exec-2:=[python_targets_python3_8] ) python_single_target_python3_7? ( dev-lang/python:3.7 >=dev-lang/python-exec-2:=[python_targets_python3_7] ) python_single_target_python3_6? ( dev-lang/python:3.6 >=dev-lang/python-exec-2:=[python_targets_python3_6] ) sys-devel/flex test? ( python_single_target_python3_9? ( dev-python/pebble[python_targets_python3_9(-)] dev-python/pytest[python_targets_python3_9(-)] ) python_single_target_python3_8? ( dev-python/pebble[python_targets_python3_8(-)] dev-python/pytest[python_targets_python3_8(-)] ) python_single_target_python3_7? ( dev-python/pebble[python_targets_python3_7(-)] dev-python/pytest[python_targets_python3_7(-)] ) python_single_target_python3_6? ( dev-python/pebble[python_targets_python3_6(-)] dev-python/pytest[python_targets_python3_6(-)] ) ) >=dev-util/ninja-1.8.2 >=dev-util/cmake-3.20.5
+DEFINED_PHASES=compile configure install prepare setup test
+DEPEND=sys-devel/llvm
+DESCRIPTION=Super-parallel Python port of the C-Reduce
+EAPI=7
+HOMEPAGE=https://github.com/marxin/cvise/
+IUSE=test python_single_target_python3_9 python_single_target_python3_8 python_single_target_python3_7 python_single_target_python3_6
+KEYWORDS=*
+LICENSE=LLVM-exception
+RDEPEND=sys-devel/llvm python_single_target_python3_9? ( dev-lang/python:3.9 >=dev-lang/python-exec-2:=[python_targets_python3_9] ) python_single_target_python3_8? ( dev-lang/python:3.8 >=dev-lang/python-exec-2:=[python_targets_python3_8] ) python_single_target_python3_7? ( dev-lang/python:3.7 >=dev-lang/python-exec-2:=[python_targets_python3_7] ) python_single_target_python3_6? ( dev-lang/python:3.6 >=dev-lang/python-exec-2:=[python_targets_python3_6] ) python_single_target_python3_9? ( dev-python/chardet[python_targets_python3_9(-)] dev-python/pebble[python_targets_python3_9(-)] dev-python/psutil[python_targets_python3_9(-)] ) python_single_target_python3_8? ( dev-python/chardet[python_targets_python3_8(-)] dev-python/pebble[python_targets_python3_8(-)] dev-python/psutil[python_targets_python3_8(-)] ) python_single_target_python3_7? ( dev-python/chardet[python_targets_python3_7(-)] dev-python/pebble[python_targets_python3_7(-)] dev-python/psutil[python_targets_python3_7(-)] ) python_single_target_python3_6? ( dev-python/chardet[python_targets_python3_6(-)] dev-python/pebble[python_targets_python3_6(-)] dev-python/psutil[python_targets_python3_6(-)] ) dev-util/unifdef sys-devel/flex
+REQUIRED_USE=^^ ( python_single_target_python3_9 python_single_target_python3_8 python_single_target_python3_7 python_single_target_python3_6 )
+RESTRICT=!test? ( test )
+SLOT=0
+SRC_URI=https://github.com/marxin/cvise/archive/v2.8.0.tar.gz -> cvise-2.8.0.tar.gz
+_eclasses_=cmake	34502c2b638b59994575d53ba3805d7b	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	ninja-utils	578ba3585e2f3ebe63ab00c07874016e	python-single-r1	674c48c926cbb44e91b656e0399d8f54	python-utils-r1	76252008070e69454f51fa80c07638c9	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	xdg-utils	ff2ff954e6b17929574eee4efc5152ba
+_md5_=75d7c5e987576a75648c25f15ac1d9ee

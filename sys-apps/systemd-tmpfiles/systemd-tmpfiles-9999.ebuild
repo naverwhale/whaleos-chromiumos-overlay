@@ -7,7 +7,7 @@ CROS_WORKON_PROJECT="chromiumos/third_party/systemd"
 CROS_WORKON_LOCALNAME="../third_party/systemd"
 
 MINKV="3.11"
-PYTHON_COMPAT=( python3_{6..9} )
+PYTHON_COMPAT=( python3_{8..11} )
 inherit meson python-any-r1 cros-workon
 
 DESCRIPTION="Creates, deletes and cleans up volatile and temporary files and directories"
@@ -37,6 +37,7 @@ BDEPEND="
 	app-text/docbook-xml-dtd:4.5
 	app-text/docbook-xsl-stylesheets
 	dev-libs/libxslt:0
+	dev-util/gperf
 	>=dev-util/meson-0.46
 	>=dev-util/intltool-0.50
 	>=sys-apps/coreutils-8.16

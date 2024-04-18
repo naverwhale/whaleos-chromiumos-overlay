@@ -1,7 +1,7 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="4"
+EAPI="7"
 
 DESCRIPTION="Define the boot-complete boot marker for embedded systems
 (boot-services up and running)"

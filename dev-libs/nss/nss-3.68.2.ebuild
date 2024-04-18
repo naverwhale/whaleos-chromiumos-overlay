@@ -47,6 +47,12 @@ PATCHES=(
 	"${FILESDIR}/${PN}-3.44-prefer-writable-tokens-for-trust.patch"
 	# local fix for https://bugs.gentoo.org/834846
 	"${FILESDIR}/${PN}-3.68.2-nss-ld-fixup.patch"
+	# Temporary patch for debugging crbug.com/1163303
+	"${FILESDIR}/${PN}-3.68.2-debug-openuserdb.patch"
+	# Avoid querying Chaps for CA certificates crbug.com/1482000
+	"${FILESDIR}/${PN}-3.68.2-ignore-chaps-part1.patch"
+	"${FILESDIR}/${PN}-3.68.2-ignore-chaps-part2.patch"
+	"${FILESDIR}/${PN}-3.68.2-ignore-chaps-part3.patch"
 )
 
 src_prepare() {

@@ -1,3 +1,7 @@
+# Copyright 2021 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
 # WAF (the build system used by Samba projects) only supports cross-compilation
 # using an "answers" file.
 #
@@ -56,3 +60,8 @@ getcwd takes a NULL argument: OK
 Checking whether the WRFILE -keytab is supported: OK
 Checking for a 64-bit host to support lmdb: FAIL
 Checking whether setreuid is available: OK
+Checking value of GNUTLS_CIPHER_AES_128_CFB8: "29"
+Checking value of GNUTLS_MAC_AES_CMAC_128: "203"
+Checking whether fcntl supports flags to send direct I/O availability signals: OK
+Checking for gnutls fips mode support: "254"
+Checking for readlink breakage: OK

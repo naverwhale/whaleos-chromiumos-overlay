@@ -1,0 +1,3 @@
+include /sys-apps/coreboot-utils/OWNERS
+include /chromeos-base/verity/OWNERS
+include /chromeos-base/vboot_reference/OWNERS

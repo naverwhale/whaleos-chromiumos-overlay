@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -34,6 +34,8 @@ SLOT="0"
 KEYWORDS="~*"
 
 src_install() {
+	platform_src_install
+
 	dolib.so "${OUT}"/lib/libcbor.so
 	insinto /usr/include/chromeos/cbor/
 	doins ./*.h

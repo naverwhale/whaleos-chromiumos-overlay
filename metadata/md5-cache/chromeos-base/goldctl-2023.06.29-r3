@@ -1,0 +1,11 @@
+BDEPEND=app-arch/unzip
+DEFINED_PHASES=install
+DESCRIPTION=This command-line tool lets clients upload images to gold
+EAPI=7
+HOMEPAGE=https://skia.googlesource.com/buildbot/+/HEAD/gold-client/
+KEYWORDS=*
+LICENSE=BSD-Google
+RESTRICT=mirror
+SLOT=0
+SRC_URI=amd64? ( cipd://skia/tools/goldctl/linux-amd64:vXHLgx-NDpLedjYw8l4Oet94N2EuXVFRqF9RcxWV6gMC -> goldctl-2023.06.29-amd64.zip ) x86? ( cipd://skia/tools/goldctl/linux-386:34ixNU9kvf31PFIdI1tJpaFKTNLoXxYEGEIg54zXsdYC -> goldctl-2023.06.29-x86.zip ) arm64? ( cipd://skia/tools/goldctl/linux-arm64:rdEhDdkkHZ_XdF4emC1oHxXuYaWIrx26s7Mjyoxh3UYC -> goldctl-2023.06.29-arm64.zip ) arm? ( cipd://skia/tools/goldctl/linux-armv6l:08YRn4elrPxUCeQYvWbzCjNHhOSNfa-2J8ZCHJtJYM8C -> goldctl-2023.06.29-arm.zip )
+_md5_=7fe98907a8955db73b7d035d7970fb12

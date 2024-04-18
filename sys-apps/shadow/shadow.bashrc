@@ -1,9 +1,20 @@
-# Copyright 2015 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-PKG_INSTALL_MASK+=" /etc/pam.d/login"
-INSTALL_MASK+=" /etc/pam.d/login"
+shadow_mask="
+	/etc/pam.d/login
+"
+
+# We don't install `su`, so don't install `sg` either.
+# People can use minijail to switch accounts at runtime.
+shadow_mask+="
+	/usr/bin/sg
+"
+
+PKG_INSTALL_MASK+=" ${shadow_mask}"
+INSTALL_MASK+=" ${shadow_mask}"
+unset shadow_mask
 
 cros_post_src_install_unset_suid() {
 	# Remove suid bit from all binaries installed by the package.

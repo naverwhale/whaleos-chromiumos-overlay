@@ -1,4 +1,4 @@
-BDEPEND=dev-vcs/git
+BDEPEND=dev-vcs/git app-misc/jq
 DEFINED_PHASES=info install setup unpack
 DESCRIPTION=Data files for local Tast tests
 EAPI=7
@@ -9,5 +9,5 @@ LICENSE=BSD-Google GPL-3
 PROPERTIES=live
 RDEPEND=!<chromeos-base/tast-local-tests-cros-0.0.2
 SLOT=0/0
-_eclasses_=cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-credentials	4fd98ebbff6a1534ca9a89547e13dc92	cros-workon	ff100259492312ff6570e490bcb9a320	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	tast-bundle-data	8a38f8cda493ae24c6e77f86a49a92cc	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
-_md5_=d3f062e5029f897e90013ec39293f29b
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	tast-bundle-data	871ffdeadaa9ddf4d0160a51d5ba205b	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=a4fad824260ba7d1369fb2f4affc7250

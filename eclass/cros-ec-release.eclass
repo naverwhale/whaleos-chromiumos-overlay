@@ -1,4 +1,4 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # @ECLASS: cros-ec-release.eclass
@@ -6,7 +6,7 @@
 # Chromium OS Firmware Team
 # @BUGREPORTS:
 # Please report bugs via http://crbug.com/new (with label Build)
-# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/master/eclass/@ECLASS@
+# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/eclass/@ECLASS@
 # @BLURB: helper eclass for building Chromium OS release firmware
 # @DESCRIPTION:
 # Release firmware using the EC code base needs to be built from specific
@@ -19,7 +19,7 @@
 #
 # NOTE: When making changes to this class, make sure to modify all the -9999
 # ebuilds that inherit it (e.g., chromeos-fpmcu-release*) to work around
-# http://crbug.com/220902.
+# https://issuetracker.google.com/201299127.
 
 if [[ -z "${_ECLASS_CROS_EC_RELEASE}" ]]; then
 _ECLASS_CROS_EC_RELEASE="1"

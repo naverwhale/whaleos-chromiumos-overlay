@@ -48,4 +48,8 @@ CONFIG_SOC_INTEL_CSE_RW_UPDATE=y
 CONFIG_SOC_INTEL_CSE_RW_FILE="3rdparty/blobs/baseboard-dedede/me_rw-bugzzy.bin"
 CONFIG_SOC_INTEL_CSE_RW_VERSION="13.50.15.1550"
 
+# WiFi SAR
+CONFIG_CHROMEOS_WIFI_SAR=y
+CONFIG_WIFI_SAR_CBFS_FILEPATH="3rdparty/blobs/baseboard-dedede/wifi_sar/wifi_sar-bugzzy.hex"
+
 # CONFIG_CONSOLE_SERIAL is not set

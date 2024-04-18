@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -6,10 +6,10 @@ inherit cros-factory
 
 # @ECLASS: cros-factory-board.eclass
 # @MAINTAINER:
-# The Chromium OS Authors <chromium-os-dev@chromium.org>
+# The ChromiumOS Authors <chromium-os-dev@chromium.org>
 # @BUGREPORTS:
 # Please report bugs via http://crbug.com/new (with label Build)
-# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/master/eclass/@ECLASS@
+# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/eclass/@ECLASS@
 # @BLURB: Eclass to help creating per-project factory resources.
 
 # Check for EAPI 7+
@@ -118,7 +118,21 @@ cros-factory-board_install_factory_runtime_probe() {
 		"${archive_dir}" "bin/factory_runtime_probe" "."
 }
 
+# @FUNCTION: cros-factory-board_install_board_overlay
+# @USAGE:
+# @DESCRIPTION:
+# Install board config into the toolkit and the factory bundle.
+cros-factory-board_install_board_overlay() {
+	if [[ -d "${FILESDIR}" ]]; then
+		einfo "Creating ebuild-source-board-overlay.tar ..."
+		factory_create_resource "ebuild-source-board-overlay" "${FILESDIR}" "." "."
+	else
+		einfo "FILESDIR does not exist. Skip creating ebuild-source-board-overlay.tar"
+	fi
+}
+
 cros-factory-board_src_install() {
+	cros-factory-board_install_board_overlay
 	cros-factory-board_install_project_config
 	cros-factory-board_install_project_overlay
 	if ! use racc; then

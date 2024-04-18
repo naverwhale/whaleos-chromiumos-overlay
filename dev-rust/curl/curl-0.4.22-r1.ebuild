@@ -1,1 +1,0 @@
-curl-0.4.22.ebuild

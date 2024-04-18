@@ -1,11 +1,14 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
+
+PYTHON_COMPAT=( python3_{8..11} )
+
 CROS_WORKON_PROJECT="chromiumos/third_party/autotest"
 CROS_WORKON_LOCALNAME="third_party/autotest/files"
 
-inherit cros-workon autotest
+inherit cros-workon autotest python-any-r1
 
 DESCRIPTION="Audio autotests"
 HOMEPAGE="https://chromium.googlesource.com/chromiumos/third_party/autotest/"
@@ -24,6 +27,13 @@ RDEPEND="
 "
 DEPEND="${RDEPEND}"
 
+BDEPEND="
+	dev-python/dbus-python
+	dev-python/numpy
+	dev-python/pygobject
+	dev-python/requests
+"
+
 # audio_AudioInputGain and audio_CrasGetNodes depend on telemetry.
 IUSE_TESTS="
 	+tests_audio_Aconnect
@@ -36,6 +46,7 @@ IUSE_TESTS="
 	+tests_audio_CrasDevSwitchStress
 	+tests_audio_CrasPinnedStream
 	+tests_audio_CrasStress
+	+tests_audio_CrasAec
 "
 
 IUSE="${IUSE} ${IUSE_TESTS}"

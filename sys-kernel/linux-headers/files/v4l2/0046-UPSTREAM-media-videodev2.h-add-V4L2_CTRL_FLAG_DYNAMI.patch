@@ -1,0 +1,53 @@
+From 2086d319b360514cd3252ebc9a717e1f6e7886bb Mon Sep 17 00:00:00 2001
+From: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Date: Fri, 8 Jul 2022 17:21:40 +0100
+Subject: [PATCH] UPSTREAM: media: videodev2.h: add
+ V4L2_CTRL_FLAG_DYNAMIC_ARRAY
+
+Add a new flag that indicates that this control is a dynamically sized
+array. Also document this flag.
+
+Currently dynamically sized arrays are limited to one dimensional arrays,
+but that might change in the future if there is a need for it.
+
+The initial use-case of dynamic arrays are stateless codecs. A frame
+can be divided in many slices, so you want to provide an array containing
+slice information for each slice. Typically the number of slices is small,
+but the standard allow for hundreds or thousands of slices. Dynamic arrays
+are a good solution since sizing the array for the worst case would waste
+substantial amounts of memory.
+
+Acked-by: Nicolas Dufresne <nicolas.dufresne@collabora.com>
+Tested-by: Benjamin Gaignard <benjamin.gaignard@collabora.com>
+Tested-by: Jernej Skrabec <jernej.skrabec@gmail.com>
+Reviewed-by: Laurent Pinchart <laurent.pinchart+renesas@ideasonboard.com>
+Signed-off-by: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Signed-off-by: Mauro Carvalho Chehab <mchehab@kernel.org>
+(cherry picked from commit 64fe675e999c2c7d753ecaaa1349693c59ce6c11)
+
+Non-uAPI changes dropped.
+
+BUG=b:278157861
+TEST=Check header
+
+Change-Id: I7cca2a1f1fd10530698082c124cd84cb17e59264
+Signed-off-by: Chen-Yu Tsai <wenst@chromium.org>
+---
+ include/uapi/linux/videodev2.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index 363b63b4c479..5b87b14798c9 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -1746,6 +1746,7 @@ struct v4l2_querymenu {
+ #define V4L2_CTRL_FLAG_HAS_PAYLOAD	0x0100
+ #define V4L2_CTRL_FLAG_EXECUTE_ON_WRITE	0x0200
+ #define V4L2_CTRL_FLAG_MODIFY_LAYOUT	0x0400
++#define V4L2_CTRL_FLAG_DYNAMIC_ARRAY	0x0800
+ 
+ /*  Query flags, to be ORed with the control ID */
+ #define V4L2_CTRL_FLAG_NEXT_CTRL	0x80000000
+-- 
+2.40.1.606.ga4b1b128d6-goog
+

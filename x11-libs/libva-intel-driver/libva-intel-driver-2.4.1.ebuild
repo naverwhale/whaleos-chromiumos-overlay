@@ -3,14 +3,17 @@
 
 EAPI=7
 
-MY_PN="intel-vaapi-driver"
+CROS_WORKON_COMMIT="9a1f0c64174f970a26380d4957583c71372fbb7c"
+CROS_WORKON_TREE="a8914792b3133aa08d5ba6e70eaa71389bd84d0f"
+CROS_WORKON_PROJECT="chromiumos/third_party/libva-intel-driver"
+CROS_WORKON_MANUAL_UPREV="1"
+CROS_WORKON_LOCALNAME="libva-intel-driver"
+CROS_WORKON_EGIT_BRANCH="chromeos"
 
-inherit autotools multilib-minimal
+inherit autotools multilib-minimal cros-workon
 
 DESCRIPTION="HW video decode support for Intel integrated graphics"
 HOMEPAGE="https://github.com/intel/intel-vaapi-driver"
-SRC_URI="https://github.com/intel/${MY_PN}/releases/download/${PV}/${MY_PN}-${PV}.tar.bz2"
-S="${WORKDIR}/${MY_PN}-${PV}"
 KEYWORDS="*"
 LICENSE="MIT"
 SLOT="0"
@@ -32,6 +35,7 @@ src_prepare() {
 	eapply "${FILESDIR}"/0001-Remove-blitter-usage-from-driver.patch
 	eapply "${FILESDIR}"/Handle-the-odd-resolution.patch
 	eapply "${FILESDIR}"/0002-Fix-VP9.2-config-verification.patch
+	eapply "${FILESDIR}"/0003-FROMGIT-FROMLIST-i965_device_info.c-Add-missing-entr.patch
 	eapply_user
 	sed -e 's/intel-gen4asm/\0diSaBlEd/g' -i configure.ac || die
 	eautoreconf

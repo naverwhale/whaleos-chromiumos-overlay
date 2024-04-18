@@ -1,0 +1,15 @@
+BDEPEND=>=dev-libs/glib-2.14:2= app-arch/bzip2:= sys-apps/dbus:= virtual/libudev:= cups? ( net-print/cups:= ) readline? ( sys-libs/readline:= ) >=chromeos-base/metrics-0.0.1-r3152:= dev-python/docutils sys-devel/flex:= >=app-portage/elt-patches-20170815 || ( >=sys-devel/automake-1.16.5-r1:1.16 >=sys-devel/automake-1.15.1-r2:1.15 ) >=sys-devel/autoconf-2.69 >=sys-devel/libtool-2.4 virtual/pkgconfig virtual/pkgconfig dev-vcs/git app-misc/jq
+DEFINED_PHASES=configure info install preinst prepare setup test unpack
+DEPEND=>=dev-libs/glib-2.14:2= app-arch/bzip2:= sys-apps/dbus:= virtual/libudev:= cups? ( net-print/cups:= ) readline? ( sys-libs/readline:= ) >=chromeos-base/metrics-0.0.1-r3152:= sys-apps/baselayout >=chromeos-base/libchrome-0.0.1-r884:0=[cros-debug=] dev-cpp/gtest:=
+DESCRIPTION=Bluetooth Tools and System Daemons for Linux
+EAPI=7
+HOMEPAGE=http://www.bluez.org/
+IUSE=asan bluez-next bluez-upstream cups debug fuzzer hid2hci systemd readline bt_deprecated_tools bluez_default_conn_int bluez_disallow_bqr cros-debug fuzzer asan cfi cfi_diag cfi_recover coverage fuzzer msan thinlto tsan ubsan cros_host cros_workon_tree_4a98b8a24956f528ef2e1624e4d4d90f6da7bcce_4a98b8a24956f528ef2e1624e4d4d90f6da7bcce_8a15b985c848dec9177ee9e36f175524ae0a152d
+KEYWORDS=*
+LICENSE=GPL-2 LGPL-2.1
+PROPERTIES=live
+RDEPEND=>=dev-libs/glib-2.14:2= app-arch/bzip2:= sys-apps/dbus:= virtual/libudev:= cups? ( net-print/cups:= ) readline? ( sys-libs/readline:= ) >=chromeos-base/metrics-0.0.1-r3152:= !net-wireless/bluez-hcidump !net-wireless/bluez-libs !net-wireless/bluez-test !net-wireless/bluez-utils sys-apps/baselayout >=chromeos-base/libchrome-0.0.1-r884:0=[cros-debug=] virtual/tmpfiles
+REQUIRED_USE=?? ( bluez-next bluez-upstream ) cfi? ( thinlto ) cfi_diag? ( cfi ) cfi_recover? ( cfi_diag )
+SLOT=0/5.54-r1039
+_eclasses_=autotools	9adb87822e85056674b476e1090a72ae	cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-debug	af551fd1f4be5284c65a5f020aa73c5c	cros-fuzzer	84a11d1ae67e44213942468798d0c105	cros-sanitizers	4504f3661db0fe02309acd3555785cf2	cros-workon	247d4700539e27bc12026f785ec53757	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	libchrome	84a911cdf2eb95f651e86cd39c89d0f7	libchrome-version	c3e83b27c95464f9fe98ff4d1016ffbb	libtool	f143db5a74ccd9ca28c1234deffede96	multilib	2477ebe553d3e4d2c606191fe6c33602	systemd	5f4bb0758df2e483babf68cd517078ca	tmpfiles	216aa76c3a6fcb5d893c23a0de86048f	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	udev	eec0bbab06977f1cfc5597269c1fa152	user	bb36bb02334dae8c5fd9efa0d8d2ec70
+_md5_=fab64f674187db75ed79b24ca6293fef

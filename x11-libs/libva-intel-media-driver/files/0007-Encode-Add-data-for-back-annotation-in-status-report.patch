@@ -1,0 +1,187 @@
+From 2b40e2730a38057786f4e65d8a8758cb84f25bca Mon Sep 17 00:00:00 2001
+From: LeyuYao <leyu.yao@intel.com>
+Date: Thu, 10 Aug 2023 11:50:19 +0800
+Subject: [PATCH] [Encode] Add data for back annotation in status report
+
+* [Encode] Use buffer to track PPS for status report
+
+Completed() may be called concurrently with submission
+---
+ .../agnostic/common/codec/hal/codechal_encoder_base.h       | 3 +++
+ .../av1/pipeline/encode_av1_vdenc_pipeline_xe_m_base.cpp    | 5 +++++
+ .../pipeline/encode_av1_vdenc_pipeline_xe_lpm_plus_base.cpp | 5 +++++
+ .../codec/hal/enc/av1/features/encode_av1_basic_feature.cpp | 3 ++-
+ .../codec/hal/enc/av1/features/encode_av1_basic_feature.h   | 2 +-
+ .../codec/hal/enc/av1/packet/encode_av1_vdenc_packet.cpp    | 4 ++--
+ .../hal/enc/av1/packet/encode_back_annotation_packet.cpp    | 6 +++---
+ .../hal/enc/shared/statusreport/encode_status_report.cpp    | 5 +++++
+ .../hal/enc/shared/statusreport/encode_status_report.h      | 6 ++++++
+ .../hal/enc/shared/statusreport/encode_status_report_defs.h | 4 ++++
+ 10 files changed, 36 insertions(+), 7 deletions(-)
+
+diff --git a/media_driver/agnostic/common/codec/hal/codechal_encoder_base.h b/media_driver/agnostic/common/codec/hal/codechal_encoder_base.h
+index 8e18d5565cc3..9f894da0bf92 100644
+--- a/media_driver/agnostic/common/codec/hal/codechal_encoder_base.h
++++ b/media_driver/agnostic/common/codec/hal/codechal_encoder_base.h
+@@ -941,6 +941,9 @@ struct EncodeStatusReport
+ 
+     FRAME_STATS_INFO *pFrmStatsInfo;
+     BLOCK_STATS_INFO *pBlkStatsInfo;
++
++    uint32_t                        reserved[4];            //!< align with apo path hal structure EncodeStatusReportData
++
+ };
+ 
+ //!
+diff --git a/media_driver/media_softlet/agnostic/Xe_M/Xe_M_base/codec/hal/enc/av1/pipeline/encode_av1_vdenc_pipeline_xe_m_base.cpp b/media_driver/media_softlet/agnostic/Xe_M/Xe_M_base/codec/hal/enc/av1/pipeline/encode_av1_vdenc_pipeline_xe_m_base.cpp
+index f7cfe95db3d3..76955330853b 100644
+--- a/media_driver/media_softlet/agnostic/Xe_M/Xe_M_base/codec/hal/enc/av1/pipeline/encode_av1_vdenc_pipeline_xe_m_base.cpp
++++ b/media_driver/media_softlet/agnostic/Xe_M/Xe_M_base/codec/hal/enc/av1/pipeline/encode_av1_vdenc_pipeline_xe_m_base.cpp
+@@ -112,6 +112,11 @@ MOS_STATUS Av1VdencPipelineXe_M_Base::Prepare(void *params)
+ 
+     inputParameters.numberTilesInFrame         = numTileRows * numTileColumns;
+ 
++    inputParameters.av1EnableFrameObu            = feature->m_av1PicParams->PicFlags.fields.EnableFrameOBU;
++    inputParameters.av1FrameHdrOBUSizeByteOffset = feature->m_frameHdrOBUSizeByteOffset;
++    inputParameters.frameWidth                   = feature->m_frameWidth;
++    inputParameters.frameHeight                  = feature->m_frameHeight;
++
+     ENCODE_CHK_STATUS_RETURN(m_statusReport->Init(&inputParameters));
+ 
+     return MOS_STATUS_SUCCESS;
+diff --git a/media_softlet/agnostic/Xe_M_plus/Xe_LPM_plus_base/codec/hal/enc/av1/pipeline/encode_av1_vdenc_pipeline_xe_lpm_plus_base.cpp b/media_softlet/agnostic/Xe_M_plus/Xe_LPM_plus_base/codec/hal/enc/av1/pipeline/encode_av1_vdenc_pipeline_xe_lpm_plus_base.cpp
+index 46c92f5bf30e..aa22f4743d42 100644
+--- a/media_softlet/agnostic/Xe_M_plus/Xe_LPM_plus_base/codec/hal/enc/av1/pipeline/encode_av1_vdenc_pipeline_xe_lpm_plus_base.cpp
++++ b/media_softlet/agnostic/Xe_M_plus/Xe_LPM_plus_base/codec/hal/enc/av1/pipeline/encode_av1_vdenc_pipeline_xe_lpm_plus_base.cpp
+@@ -95,6 +95,11 @@ MOS_STATUS Av1VdencPipelineXe_Lpm_Plus_Base::Prepare(void *params)
+ 
+     inputParameters.numberTilesInFrame = numTileRows * numTileColumns;
+ 
++    inputParameters.av1EnableFrameObu            = feature->m_av1PicParams->PicFlags.fields.EnableFrameOBU;
++    inputParameters.av1FrameHdrOBUSizeByteOffset = feature->m_frameHdrOBUSizeByteOffset;
++    inputParameters.frameWidth                   = feature->m_frameWidth;
++    inputParameters.frameHeight                  = feature->m_frameHeight;
++
+     ENCODE_CHK_STATUS_RETURN(m_statusReport->Init(&inputParameters));
+ 
+     return MOS_STATUS_SUCCESS;
+diff --git a/media_softlet/agnostic/common/codec/hal/enc/av1/features/encode_av1_basic_feature.cpp b/media_softlet/agnostic/common/codec/hal/enc/av1/features/encode_av1_basic_feature.cpp
+index 5cbd40e2a442..53a5c80376d1 100644
+--- a/media_softlet/agnostic/common/codec/hal/enc/av1/features/encode_av1_basic_feature.cpp
++++ b/media_softlet/agnostic/common/codec/hal/enc/av1/features/encode_av1_basic_feature.cpp
+@@ -186,9 +186,10 @@ MOS_STATUS Av1BasicFeature::Update(void *params)
+     m_picWidthInSb = m_miCols >> mibSizeLog2;
+     m_picHeightInSb = m_miRows >> mibSizeLog2;
+ 
++    // EnableFrameOBU thread safety
+     if (m_av1PicParams->PicFlags.fields.EnableFrameOBU)
+     {
+-        m_frameHdrOBUSizeByteOffset[m_av1PicParams->CurrOriginalPic.FrameIdx % ASYNC_NUM] = m_av1PicParams->FrameHdrOBUSizeByteOffset;
++        m_frameHdrOBUSizeByteOffset = m_av1PicParams->FrameHdrOBUSizeByteOffset;
+     }
+ 
+     // Only for first frame
+diff --git a/media_softlet/agnostic/common/codec/hal/enc/av1/features/encode_av1_basic_feature.h b/media_softlet/agnostic/common/codec/hal/enc/av1/features/encode_av1_basic_feature.h
+index 55055c9ae334..387721a85f50 100644
+--- a/media_softlet/agnostic/common/codec/hal/enc/av1/features/encode_av1_basic_feature.h
++++ b/media_softlet/agnostic/common/codec/hal/enc/av1/features/encode_av1_basic_feature.h
+@@ -169,7 +169,7 @@ public:
+ 
+ #define ASYNC_NUM 32
+ 
+-    uint32_t                           m_frameHdrOBUSizeByteOffset[ASYNC_NUM] = {};  //!< indicate current frame OBUFrame offset
++    uint32_t                           m_frameHdrOBUSizeByteOffset = 0;  //!< indicate current frame OBUFrame offset
+     uint16_t                           m_tileGroupHeaderSize = 0;
+     uint32_t                           m_encodedFrameNum = 0;                                   //!< Currently encoded frame number
+ 
+diff --git a/media_softlet/agnostic/common/codec/hal/enc/av1/packet/encode_av1_vdenc_packet.cpp b/media_softlet/agnostic/common/codec/hal/enc/av1/packet/encode_av1_vdenc_packet.cpp
+index 3c145610e1bb..e9ea4c5b26a3 100644
+--- a/media_softlet/agnostic/common/codec/hal/enc/av1/packet/encode_av1_vdenc_packet.cpp
++++ b/media_softlet/agnostic/common/codec/hal/enc/av1/packet/encode_av1_vdenc_packet.cpp
+@@ -441,8 +441,8 @@ namespace encode{
+         ENCODE_VERBOSEMESSAGE("statusReportData->numberPasses: %d\n", statusReportData->numberPasses);
+ 
+         uint32_t log2MaxSbSize   = av1MiSizeLog2 + av1MinMibSizeLog2;
+-        uint32_t frameWidthInSb  = MOS_ALIGN_CEIL(m_basicFeature->m_frameWidth, (1 << log2MaxSbSize)) >> log2MaxSbSize;
+-        uint32_t frameHeightInSb = MOS_ALIGN_CEIL(m_basicFeature->m_frameHeight, (1 << log2MaxSbSize)) >> log2MaxSbSize;
++        uint32_t frameWidthInSb  = MOS_ALIGN_CEIL(statusReportData->frameWidth, (1 << log2MaxSbSize)) >> log2MaxSbSize;
++        uint32_t frameHeightInSb = MOS_ALIGN_CEIL(statusReportData->frameHeight, (1 << log2MaxSbSize)) >> log2MaxSbSize;
+         if (frameWidthInSb != 0 && frameHeightInSb != 0)
+         {
+             ENCODE_CHK_NULL_RETURN(m_basicFeature->m_av1SeqParams);
+diff --git a/media_softlet/agnostic/common/codec/hal/enc/av1/packet/encode_back_annotation_packet.cpp b/media_softlet/agnostic/common/codec/hal/enc/av1/packet/encode_back_annotation_packet.cpp
+index 7e4caea811ae..a39567fb4256 100644
+--- a/media_softlet/agnostic/common/codec/hal/enc/av1/packet/encode_back_annotation_packet.cpp
++++ b/media_softlet/agnostic/common/codec/hal/enc/av1/packet/encode_back_annotation_packet.cpp
+@@ -222,9 +222,9 @@ namespace encode {
+         ENCODE_CHK_NULL_RETURN(tileRecord);
+ 
+         uint32_t obuSizeBytesOffset = 0;
+-        if (m_basicFeature->m_av1PicParams->PicFlags.fields.EnableFrameOBU)
++        if (statusReportData->av1EnableFrameOBU)
+         {
+-            obuSizeBytesOffset = m_basicFeature->m_frameHdrOBUSizeByteOffset[statBufIdx % ASYNC_NUM];
++            obuSizeBytesOffset = statusReportData->av1FrameHdrOBUSizeByteOffset;
+         }
+         else
+         {
+@@ -269,7 +269,7 @@ namespace encode {
+             streamSizePerTG += payLoadSize;
+ 
+             //needs to decode the size from the one passed by MSDK
+-            if (m_basicFeature->m_av1PicParams->PicFlags.fields.EnableFrameOBU)
++            if (statusReportData->av1EnableFrameOBU)
+             {
+                 uint32_t frameHdrObuSize = tileRecord[0].Length - tileRecord[0].TileSize - obuSizeBytesOffset -
+                     m_numBytesOfOBUSize - 1/*tile group OBU header size*/ - tileGroupParams->TileGroupOBUSizeInBytes;
+diff --git a/media_softlet/agnostic/common/codec/hal/enc/shared/statusreport/encode_status_report.cpp b/media_softlet/agnostic/common/codec/hal/enc/shared/statusreport/encode_status_report.cpp
+index 7d7eda7bcdc4..d30d4545b539 100644
+--- a/media_softlet/agnostic/common/codec/hal/enc/shared/statusreport/encode_status_report.cpp
++++ b/media_softlet/agnostic/common/codec/hal/enc/shared/statusreport/encode_status_report.cpp
+@@ -192,6 +192,11 @@ namespace encode {
+             m_statusReportData[submitIndex].currRefList        = inputParameters->currRefList;
+             m_statusReportData[submitIndex].numberTilesInFrame = inputParameters->numberTilesInFrame;
+ 
++            m_statusReportData[submitIndex].av1EnableFrameOBU            = inputParameters->av1EnableFrameObu;
++            m_statusReportData[submitIndex].av1FrameHdrOBUSizeByteOffset = inputParameters->av1FrameHdrOBUSizeByteOffset;
++            m_statusReportData[submitIndex].frameWidth                   = inputParameters->frameWidth;
++            m_statusReportData[submitIndex].frameHeight                  = inputParameters->frameHeight;
++
+             uint64_t pairIndex = GetIdForCodecFuncToFuncIdPairs(inputParameters->codecFunction);
+             if (pairIndex >= m_maxCodecFuncNum)
+             {
+diff --git a/media_softlet/agnostic/common/codec/hal/enc/shared/statusreport/encode_status_report.h b/media_softlet/agnostic/common/codec/hal/enc/shared/statusreport/encode_status_report.h
+index eaf28e33fadc..e4a86f75ab55 100644
+--- a/media_softlet/agnostic/common/codec/hal/enc/shared/statusreport/encode_status_report.h
++++ b/media_softlet/agnostic/common/codec/hal/enc/shared/statusreport/encode_status_report.h
+@@ -271,6 +271,12 @@ namespace encode {
+ 
+         FRAME_STATS_INFO *pFrmStatsInfo;
+         BLOCK_STATS_INFO *pBlkStatsInfo;
++
++        // Store Data for Av1 Back Annotation
++        uint32_t                        av1FrameHdrOBUSizeByteOffset;
++        uint32_t                        av1EnableFrameOBU;
++        uint32_t                        frameWidth;
++        uint32_t                        frameHeight;
+     };
+ 
+     class EncoderStatusReport : public MediaStatusReport
+diff --git a/media_softlet/agnostic/common/codec/hal/enc/shared/statusreport/encode_status_report_defs.h b/media_softlet/agnostic/common/codec/hal/enc/shared/statusreport/encode_status_report_defs.h
+index ee02bd3e1897..c368225c6a55 100644
+--- a/media_softlet/agnostic/common/codec/hal/enc/shared/statusreport/encode_status_report_defs.h
++++ b/media_softlet/agnostic/common/codec/hal/enc/shared/statusreport/encode_status_report_defs.h
+@@ -145,6 +145,10 @@ struct EncoderStatusParameters
+     uint16_t           picWidthInMb;
+     uint16_t           frameFieldHeightInMb;
+     uint32_t           maxNumSlicesAllowed;
++    uint32_t           av1EnableFrameObu;
++    uint32_t           av1FrameHdrOBUSizeByteOffset;
++    uint32_t           frameWidth;
++    uint32_t           frameHeight;
+ };
+ 
+ struct ImageStatusControl
+-- 
+2.25.1
+

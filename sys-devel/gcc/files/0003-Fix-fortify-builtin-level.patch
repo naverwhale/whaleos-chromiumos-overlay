@@ -1,0 +1,13 @@
+diff --git a/gcc-10.2.0/gcc/c-family/c-cppbuiltin.c b/gcc-10.2.0/gcc/c-family/c-cppbuiltin.c
+index 17c519c..e8b14c8 100644
+--- a/gcc/c-family/c-cppbuiltin.c
++++ b/gcc/c-family/c-cppbuiltin.c
+@@ -1388,7 +1388,7 @@ c_cpp_builtins (cpp_reader *pfile)
+ #if !defined(ACCEL_COMPILER)
+   /* Fortify Source enabled by default for optimization levels > 0 */
+   if (optimize)
+-    builtin_define_with_int_value ("_FORTIFY_SOURCE", 2);
++    builtin_define_with_int_value ("_FORTIFY_SOURCE", 3);
+ #endif
+ 
+   /* Misc.  */

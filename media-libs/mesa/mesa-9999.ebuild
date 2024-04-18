@@ -7,32 +7,26 @@ EAPI=7
 EGIT_REPO_URI="git://anongit.freedesktop.org/mesa/mesa"
 CROS_WORKON_PROJECT="chromiumos/third_party/mesa"
 CROS_WORKON_MANUAL_UPREV="1"
+CROS_WORKON_EGIT_BRANCH="upstream/amber"
 
 if [[ ${PV} = 9999* ]]; then
 	GIT_ECLASS="git-2"
 	EXPERIMENTAL="true"
 fi
 
-inherit base flag-o-matic meson toolchain-funcs ${GIT_ECLASS} cros-workon
+inherit multilib flag-o-matic meson toolchain-funcs ${GIT_ECLASS} cros-workon
 
 FOLDER="${PV/_rc*/}"
-[[ ${PV/_rc*/} == ${PV} ]] || FOLDER+="/RC"
+[[ ${PV/_rc*/} == "${PV}" ]] || FOLDER+="/RC"
 
 DESCRIPTION="OpenGL-like graphic library for Linux"
 HOMEPAGE="http://mesa3d.sourceforge.net/"
-
-#SRC_PATCHES="mirror://gentoo/${P}-gentoo-patches-01.tar.bz2"
-if [[ $PV = 9999* ]] || [[ -n ${CROS_WORKON_COMMIT} ]]; then
-	SRC_URI="${SRC_PATCHES}"
-else
-	SRC_URI="ftp://ftp.freedesktop.org/pub/mesa/${FOLDER}/${P}.tar.bz2
-		${SRC_PATCHES}"
-fi
 
 # Most of the code is MIT/X11.
 # ralloc is LGPL-3
 # GLES[2]/gl[2]{,ext,platform}.h are SGI-B-2.0
 LICENSE="MIT LGPL-3 SGI-B-2.0"
+SLOT="0"
 KEYWORDS="~*"
 
 INTEL_CARDS="intel"
@@ -44,22 +38,24 @@ done
 
 IUSE="${IUSE_VIDEO_CARDS}
 	+classic debug dri drm egl +gallium -gbm gles1 gles2 kernel_FreeBSD
-	kvm_guest llvm +nptl pic selinux shared-glapi +vulkan wayland xlib-glx X
-	libglvnd"
+	kvm_guest llvm +nptl pic selinux shared-glapi vulkan wayland xlib-glx X
+	libglvnd zstd"
 
 LIBDRM_DEPSTRING=">=x11-libs/libdrm-2.4.60:="
 
 REQUIRED_USE="video_cards_amdgpu? ( llvm )
 	video_cards_llvmpipe? ( llvm )"
 
+# Pin to llvm-12 because llvmpipe does not support llvm-15 until 22.3
 COMMON_DEPEND="
 	dev-libs/expat:=
-	dev-libs/libgcrypt:=
-	llvm? ( sys-devel/llvm:= )
+	wayland? (
+		dev-libs/wayland:=
+	)
+	llvm? ( sys-devel/llvm:12= )
 	llvm? ( virtual/libelf:= )
-	virtual/udev:=
 	X? (
-		!<x11-base/xorg-server-1.7:=
+		!<x11-base/xorg-server-1.7
 		>=x11-libs/libX11-1.3.99.901:=
 		x11-libs/libXdamage:=
 		x11-libs/libXext:=
@@ -67,6 +63,7 @@ COMMON_DEPEND="
 		x11-libs/libxshmfence:=
 		x11-libs/libXxf86vm:=
 	)
+	zstd? ( app-arch/zstd )
 	${LIBDRM_DEPSTRING}
 "
 
@@ -86,6 +83,11 @@ BDEPEND="
 	sys-devel/bison
 	sys-devel/flex
 "
+
+PATCHES=(
+	"${FILESDIR}"/UPSTREAM-anv-advertise-rectangularLines-only-for-Gen10.patch
+	"${FILESDIR}"/CHROMIUM-i965-increase-BRW_MAX_UBO-to-16.patch
+)
 
 driver_list() {
 	local drivers="$(sort -u <<< "${1// /$'\n'}")"
@@ -109,10 +111,6 @@ src_configure() {
 	tc-getPROG PKG_CONFIG pkg-config
 
 	cros_optimize_package_for_speed
-	# For llvmpipe on ARM we'll get errors about being unable to resolve
-	# "__aeabi_unwind_cpp_pr1" if we don't include this flag; seems wise
-	# to include it for all platforms though.
-	use video_cards_llvmpipe && append-flags "-rtlib=libgcc -shared-libgcc"
 
 	if use !gallium && use !classic && use !vulkan; then
 		ewarn "You enabled neither classic, gallium, nor vulkan "
@@ -150,7 +148,7 @@ src_configure() {
 
 	LLVM_ENABLE=false
 	if use llvm && use !video_cards_softpipe; then
-		emesonargs+=( -Dshared-llvm=false )
+		emesonargs+=( -Dshared-llvm=disabled )
 		export LLVM_CONFIG=${SYSROOT}/usr/lib/llvm/bin/llvm-config-host
 		LLVM_ENABLE=true
 	fi
@@ -189,6 +187,7 @@ src_configure() {
 		$(meson_feature gbm)
 		$(meson_feature gles1)
 		$(meson_feature gles2)
+		$(meson_feature zstd)
 		$(meson_use selinux)
 		-Ddri-drivers=$(driver_list "${DRI_DRIVERS[*]}")
 		-Dgallium-drivers=$(driver_list "${GALLIUM_DRIVERS[*]}")
@@ -205,7 +204,7 @@ src_install() {
 	# Remove redundant GLES headers
 	rm -f "${D}"/usr/include/{EGL,GLES2,GLES3,KHR}/*.h || die "Removing GLES headers failed."
 
-	dodir /usr/$(get_libdir)/dri
+	dodir "/usr/$(get_libdir)/dri"
 	insinto "/usr/$(get_libdir)/dri/"
 	insopts -m0755
 	# install the gallium drivers we use
@@ -232,21 +231,21 @@ src_install() {
 # $1 - VIDEO_CARDS flag (check skipped for "--")
 # other args - names of DRI drivers to enable
 dri_driver_enable() {
-	if [[ $1 == -- ]] || use $1; then
+	if [[ $1 == -- ]] || use "$1"; then
 		shift
 		DRI_DRIVERS+=("$@")
 	fi
 }
 
 gallium_enable() {
-	if [[ $1 == -- ]] || use $1; then
+	if [[ $1 == -- ]] || use "$1"; then
 		shift
 		GALLIUM_DRIVERS+=("$@")
 	fi
 }
 
 vulkan_enable() {
-	if [[ $1 == -- ]] || use $1; then
+	if [[ $1 == -- ]] || use "$1"; then
 		shift
 		VULKAN_DRIVERS+=("$@")
 	fi

@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -7,9 +7,9 @@ CROS_WORKON_INCREMENTAL_BUILD=1
 CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_OUTOFTREE_BUILD=1
-CROS_WORKON_SUBTREE="common-mk chromeos-config runtime_probe .gn"
+CROS_WORKON_SUBTREE="common-mk chromeos-config libcrossystem libec runtime_probe mojo_service_manager .gn"
 
-PLATFORM_SUBDIR="runtime_probe"
+PLATFORM_SUBDIR="runtime_probe/factory_runtime_probe"
 
 inherit cros-workon cros-unibuild platform
 
@@ -18,40 +18,32 @@ HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/runtime_
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
-IUSE="cros-debug +factory_runtime_probe"
+IUSE="cros-debug test"
 
 # TODO(yhong): Extract common parts with runtime_probe-9999.ebuild to a shared
 #     eclass.
 
 COMMON_DEPEND="
 	chromeos-base/chromeos-config-tools:=
-"
-
-RDEPEND="
-	${COMMON_DEPEND}
-	chromeos-base/ec-utils
-"
-
-# Add vboot_reference as build time dependency to read cros_debug status
-DEPEND="${COMMON_DEPEND}
+	chromeos-base/cros-camera-libs:=
 	chromeos-base/debugd-client:=
+	chromeos-base/diagnostics:=
+	chromeos-base/libcrossystem:=[test?]
+	chromeos-base/libec:=
+	chromeos-base/mojo_service_manager:=
 	chromeos-base/shill-client:=
-	chromeos-base/system_api:=
-	chromeos-base/vboot_reference:=
+	dev-libs/libpcre:=
+	dev-libs/protobuf:=
+	media-libs/minigbm:=
+	virtual/libusb:=
 "
 
-pkg_setup() {
-	cros-workon_pkg_setup
+RDEPEND="${COMMON_DEPEND}"
 
-	# Assert that the package is not "directly" installed into Chrome OS
-	# images.  We currently only anticipate that files introduced by this
-	# package being used as the source materials for other packages.
-	if [[ "$(cros_target)" != "board_sysroot" ]]; then
-		die "${PN} should never be installed into Chrome OS images directly."
-	fi
-}
+DEPEND="${COMMON_DEPEND}
+	chromeos-base/system_api:=[fuzzer?]
+"
 
-src_install() {
-	dobin "${OUT}/factory_runtime_probe"
-	dobin "${OUT}/factory_runtime_probe_installer"
+platform_pkg_test() {
+	platform test_all
 }

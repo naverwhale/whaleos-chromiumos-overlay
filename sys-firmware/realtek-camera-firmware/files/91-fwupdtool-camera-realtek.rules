@@ -1,0 +1,10 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+SUBSYSTEM=="usb", \
+ATTRS{idVendor}=="0408", \
+ATTRS{idProduct}=="4041", \
+ATTRS{bcdDevice}=="0012", \
+ACTION=="add", \
+RUN+="/sbin/initctl emit -n fwupdtool-update PLUGIN=dfu GUID=345147a8-e227-5fd4-9194-f5488e62ca7a"

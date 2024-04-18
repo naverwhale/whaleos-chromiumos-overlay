@@ -1,0 +1,94 @@
+From 31d15dd865b12c20bf88932a6698c65fb1ac8aa4 Mon Sep 17 00:00:00 2001
+From: Adrian Ratiu <adrian.ratiu@collabora.com>
+Date: Mon, 26 Jun 2023 20:52:34 +0300
+Subject: [PATCH] BACKPORT: add clone3 syscall definitions
+
+Up to glibc 2.35, Gentoo had a USE flag and a patch [1] to
+disable the clone3 syscall because it broke steam, CEF,
+electron/zoom and some other projects in newer glibc versions.
+
+Gentoo dropped this USE flag and patch starting with glibc
+2.36 (we're upgrading to 2.37), making clone3 usage mandatory.
+
+To avoid breaking steam/CEF/docker/etc shipped by CrOS, we
+still keep clone3 userspace use disabled for now, but we'll
+have to enable it eventually, thus to allow testing we add
+the syscall definition to the kernel headers.
+
+clone3 is implemented only for kernels >= v5.3, on earlier
+versions an -ENOSYS is returned which glibc handles to fallback
+to the previous clone syscall.
+
+[1] https://gitweb.gentoo.org/fork/glibc.git/commit/?h=gentoo/2.35&id=06b01dfa4e29b5a6838dd9050f3e9418c5dc77f5
+
+---
+ arch/arm/tools/syscall.tbl             | 1 +
+ arch/arm64/include/asm/unistd32.h      | 2 ++
+ arch/x86/entry/syscalls/syscall_32.tbl | 1 +
+ arch/x86/entry/syscalls/syscall_64.tbl | 1 +
+ include/uapi/asm-generic/unistd.h      | 3 +++
+ 5 files changed, 8 insertions(+)
+
+diff --git a/arch/arm/tools/syscall.tbl b/arch/arm/tools/syscall.tbl
+index 091f659..3e48c29 100644
+--- a/arch/arm/tools/syscall.tbl
++++ b/arch/arm/tools/syscall.tbl
+@@ -439,5 +439,6 @@
+ 425	common	io_uring_setup		sys_io_uring_setup
+ 426	common	io_uring_enter		sys_io_uring_enter
+ 434	common	pidfd_open		sys_pidfd_open
++435	common	clone3			sys_clone3
+ 436	common	close_range		sys_close_range
+ 439	common	faccessat2			sys_faccessat2
+diff --git a/arch/arm64/include/asm/unistd32.h b/arch/arm64/include/asm/unistd32.h
+index e66b667..c60a905 100644
+--- a/arch/arm64/include/asm/unistd32.h
++++ b/arch/arm64/include/asm/unistd32.h
+@@ -867,6 +867,8 @@ __SYSCALL(__NR_io_uring_setup, sys_io_uring_setup)
+ __SYSCALL(__NR_io_uring_enter, sys_io_uring_enter)
+ #define __NR_pidfd_open 434
+ __SYSCALL(__NR_pidfd_open, sys_pidfd_open)
++#define __NR_clone3 435
++__SYSCALL(__NR_clone3, sys_clone3)
+ #define __NR_close_range 436
+ __SYSCALL(__NR_close_range, sys_close_range)
+ #define __NR_faccessat2 439
+diff --git a/arch/x86/entry/syscalls/syscall_32.tbl b/arch/x86/entry/syscalls/syscall_32.tbl
+index 93642d8..0595929 100644
+--- a/arch/x86/entry/syscalls/syscall_32.tbl
++++ b/arch/x86/entry/syscalls/syscall_32.tbl
+@@ -416,5 +416,6 @@
+ 425	i386	io_uring_setup		sys_io_uring_setup		__ia32_sys_io_uring_setup
+ 426	i386	io_uring_enter		sys_io_uring_enter		__ia32_sys_io_uring_enter
+ 434	i386	pidfd_open		sys_pidfd_open			__ia32_sys_pidfd_open
++435	i386	clone3			sys_clone3
+ 436	i386	close_range		sys_close_range
+ 439	i386	faccessat2		sys_faccessat2
+diff --git a/arch/x86/entry/syscalls/syscall_64.tbl b/arch/x86/entry/syscalls/syscall_64.tbl
+index 7798699..76a6aa9 100644
+--- a/arch/x86/entry/syscalls/syscall_64.tbl
++++ b/arch/x86/entry/syscalls/syscall_64.tbl
+@@ -343,6 +343,7 @@
+ 425	common	io_uring_setup		__x64_sys_io_uring_setup
+ 426	common	io_uring_enter		__x64_sys_io_uring_enter
+ 434	common	pidfd_open		__x64_sys_pidfd_open
++435	common	clone3			sys_clone3
+ 436	common	close_range		sys_close_range
+ 439	common	faccessat2		sys_faccessat2
+ 
+diff --git a/include/uapi/asm-generic/unistd.h b/include/uapi/asm-generic/unistd.h
+index e6850c1..8a3ae4c 100644
+--- a/include/uapi/asm-generic/unistd.h
++++ b/include/uapi/asm-generic/unistd.h
+@@ -786,6 +786,8 @@ __SYSCALL(__NR_io_uring_setup, sys_io_uring_setup)
+ __SYSCALL(__NR_io_uring_enter, sys_io_uring_enter)
+ #define __NR_pidfd_open 434
+ __SYSCALL(__NR_pidfd_open, sys_pidfd_open)
++#define __NR_clone3 435
++__SYSCALL(__NR_clone3, sys_clone3)
+ #define __NR_close_range 436
+ __SYSCALL(__NR_close_range, sys_close_range)
+ #define __NR_faccessat2 439
+-- 
+2.41.0
+

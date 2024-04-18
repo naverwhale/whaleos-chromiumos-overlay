@@ -1,0 +1,537 @@
+diff --git a/clvk/src/kernel.cpp b/clvk/src/kernel.cpp
+index 09c5fce..6ab1757 100644
+--- a/clvk/src/kernel.cpp
++++ b/clvk/src/kernel.cpp
+@@ -14,6 +14,8 @@
+ 
+ #include <algorithm>
+ 
++#include "clspv/Sampler.h"
++
+ #include "kernel.hpp"
+ #include "memory.hpp"
+ 
+@@ -44,6 +46,10 @@ cl_int cvk_kernel::init() {
+         m_image_metadata = md;
+     }
+ 
++    if (const auto* md = m_entry_point->sampler_metadata()) {
++        m_sampler_metadata = md;
++    }
++
+     // Init argument values
+     m_argument_values = cvk_kernel_argument_values::create(m_entry_point);
+     if (m_argument_values == nullptr) {
+@@ -100,6 +106,45 @@ void cvk_kernel::set_image_metadata(cl_uint index, const void* image) {
+     }
+ }
+ 
++void cvk_kernel::set_sampler_metadata(cl_uint index, const void* sampler) {
++    if (!m_sampler_metadata) {
++        return;
++    }
++    auto md = m_sampler_metadata->find(index);
++    if (md != m_sampler_metadata->end()) {
++        auto apisampler = *reinterpret_cast<const cl_sampler*>(sampler);
++        auto offset = md->second;
++        auto sampler = icd_downcast(apisampler);
++        uint32_t sampler_mask = (sampler->normalized_coords()
++                                     ? clspv::CLK_NORMALIZED_COORDS_TRUE
++                                     : clspv::CLK_NORMALIZED_COORDS_FALSE) |
++                                (sampler->filter_mode() == CL_FILTER_NEAREST
++                                     ? clspv::CLK_FILTER_NEAREST
++                                     : clspv::CLK_FILTER_LINEAR);
++        switch (sampler->addressing_mode()) {
++        case CL_ADDRESS_NONE:
++            sampler_mask |= clspv::CLK_ADDRESS_NONE;
++            break;
++        case CL_ADDRESS_CLAMP:
++            sampler_mask |= clspv::CLK_ADDRESS_CLAMP;
++            break;
++        case CL_ADDRESS_REPEAT:
++            sampler_mask |= clspv::CLK_ADDRESS_REPEAT;
++            break;
++        case CL_ADDRESS_CLAMP_TO_EDGE:
++            sampler_mask |= clspv::CLK_ADDRESS_CLAMP_TO_EDGE;
++            break;
++        case CL_ADDRESS_MIRRORED_REPEAT:
++            sampler_mask |= clspv::CLK_ADDRESS_MIRRORED_REPEAT;
++            break;
++        default:
++            break;
++        }
++        m_argument_values->set_pod_data(offset, sizeof(sampler_mask),
++                                        &sampler_mask);
++    }
++}
++
+ cl_int cvk_kernel::set_arg(cl_uint index, size_t size, const void* value) {
+     std::lock_guard<std::mutex> lock(m_lock);
+ 
+@@ -125,6 +170,10 @@ cl_int cvk_kernel::set_arg(cl_uint index, size_t size, const void* value) {
+         set_image_metadata(index, value);
+     }
+ 
++    if (arg.kind == kernel_argument_kind::sampler) {
++        set_sampler_metadata(index, value);
++    }
++
+     return ret;
+ }
+ 
+@@ -268,7 +317,20 @@ bool cvk_kernel_argument_values::setup_descriptor_sets() {
+         }
+         case kernel_argument_kind::sampler: {
+             auto clsampler = static_cast<cvk_sampler*>(get_arg_value(arg));
+-            auto sampler = clsampler->vulkan_sampler();
++            bool normalized_coord_sampler_required = false;
++            if (auto md = m_entry_point->sampler_metadata()) {
++                normalized_coord_sampler_required = md->find(i) != md->end();
++            }
++            auto sampler =
++                normalized_coord_sampler_required &&
++                        !clsampler->normalized_coords()
++                    ? clsampler
++                          ->get_or_create_vulkan_sampler_with_normalized_coords()
++                    : clsampler->vulkan_sampler();
++            if (sampler == VK_NULL_HANDLE) {
++                cvk_error_fn("Could not set descriptor for sampler");
++                return false;
++            }
+ 
+             cvk_debug_fn("sampler %p @ set = %u, binding = %u", sampler,
+                          arg.descriptorSet, arg.binding);
+diff --git a/clvk/src/kernel.hpp b/clvk/src/kernel.hpp
+index db19e81..02e2c7c 100644
+--- a/clvk/src/kernel.hpp
++++ b/clvk/src/kernel.hpp
+@@ -31,7 +31,8 @@ struct cvk_kernel : public _cl_kernel, api_object<object_magic::kernel> {
+ 
+     cvk_kernel(cvk_program* program, const char* name)
+         : api_object(program->context()), m_program(program),
+-          m_entry_point(nullptr), m_name(name), m_image_metadata(nullptr) {}
++          m_entry_point(nullptr), m_name(name), m_sampler_metadata(nullptr),
++          m_image_metadata(nullptr) {}
+ 
+     CHECK_RETURN cl_int init();
+     std::unique_ptr<cvk_kernel> clone(cl_int* errcode_ret) const;
+@@ -42,10 +43,16 @@ struct cvk_kernel : public _cl_kernel, api_object<object_magic::kernel> {
+         return m_argument_values;
+     }
+ 
++    const kernel_sampler_metadata_map* get_sampler_metadata() const {
++        return m_sampler_metadata;
++    }
++
+     const kernel_image_metadata_map* get_image_metadata() const {
+         return m_image_metadata;
+     }
+ 
++    void set_sampler_metadata(cl_uint index, const void* sampler);
++
+     void set_image_metadata(cl_uint index, const void* image);
+ 
+     CHECK_RETURN cl_int set_arg(cl_uint index, size_t size, const void* value);
+@@ -158,6 +165,7 @@ private:
+     std::string m_name;
+     std::vector<kernel_argument> m_args;
+     std::shared_ptr<cvk_kernel_argument_values> m_argument_values;
++    const kernel_sampler_metadata_map* m_sampler_metadata;
+     const kernel_image_metadata_map* m_image_metadata;
+ };
+ 
+@@ -237,7 +245,8 @@ struct cvk_kernel_argument_values {
+         }
+ 
+         if (m_entry_point->has_pod_arguments() ||
+-            m_entry_point->has_image_metadata()) {
++            m_entry_point->has_image_metadata() ||
++            m_entry_point->has_sampler_metadata()) {
+             // TODO(#101): host out-of-memory errors are currently unhandled.
+             auto buffer = std::make_unique<std::vector<uint8_t>>(
+                 m_entry_point->pod_buffer_size());
+diff --git a/clvk/src/memory.cpp b/clvk/src/memory.cpp
+index 4ffcc94..a655c64 100644
+--- a/clvk/src/memory.cpp
++++ b/clvk/src/memory.cpp
+@@ -159,7 +159,7 @@ cvk_sampler::create(cvk_context* context, bool normalized_coords,
+     return sampler.release();
+ }
+ 
+-bool cvk_sampler::init() {
++bool cvk_sampler::init(bool force_normalized_coordinates) {
+     auto vkdev = context()->device()->vulkan_device();
+ 
+     // Translate addressing mode
+@@ -200,7 +200,7 @@ bool cvk_sampler::init() {
+ 
+     // Translate coordinate type
+     VkBool32 unnormalized_coordinates;
+-    if (m_normalized_coords) {
++    if (m_normalized_coords || force_normalized_coordinates) {
+         unnormalized_coordinates = VK_FALSE;
+     } else {
+         unnormalized_coordinates = VK_TRUE;
+@@ -236,7 +236,9 @@ bool cvk_sampler::init() {
+         unnormalized_coordinates,              // unnormalizedCoordinates
+     };
+ 
+-    auto res = vkCreateSampler(vkdev, &create_info, nullptr, &m_sampler);
++    VkSampler* sampler =
++        force_normalized_coordinates ? &m_sampler_norm : &m_sampler;
++    auto res = vkCreateSampler(vkdev, &create_info, nullptr, sampler);
+ 
+     return (res == VK_SUCCESS);
+ }
+diff --git a/clvk/src/memory.hpp b/clvk/src/memory.hpp
+index 987a1e3..754da82 100644
+--- a/clvk/src/memory.hpp
++++ b/clvk/src/memory.hpp
+@@ -431,13 +431,17 @@ struct cvk_sampler : public _cl_sampler, api_object<object_magic::sampler> {
+                 std::vector<cl_sampler_properties>&& properties)
+         : api_object(context), m_normalized_coords(normalized_coords),
+           m_addressing_mode(addressing_mode), m_filter_mode(filter_mode),
+-          m_properties(std::move(properties)), m_sampler(VK_NULL_HANDLE) {}
++          m_properties(std::move(properties)), m_sampler(VK_NULL_HANDLE),
++          m_sampler_norm(VK_NULL_HANDLE) {}
+ 
+     ~cvk_sampler() {
++        auto vkdev = context()->device()->vulkan_device();
+         if (m_sampler != VK_NULL_HANDLE) {
+-            auto vkdev = context()->device()->vulkan_device();
+             vkDestroySampler(vkdev, m_sampler, nullptr);
+         }
++        if (m_sampler_norm != VK_NULL_HANDLE) {
++            vkDestroySampler(vkdev, m_sampler_norm, nullptr);
++        }
+     }
+ 
+     static cvk_sampler* create(cvk_context* context, bool normalized_coords,
+@@ -456,17 +460,26 @@ struct cvk_sampler : public _cl_sampler, api_object<object_magic::sampler> {
+     cl_addressing_mode addressing_mode() const { return m_addressing_mode; }
+     cl_filter_mode filter_mode() const { return m_filter_mode; }
+     VkSampler vulkan_sampler() const { return m_sampler; }
++    VkSampler get_or_create_vulkan_sampler_with_normalized_coords() {
++        if (m_sampler_norm == VK_NULL_HANDLE) {
++            if (!init(true)) {
++                return VK_NULL_HANDLE;
++            }
++        }
++        return m_sampler_norm;
++    }
+     const std::vector<cl_sampler_properties>& properties() const {
+         return m_properties;
+     }
+ 
+ private:
+-    bool init();
++    bool init(bool force_normalized_coordinates = false);
+     bool m_normalized_coords;
+     cl_addressing_mode m_addressing_mode;
+     cl_filter_mode m_filter_mode;
+     const std::vector<cl_sampler_properties> m_properties;
+     VkSampler m_sampler;
++    VkSampler m_sampler_norm;
+ };
+ 
+ static inline cvk_sampler* icd_downcast(cl_sampler sampler) {
+diff --git a/clvk/src/program.cpp b/clvk/src/program.cpp
+index 9e538dc..5edfe58 100644
+--- a/clvk/src/program.cpp
++++ b/clvk/src/program.cpp
+@@ -155,6 +155,8 @@ spv_result_t parse_reflection(void* user_data,
+             return pushconstant::module_constants_pointer;
+         case NonSemanticClspvReflectionPrintfBufferPointerPushConstant:
+             return pushconstant::printf_buffer_pointer;
++        case NonSemanticClspvReflectionNormalizedSamplerMaskPushConstant:
++            return pushconstant::normalized_sampler_mask;
+         default:
+             cvk_error_fn("Unhandled reflection instruction for push constant");
+             break;
+@@ -212,6 +214,17 @@ spv_result_t parse_reflection(void* user_data,
+                 parse_data->arg_infos[inst->result_id] = info;
+                 break;
+             }
++            case NonSemanticClspvReflectionNormalizedSamplerMaskPushConstant: {
++                auto kernel = parse_data->strings[inst->words[5]];
++                auto ordinal = parse_data->constants[inst->words[6]];
++                auto offset = parse_data->constants[inst->words[7]];
++                auto size = parse_data->constants[inst->words[8]];
++                parse_data->binary->add_sampler_metadata(kernel, ordinal,
++                                                         offset);
++                auto pc = inst_to_push_constant(ext_inst);
++                parse_data->binary->add_push_constant(pc, {offset, size});
++                break;
++            }
+             case NonSemanticClspvReflectionImageArgumentInfoChannelOrderPushConstant: {
+                 auto kernel = parse_data->strings[inst->words[5]];
+                 auto ordinal = parse_data->constants[inst->words[6]];
+@@ -1674,8 +1687,9 @@ cvk_entry_point::cvk_entry_point(VkDevice dev, cvk_program* program,
+     : m_device(dev), m_context(program->context()), m_program(program),
+       m_name(name), m_pod_descriptor_type(VK_DESCRIPTOR_TYPE_MAX_ENUM),
+       m_pod_buffer_size(0u), m_has_pod_arguments(false),
+-      m_has_pod_buffer_arguments(false), m_image_metadata(nullptr),
+-      m_descriptor_pool(VK_NULL_HANDLE), m_pipeline_layout(VK_NULL_HANDLE) {}
++      m_has_pod_buffer_arguments(false), m_sampler_metadata(nullptr),
++      m_image_metadata(nullptr), m_descriptor_pool(VK_NULL_HANDLE),
++      m_pipeline_layout(VK_NULL_HANDLE) {}
+ 
+ cvk_entry_point* cvk_program::get_entry_point(std::string& name,
+                                               cl_int* errcode_ret) {
+@@ -1895,6 +1909,11 @@ cl_int cvk_entry_point::init() {
+         m_image_metadata = md;
+     }
+ 
++    // Get the sampler metadata for this entry point
++    if (auto* md = m_program->sampler_metadata(m_name)) {
++        m_sampler_metadata = md;
++    }
++
+     // Get a pointer to the arguments from the program
+     auto args = m_program->args_for_kernel(m_name);
+ 
+@@ -1975,32 +1994,49 @@ cl_int cvk_entry_point::init() {
+         m_pod_buffer_size = round_up(m_pod_buffer_size, 4);
+     }
+ 
+-    // Take the size of image metadata into account for the pod buffer size
+-    if (m_image_metadata) {
+-        // Find how big the POD buffer should be
++    // Take the size of image & sampler metadata into account for the pod buffer
++    // size
++    {
+         uint32_t max_offset = 0;
+-        for (const auto& md : *m_image_metadata) {
+-            auto order_offset = md.second.order_offset;
+-            auto data_type_offset = md.second.data_type_offset;
+-            if (md.second.has_valid_order()) {
+-                max_offset = std::max(order_offset, max_offset);
+-                push_constant_range.offset =
+-                    std::min(order_offset, push_constant_range.offset);
+-                if (order_offset + sizeof(uint32_t) >
+-                    push_constant_range.offset + push_constant_range.size) {
+-                    push_constant_range.size = order_offset + sizeof(uint32_t) -
+-                                               push_constant_range.offset;
++        if (m_image_metadata) {
++            // Find how big the POD buffer should be
++            for (const auto& md : *m_image_metadata) {
++                auto order_offset = md.second.order_offset;
++                auto data_type_offset = md.second.data_type_offset;
++                if (md.second.has_valid_order()) {
++                    max_offset = std::max(order_offset, max_offset);
++                    push_constant_range.offset =
++                        std::min(order_offset, push_constant_range.offset);
++                    if (order_offset + sizeof(uint32_t) >
++                        push_constant_range.offset + push_constant_range.size) {
++                        push_constant_range.size = order_offset +
++                                                   sizeof(uint32_t) -
++                                                   push_constant_range.offset;
++                    }
++                }
++                if (md.second.has_valid_data_type()) {
++                    max_offset = std::max(data_type_offset, max_offset);
++                    push_constant_range.offset =
++                        std::min(data_type_offset, push_constant_range.offset);
++                    if (data_type_offset + sizeof(uint32_t) >
++                        push_constant_range.offset + push_constant_range.size) {
++                        push_constant_range.size = data_type_offset +
++                                                   sizeof(uint32_t) -
++                                                   push_constant_range.offset;
++                    }
+                 }
+             }
+-            if (md.second.has_valid_data_type()) {
+-                max_offset = std::max(data_type_offset, max_offset);
++        }
++        if (m_sampler_metadata) {
++            for (const auto& md : *m_sampler_metadata) {
++                auto offset = md.second;
++                max_offset = std::max(offset, max_offset);
+                 push_constant_range.offset =
+-                    std::min(data_type_offset, push_constant_range.offset);
+-                if (data_type_offset + sizeof(uint32_t) >
++                    std::min(offset, push_constant_range.offset);
++                if (offset + sizeof(uint32_t) >
+                     push_constant_range.offset + push_constant_range.size) {
+-                    push_constant_range.size = data_type_offset +
+-                                               sizeof(uint32_t) -
+-                                               push_constant_range.offset;
++                    push_constant_range.size =
++                        offset + sizeof(uint32_t) - push_constant_range.offset;
+                 }
+             }
+         }
+diff --git a/clvk/src/program.hpp b/clvk/src/program.hpp
+index 7a65bc3..7886d58 100644
+--- a/clvk/src/program.hpp
++++ b/clvk/src/program.hpp
+@@ -130,6 +130,7 @@ enum class pushconstant
+     image_metadata,
+     module_constants_pointer,
+     printf_buffer_pointer,
++    normalized_sampler_mask,
+ };
+ 
+ struct pushconstant_desc {
+@@ -220,6 +221,10 @@ using kernel_image_metadata_map =
+ using image_metadata_map =
+     std::unordered_map<std::string, kernel_image_metadata_map>;
+ 
++using kernel_sampler_metadata_map = std::unordered_map<uint32_t, uint32_t>;
++using sampler_metadata_map =
++    std::unordered_map<std::string, kernel_sampler_metadata_map>;
++
+ class spir_binary {
+ 
+     using kernels_arguments_map =
+@@ -251,6 +256,9 @@ public:
+     CHECK_RETURN bool validate(const spirv_validation_options&) const;
+     size_t num_kernels() const { return m_dmaps.size(); }
+     const kernels_arguments_map& kernels_arguments() const { return m_dmaps; }
++    const sampler_metadata_map& sampler_metadata() const {
++        return m_sampler_metadata;
++    }
+     const image_metadata_map& image_metadata() const {
+         return m_image_metadata;
+     }
+@@ -342,6 +350,11 @@ public:
+         m_constant_data_buffer.reset(new constant_data_buffer_info(info));
+     }
+ 
++    void add_sampler_metadata(const std::string& name, uint32_t ordinal,
++                              uint32_t offset) {
++        m_sampler_metadata[name][ordinal] = offset;
++    }
++
+     void add_image_channel_order_metadata(const std::string& name,
+                                           uint32_t ordinal, uint32_t offset) {
+         m_image_metadata[name][ordinal].set_order(offset);
+@@ -376,6 +389,7 @@ private:
+     std::vector<sampler_desc> m_literal_samplers;
+     std::unordered_map<pushconstant, pushconstant_desc> m_push_constants;
+     std::unordered_map<spec_constant, uint32_t> m_spec_constants;
++    sampler_metadata_map m_sampler_metadata;
+     image_metadata_map m_image_metadata;
+     std::unordered_map<uint32_t, printf_descriptor> m_printf_descriptors;
+     printf_buffer_desc_info m_printf_buffer_info;
+@@ -442,6 +456,10 @@ public:
+ 
+     const std::vector<kernel_argument>& args() const { return m_args; }
+ 
++    const kernel_sampler_metadata_map* sampler_metadata() const {
++        return m_sampler_metadata;
++    }
++
+     const kernel_image_metadata_map* image_metadata() const {
+         return m_image_metadata;
+     }
+@@ -450,6 +468,8 @@ public:
+ 
+     bool has_pod_buffer_arguments() const { return m_has_pod_buffer_arguments; }
+ 
++    bool has_sampler_metadata() const { return m_sampler_metadata != nullptr; }
++
+     bool has_image_metadata() const { return m_image_metadata != nullptr; }
+ 
+     uint32_t pod_buffer_size() const { return m_pod_buffer_size; }
+@@ -478,6 +498,7 @@ private:
+     bool m_has_pod_arguments;
+     bool m_has_pod_buffer_arguments;
+     std::vector<kernel_argument> m_args;
++    const kernel_sampler_metadata_map* m_sampler_metadata;
+     const kernel_image_metadata_map* m_image_metadata;
+     uint32_t m_num_resource_slots;
+     VkDescriptorPool m_descriptor_pool;
+@@ -664,6 +685,15 @@ struct cvk_program : public _cl_program, api_object<object_magic::program> {
+         }
+     }
+ 
++    const kernel_sampler_metadata_map* sampler_metadata(std::string& name) {
++        auto const& md = m_binary.sampler_metadata().find(name);
++        if (md != m_binary.sampler_metadata().end()) {
++            return &md->second;
++        } else {
++            return nullptr;
++        }
++    }
++
+     const kernel_image_metadata_map* image_metadata(std::string& name) {
+         auto const& md = m_binary.image_metadata().find(name);
+         if (md != m_binary.image_metadata().end()) {
+diff --git a/clvk/src/queue.cpp b/clvk/src/queue.cpp
+index b2783df..15f0e68 100644
+--- a/clvk/src/queue.cpp
++++ b/clvk/src/queue.cpp
+@@ -634,6 +634,14 @@ cl_int cvk_command_kernel::update_global_push_constants(
+             }
+         }
+     }
++    if (const auto* md = m_kernel->get_sampler_metadata()) {
++        for (const auto& md : *md) {
++            auto offset = md.second;
++            image_metadata_pc_start = std::min(image_metadata_pc_start, offset);
++            image_metadata_pc_end = std::max(
++                image_metadata_pc_end, offset + (uint32_t)sizeof(uint32_t));
++        }
++    }
+     if (image_metadata_pc_start < image_metadata_pc_end) {
+         uint32_t offset = image_metadata_pc_start & ~0x3U;
+         uint32_t size = round_up(image_metadata_pc_end - offset, 4);
+diff --git a/clvk/tests/api/images.cpp b/clvk/tests/api/images.cpp
+index 107e3e5..2f43be2 100644
+--- a/clvk/tests/api/images.cpp
++++ b/clvk/tests/api/images.cpp
+@@ -645,3 +645,53 @@ kernel void test(image1d_buffer_t write_only image)
+                     output[i + 1].s2 == 0.0 && output[i + 1].s3 == 0.0);
+     }
+ }
++
++TEST_F(WithCommandQueue, ReadImage3DWithUnormSampler) {
++    const size_t sizes[3] = {7, 7, 7};
++    const unsigned nb_elem = sizes[0] * sizes[1] * sizes[2];
++    cl_uint input[nb_elem];
++    cl_uint output[nb_elem];
++    srand(nb_elem);
++    for (unsigned i = 0; i < nb_elem; i++) {
++        input[i] = rand();
++    }
++
++    const cl_image_desc desc = {CL_MEM_OBJECT_IMAGE3D,
++                                sizes[0],
++                                sizes[1],
++                                sizes[2],
++                                0,
++                                0,
++                                0,
++                                0,
++                                0,
++                                nullptr};
++    const cl_image_format format = {CL_R, CL_UNSIGNED_INT32};
++    auto image = CreateImage(CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, &format,
++                             &desc, input);
++    auto dst_buffer = CreateBuffer(CL_MEM_WRITE_ONLY, sizeof(output), nullptr);
++    auto sampler = CreateSampler(CL_FALSE, CL_ADDRESS_NONE, CL_FILTER_NEAREST);
++
++    const char* source = R"(
++kernel void test(global uint* dst, read_only image3d_t img, sampler_t sampler)
++{
++  unsigned x = get_global_id(0);
++  unsigned y = get_global_id(1);
++  unsigned z = get_global_id(2);
++  unsigned offset = x + get_image_width(img) * (y + get_image_height(img) * z);
++  dst[offset] = read_imageui(img, sampler, (int4)(x, y, z, 0))[0];
++}
++)";
++
++    auto kernel = CreateKernel(source, "test");
++    SetKernelArg(kernel, 0, dst_buffer);
++    SetKernelArg(kernel, 1, image);
++    SetKernelArg(kernel, 2, sampler);
++
++    EnqueueNDRangeKernel(kernel, 3, nullptr, sizes, nullptr);
++    EnqueueReadBuffer(dst_buffer, CL_TRUE, 0, sizeof(output), output);
++
++    for (unsigned i = 0; i < nb_elem; i++) {
++        EXPECT_TRUE(input[i] == output[i]);
++    }
++}

@@ -1,7 +1,7 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
+EAPI="7"
 
 CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_LOCALNAME="platform2"
@@ -13,17 +13,17 @@ PLATFORM_SUBDIR="chromeos-common-script"
 inherit cros-workon platform
 
 DESCRIPTION="Chrome OS storage info tools"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/chromeos-common-script/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/chromeos-common-script/"
 SRC_URI=""
 
 LICENSE="BSD-Google"
 SLOT="0"
 KEYWORDS="~*"
-IUSE="direncryption fsverity kernel-3_18 kernel-4_4 prjquota"
-
-REQUIRED_USE="prjquota? ( !kernel-4_4 !kernel-3_18 )"
+IUSE="direncryption fsverity prjquota"
 
 src_install() {
+	platform_src_install
+
 	insinto /usr/share/misc
 	doins share/chromeos-common.sh
 	doins share/lvm-utils.sh

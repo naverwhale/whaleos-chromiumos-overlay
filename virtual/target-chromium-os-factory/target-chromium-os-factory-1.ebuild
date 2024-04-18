@@ -1,4 +1,4 @@
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Copyright 2016 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="7"
@@ -10,9 +10,12 @@ HOMEPAGE="http://dev.chromium.org/"
 LICENSE="metapackage"
 SLOT="0"
 KEYWORDS="*"
+IUSE="no_factory_flow"
 
 DEPEND="!chromeos-base/chromeos-factory"
 RDEPEND="
-	chromeos-base/factory
-	${DEPEND}
+	!no_factory_flow? (
+		chromeos-base/factory
+		${DEPEND}
+	)
 "

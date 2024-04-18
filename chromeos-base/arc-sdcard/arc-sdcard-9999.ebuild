@@ -1,4 +1,4 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -14,25 +14,19 @@ PLATFORM_SUBDIR="arc/container/sdcard"
 inherit cros-workon platform
 
 DESCRIPTION="Container to run Android's sdcard daemon."
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/arc/container/sdcard"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/arc/container/sdcard"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
-IUSE="esdfs"
 
+# CONTAINER_DIR must be kept consistent with installation configuration in
+# ${PLATFORM_SUBDIR}/BUILD.gn.
 CONTAINER_DIR="/opt/google/containers/arc-sdcard"
 
-RDEPEND="!esdfs? ( chromeos-base/arc-setup )"
-DEPEND="${DEPEND}"
+RDEPEND=""
 
 src_install() {
-	if ! use esdfs; then
-		insinto /etc/init
-		doins arc-sdcard.conf
-	fi
-
-	insinto "${CONTAINER_DIR}"
-	doins "${OUT}"/rootfs.squashfs
+	platform_src_install
 
 	# Keep the parent directory of mountpoints inaccessible from non-root
 	# users because mountpoints themselves are often world-readable but we

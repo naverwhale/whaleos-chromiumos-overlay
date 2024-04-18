@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
@@ -12,5 +12,5 @@ cd "$1" || exit
 if [[ -f contrib/get-version.py ]]; then
   contrib/get-version.py | awk -F- '{print $1}'
 else
-  awk -F"[ ',]+" '/version :/{print $4; exit}' meson.build
+  awk -F"[',]+" '/version\s?:/{print $2; exit}' meson.build
 fi

@@ -1,0 +1,66 @@
+From fbde90edec190f3e5b05d7f5b08c6d49fa70f38f Mon Sep 17 00:00:00 2001
+From: Stanimir Varbanov <stanimir.varbanov@linaro.org>
+Date: Sat, 11 Jul 2020 14:52:36 +0200
+Subject: [PATCH] BACKPORT: media: v4l2-ctrl: Add VP9 codec levels
+
+Add menu control for VP9 codec levels. A total of 14 levels are
+defined for Profile 0 (8bit) and Profile 2 (10bit). Each level
+is a set of constrained bitstreams coded with targeted resolutions,
+frame rates, and bitrates.
+
+The definitions have been taken from webm project [1].
+
+[1] https://www.webmproject.org/vp9/levels/
+
+Signed-off-by: Stanimir Varbanov <stanimir.varbanov@linaro.org>
+Reviewed-by: Nicolas Dufresne <nicolas.dufresne@collabora.com>
+Reviewed-by: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Signed-off-by: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
+(cherry picked from commit 5823833c9adab5a9ce5500e7f1ce7deeff00ee73)
+
+Conflicts:
+   Documentation/userspace-api/media/v4l/ext-ctrls-codec.rst
+   drivers/media/v4l2-core/v4l2-ctrls.c
+
+Non-uAPI changes dropped.
+
+BUG=b:278157861
+TEST=Check header
+
+Change-Id: I24e9a53d7a92b7a7344b0fbd4e77473804c9ced9
+Signed-off-by: Chen-Yu Tsai <wenst@chromium.org>
+---
+ include/uapi/linux/v4l2-controls.h | 17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+diff --git a/include/uapi/linux/v4l2-controls.h b/include/uapi/linux/v4l2-controls.h
+index aa50be88e8b1..652fc6d748a6 100644
+--- a/include/uapi/linux/v4l2-controls.h
++++ b/include/uapi/linux/v4l2-controls.h
+@@ -606,6 +606,23 @@ enum v4l2_mpeg_video_vp9_profile {
+ 	V4L2_MPEG_VIDEO_VP9_PROFILE_2				= 2,
+ 	V4L2_MPEG_VIDEO_VP9_PROFILE_3				= 3,
+ };
++#define V4L2_CID_MPEG_VIDEO_VP9_LEVEL			(V4L2_CID_MPEG_BASE+513)
++enum v4l2_mpeg_video_vp9_level {
++	V4L2_MPEG_VIDEO_VP9_LEVEL_1_0	= 0,
++	V4L2_MPEG_VIDEO_VP9_LEVEL_1_1	= 1,
++	V4L2_MPEG_VIDEO_VP9_LEVEL_2_0	= 2,
++	V4L2_MPEG_VIDEO_VP9_LEVEL_2_1	= 3,
++	V4L2_MPEG_VIDEO_VP9_LEVEL_3_0	= 4,
++	V4L2_MPEG_VIDEO_VP9_LEVEL_3_1	= 5,
++	V4L2_MPEG_VIDEO_VP9_LEVEL_4_0	= 6,
++	V4L2_MPEG_VIDEO_VP9_LEVEL_4_1	= 7,
++	V4L2_MPEG_VIDEO_VP9_LEVEL_5_0	= 8,
++	V4L2_MPEG_VIDEO_VP9_LEVEL_5_1	= 9,
++	V4L2_MPEG_VIDEO_VP9_LEVEL_5_2	= 10,
++	V4L2_MPEG_VIDEO_VP9_LEVEL_6_0	= 11,
++	V4L2_MPEG_VIDEO_VP9_LEVEL_6_1	= 12,
++	V4L2_MPEG_VIDEO_VP9_LEVEL_6_2	= 13,
++};
+ 
+ /* CIDs for HEVC encoding. */
+ 
+-- 
+2.40.1.606.ga4b1b128d6-goog
+

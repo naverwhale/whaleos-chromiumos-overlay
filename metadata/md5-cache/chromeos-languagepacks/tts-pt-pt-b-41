@@ -1,0 +1,11 @@
+DEFINED_PHASES=install
+DESCRIPTION=tts pt-pt Language Pack for Chromium OS
+EAPI=7
+IUSE=dlc
+KEYWORDS=*
+LICENSE=BSD-Google
+REQUIRED_USE=dlc
+SLOT=0
+SRC_URI=gs://chromeos-localmirror/distfiles/languagepack-tts-pt-pt-41.tar.xz
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	dlc	0e249e19536561abe6eb72bd84e06026
+_md5_=af2e3a365ed4bd43a6232c6dafab80af

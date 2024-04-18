@@ -1,4 +1,4 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -14,7 +14,7 @@ PLATFORM_SUBDIR="arc/container/appfuse"
 inherit cros-workon platform user
 
 DESCRIPTION="D-Bus service to provide ARC Appfuse"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/arc/container/appfuse"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/arc/container/appfuse"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
@@ -31,10 +31,6 @@ DEPEND="${RDEPEND}
 BDEPEND="
 	virtual/pkgconfig
 "
-
-src_install() {
-	platform_install
-}
 
 pkg_preinst() {
 	enewuser "arc-appfuse-provider"

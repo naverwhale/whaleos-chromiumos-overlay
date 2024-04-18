@@ -1,4 +1,4 @@
-# Copyright 2012 The Chromium OS Authors
+# Copyright 2012 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 # $Header:
 
@@ -26,11 +26,11 @@ CROS_WORKON_EGIT_BRANCH=(
 # coreboot:util/*: tools built by this ebuild
 # vboot: minimum set of files and directories to build vboot_lib for cbfstool
 CROS_WORKON_SUBTREE=(
-	"src/arch/x86/include/arch src/commonlib src/vendorcode/intel util/archive util/cbmem util/cbfstool util/ifdtool util/inteltool util/mma util/nvramtool util/superiotool"
+	"src/arch/x86/include/arch src/commonlib src/vendorcode/intel util/archive util/cbmem util/cbfstool util/ifdtool util/inteltool util/mma util/nvramtool util/superiotool util/amdfwtool"
 	"Makefile cgpt host firmware futility"
 )
 
-inherit cros-workon toolchain-funcs
+inherit cros-workon toolchain-funcs cros-sanitizers
 
 DESCRIPTION="Utilities for modifying coreboot firmware images"
 HOMEPAGE="http://coreboot.org"
@@ -39,7 +39,13 @@ SLOT="0"
 KEYWORDS="~*"
 IUSE="cros_host mma +pci static"
 
-LIB_DEPEND="sys-apps/pciutils[static-libs(+)]"
+BDEPEND="virtual/pkgconfig"
+
+LIB_DEPEND="
+	dev-libs/openssl[static-libs(+)]
+	sys-apps/pciutils[static-libs(+)]
+	sys-apps/flashrom
+"
 RDEPEND="!static? ( ${LIB_DEPEND//\[static-libs(+)]} )"
 DEPEND="${RDEPEND}
 	static? ( ${LIB_DEPEND} )
@@ -54,6 +60,7 @@ _emake() {
 }
 
 src_configure() {
+	sanitizers-setup-env
 	use static && append-ldflags -static
 	tc-export CC PKG_CONFIG
 }
@@ -70,8 +77,9 @@ src_compile() {
 		_emake -C util/cbmem
 	fi
 	if is_x86; then
+		_emake -C util/ifdtool
 		if use cros_host; then
-			_emake -C util/ifdtool
+			_emake -C util/amdfwtool
 		else
 			_emake -C util/superiotool \
 				CONFIG_PCI=$(usex pci)
@@ -92,8 +100,9 @@ src_install() {
 		dobin util/cbmem/cbmem
 	fi
 	if is_x86; then
+		dobin util/ifdtool/ifdtool
 		if use cros_host; then
-			dobin util/ifdtool/ifdtool
+			dobin util/amdfwtool/amdfwread
 		else
 			dobin util/superiotool/superiotool
 			dobin util/inteltool/inteltool

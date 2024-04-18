@@ -1,0 +1,23 @@
+commit b1e70da36182e85420588d7ec97eefa1ce2abad5
+Author: George Burgess IV <gbiv@google.com>
+Date:   Wed Oct 11 16:35:48 2023 -0600
+
+    LLD uses the argv[0] to get the host system information.
+    In standalone toolchain used by Simplechrome, real lld becomes
+    lld.elf, so the LLD cannot get the host system informaction
+    and dies. see crbug.com/701659
+    
+    Change-Id: I1a9a6bc9205a58478f9728d5086de33715d42286
+
+diff --git a/lld/Common/DriverDispatcher.cpp b/lld/Common/DriverDispatcher.cpp
+index 379a4c6ddabe..f1fd8c91fc60 100644
+--- a/lld/Common/DriverDispatcher.cpp
++++ b/lld/Common/DriverDispatcher.cpp
+@@ -32,6 +32,7 @@ static void err(const Twine &s) { llvm::errs() << s << "\n"; }
+ static Flavor getFlavor(StringRef s) {
+   return StringSwitch<Flavor>(s)
+       .CasesLower("ld", "ld.lld", "gnu", Gnu)
++      .CasesLower("lld.elf", "lld.real", "lld.real.elf", "gnu", Gnu)
+       .CasesLower("wasm", "ld-wasm", Wasm)
+       .CaseLower("link", WinLink)
+       .CasesLower("ld64", "ld64.lld", "darwin", Darwin)

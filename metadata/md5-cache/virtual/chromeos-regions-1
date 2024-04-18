@@ -6,4 +6,4 @@ KEYWORDS=*
 LICENSE=metapackage
 RDEPEND=chromeos-base/regions
 SLOT=0
-_md5_=24a12e21135d386b8e3eed7df371c289
+_md5_=fab44a02b7475aadb7500fa81ef2a9a5

@@ -1,0 +1,85 @@
+From 18b1a8b4332539417fe286904c5aaa3b3bd0bfa3 Mon Sep 17 00:00:00 2001
+From: Sergey Senozhatsky <senozhatsky@chromium.org>
+Date: Thu, 9 Sep 2021 13:24:29 +0200
+Subject: [PATCH] BACKPORT: media: videobuf2: handle
+ V4L2_MEMORY_FLAG_NON_COHERENT flag
+
+This patch lets user-space request a non-coherent memory
+allocation during CREATE_BUFS and REQBUFS ioctl calls.
+
+= CREATE_BUFS
+
+  struct v4l2_create_buffers has seven 4-byte reserved areas,
+  so reserved[0] is renamed to ->flags. The struct, thus, now
+  has six reserved 4-byte regions.
+
+= CREATE_BUFS32
+
+  struct v4l2_create_buffers32 has seven 4-byte reserved areas,
+  so reserved[0] is renamed to ->flags. The struct, thus, now
+  has six reserved 4-byte regions.
+
+= REQBUFS
+
+ We use one byte of a 4 byte ->reserved[1] member of struct
+ v4l2_requestbuffers. The struct, thus, now has reserved 3 bytes.
+
+Signed-off-by: Sergey Senozhatsky <senozhatsky@chromium.org>
+Signed-off-by: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Signed-off-by: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
+(cherry picked from commit c0acf9cfeee061f041fab778dbdcb34b6ca5e2e7)
+
+Conflicts:
+   drivers/media/v4l2-core/v4l2-compat-ioctl32.c
+   drivers/media/v4l2-core/v4l2-ioctl.c
+   drivers/media/v4l2-core/videobuf2-core.c
+   drivers/media/v4l2-core/videobuf2-v4l2.c
+
+Non-uAPI changes dropped.
+
+BUG=b:278157861
+TEST=Check header
+
+Change-Id: Iebc83d747e51fb96fd261a23ab046e8938052e0b
+Signed-off-by: Chen-Yu Tsai <wenst@chromium.org>
+---
+ include/uapi/linux/videodev2.h | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index 1a70bda81a63..94a894c3856f 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -859,7 +859,8 @@ struct v4l2_requestbuffers {
+ 	__u32			type;		/* enum v4l2_buf_type */
+ 	__u32			memory;		/* enum v4l2_memory */
+ 	__u32			capabilities;
+-	__u32			reserved[1];
++	__u8			flags;
++	__u8			reserved[3];
+ };
+ 
+ #define V4L2_MEMORY_FLAG_NON_COHERENT			(1 << 0)
+@@ -2358,6 +2359,9 @@ struct v4l2_dbg_chip_info {
+  * @memory:	enum v4l2_memory; buffer memory type
+  * @format:	frame format, for which buffers are requested
+  * @capabilities: capabilities of this buffer type.
++ * @flags:	additional buffer management attributes (ignored unless the
++ *		queue has V4L2_BUF_CAP_SUPPORTS_MMAP_CACHE_HINTS capability
++ *		and configured for MMAP streaming I/O).
+  * @reserved:	future extensions
+  */
+ struct v4l2_create_buffers {
+@@ -2366,7 +2370,8 @@ struct v4l2_create_buffers {
+ 	__u32			memory;
+ 	struct v4l2_format	format;
+ 	__u32			capabilities;
+-	__u32			reserved[7];
++	__u32			flags;
++	__u32			reserved[6];
+ };
+ 
+ /*
+-- 
+2.40.1.606.ga4b1b128d6-goog
+

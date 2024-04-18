@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -20,17 +20,16 @@ SLOT="0/0"
 KEYWORDS="~*"
 
 COMMON_DEPEND="
-	dev-libs/libusb:=
-	dev-embedded/libftdi:=
 	chromeos-base/metrics:=
+	virtual/libusb:1
 	"
 
 RDEPEND="${COMMON_DEPEND}"
 
-DEPEND="
-	${COMMON_DEPEND}
-	"
+DEPEND="${COMMON_DEPEND}"
 
 src_install() {
+	platform_src_install
+
 	dobin "${OUT}"/hps
 }

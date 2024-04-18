@@ -1,0 +1,15 @@
+BDEPEND=dev-lang/go
+DEFINED_PHASES=compile install nofetch postinst test unpack
+DEPEND=dev-go/errcheck dev-go/go-tools
+DESCRIPTION=Protocol Buffers for Go with Gadgets.
+EAPI=7
+HOMEPAGE=https://github.com/gogo/protobuf
+IUSE=test
+KEYWORDS=*
+LICENSE=BSD-Google
+RDEPEND=!<=dev-go/docker-20.10.8-r1
+RESTRICT=binchecks strip
+SLOT=0
+SRC_URI=https://github.com/gogo/protobuf/archive/226206f39bd7276e88ec684ea0028c18ec2c91ae.tar.gz -> github.com-gogo-protobuf-226206f39bd7276e88ec684ea0028c18ec2c91ae.tar.gz
+_eclasses_=cros-go	77ba1c1ddf5c20dab7e47e19efeffef7	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=72861f97cf39067b3841989e48e783fb

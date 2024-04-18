@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -13,16 +13,23 @@ HOMEPAGE="https://www.coreboot.org"
 LICENSE="GPL-3 LGPL-3"
 KEYWORDS="~*"
 
+BDEPEND="
+	dev-lang/perl
+	sys-devel/bison
+	sys-devel/flex
+	sys-devel/m4
+"
+
 # URIs taken from buildgcc -u
 # Needs to be synced with changes in the coreboot repo,
 # then pruned to the minimum required set (eg. no gdb, python, expat, llvm)
 CROSSGCC_URIS="
 https://ftpmirror.gnu.org/gmp/gmp-6.2.1.tar.xz
-https://ftpmirror.gnu.org/mpfr/mpfr-4.1.0.tar.xz
-https://ftpmirror.gnu.org/mpc/mpc-1.2.1.tar.gz
-https://ftpmirror.gnu.org/gcc/gcc-8.3.0/gcc-8.3.0.tar.xz
-https://ftpmirror.gnu.org/binutils/binutils-2.35.1.tar.xz
-https://acpica.org/sites/acpica/files/acpica-unix2-20210331.tar.gz
+https://ftpmirror.gnu.org/mpfr/mpfr-4.2.0.tar.xz
+https://ftpmirror.gnu.org/mpc/mpc-1.3.1.tar.gz
+https://ftpmirror.gnu.org/gcc/gcc-11.3.0/gcc-11.3.0.tar.xz
+https://ftpmirror.gnu.org/binutils/binutils-2.37.tar.xz
+https://acpica.org/sites/acpica/files/acpica-unix2-20230628.tar.gz
 "
 
 SRC_URI="
@@ -48,6 +55,8 @@ src_prepare() {
 	ln -s gcc gnat-gpl-2017-x86_64-linux-bin/bin/cc
 	# Add a gcc patch to make it builds with glibc 2.26.
 	cp "${FILESDIR}/${PN}-gcc-ucontext.patch" "${S}/util/crossgcc/patches/gcc-6.3.0_ucontext.patch"
+	# Enable default support for RV32IAFC multilib target
+	cp "${FILESDIR}/${PN}-rv32iafc.patch" "${S}/util/crossgcc/patches/gcc-11.3.0_rv32iafc.patch"
 }
 
 src_compile() {

@@ -7,4 +7,4 @@ KEYWORDS=*
 LICENSE=metapackage
 RDEPEND=!chromeos-base/chromeos-bsp-null sys-kernel/linux-firmware
 SLOT=0
-_md5_=f4fc012ea7f5a101dd596425514588d8
+_md5_=e1ff1b0c76fc8f0c52efda6e3c824865

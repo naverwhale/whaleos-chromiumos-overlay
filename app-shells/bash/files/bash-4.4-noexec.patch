@@ -1,4 +1,4 @@
-From 77f549b03ecde43e926482092ecad6cd6f3cda7b Mon Sep 17 00:00:00 2001
+From 1a84beec7932bbee1821cb1af65e3aa00f877332 Mon Sep 17 00:00:00 2001
 From: Mike Frysinger <vapier@chromium.org>
 Date: Sat, 12 Dec 2015 15:18:25 -0500
 Subject: [PATCH] do not source/exec scripts on noexec mount points
@@ -65,7 +65,7 @@ URL: https://chromium.googlesource.com/chromiumos/docs/+/master/security/noexec_
  6 files changed, 82 insertions(+), 2 deletions(-)
 
 diff --git a/builtins/evalfile.c b/builtins/evalfile.c
-index 316b794..10ed7a6 100644
+index fc3975e..d49e592 100644
 --- a/builtins/evalfile.c
 +++ b/builtins/evalfile.c
 @@ -32,6 +32,10 @@
@@ -79,7 +79,7 @@ index 316b794..10ed7a6 100644
  #include "../bashansi.h"
  #include "../bashintl.h"
  
-@@ -161,6 +165,9 @@ file_error_and_exit:
+@@ -155,6 +159,9 @@ file_error_and_exit:
        return ((flags & FEVAL_BUILTIN) ? EXECUTION_FAILURE : -1);
      }      
  
@@ -90,10 +90,10 @@ index 316b794..10ed7a6 100644
      {
        string = (char *)xmalloc (1 + file_size);
 diff --git a/config.h.in b/config.h.in
-index a5ad9e7..84f9ab5 100644
+index ab316d4..26c9bb9 100644
 --- a/config.h.in
 +++ b/config.h.in
-@@ -1045,6 +1045,9 @@
+@@ -1086,6 +1086,9 @@
  /* Define if you have the <sys/stat.h> header file. */
  #undef HAVE_SYS_STAT_H
  
@@ -104,10 +104,10 @@ index a5ad9e7..84f9ab5 100644
  #undef HAVE_SYS_STREAM_H
  
 diff --git a/configure b/configure
-index dc57ff9..9a7845e 100755
+index 0f1d3ed..203c22e 100755
 --- a/configure
 +++ b/configure
-@@ -4599,7 +4599,7 @@ fi
+@@ -4675,7 +4675,7 @@ fi
  
  # On IRIX 5.3, sys/types and inttypes.h are conflicting.
  for ac_header in sys/types.h sys/stat.h stdlib.h string.h memory.h strings.h \
@@ -117,20 +117,20 @@ index dc57ff9..9a7845e 100755
    as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
  ac_fn_c_check_header_compile "$LINENO" "$ac_header" "$as_ac_Header" "$ac_includes_default
 diff --git a/configure.ac b/configure.ac
-index ce4e9b6..3b13cd9 100644
+index 2fe3e7d..c61e357 100644
 --- a/configure.ac
 +++ b/configure.ac
-@@ -702,7 +702,7 @@ AC_CHECK_HEADERS(unistd.h stdlib.h stdarg.h varargs.h limits.h string.h \
+@@ -758,7 +758,7 @@ AC_CHECK_HEADERS(unistd.h stdlib.h stdarg.h varargs.h limits.h string.h \
  		 stdbool.h stddef.h stdint.h netdb.h pwd.h grp.h strings.h \
  		 regex.h syslog.h ulimit.h)
  AC_CHECK_HEADERS(sys/pte.h sys/stream.h sys/select.h sys/file.h sys/ioctl.h \
--		 sys/param.h sys/socket.h sys/stat.h \
-+		 sys/param.h sys/socket.h sys/stat.h sys/statvfs.h \
+-		 sys/mman.h sys/param.h sys/random.h sys/socket.h sys/stat.h \
++		 sys/mman.h sys/param.h sys/random.h sys/socket.h sys/stat.h sys/statvfs.h \
  		 sys/time.h sys/times.h sys/types.h sys/wait.h)
  AC_CHECK_HEADERS(netinet/in.h arpa/inet.h)
  
 diff --git a/shell.c b/shell.c
-index 45b77f9..6eaf165 100644
+index ce8087f..8716981 100644
 --- a/shell.c
 +++ b/shell.c
 @@ -46,6 +46,10 @@
@@ -144,7 +144,7 @@ index 45b77f9..6eaf165 100644
  #include "bashintl.h"
  
  #define NEED_SH_SETLINEBUF_DECL		/* used in externs.h */
-@@ -740,6 +744,7 @@ main (argc, argv, env)
+@@ -754,6 +758,7 @@ main (argc, argv, env)
      {
        /* In this mode, bash is reading a script from stdin, which is a
  	 pipe or redirected file. */
@@ -152,7 +152,7 @@ index 45b77f9..6eaf165 100644
  #if defined (BUFFERED_INPUT)
        default_buffered_input = fileno (stdin);	/* == 0 */
  #else
-@@ -1467,6 +1472,63 @@ start_debugger ()
+@@ -1527,6 +1532,63 @@ start_debugger ()
  #endif
  }
  
@@ -216,7 +216,7 @@ index 45b77f9..6eaf165 100644
  static int
  open_shell_script (script_name)
       char *script_name;
-@@ -1604,6 +1666,8 @@ open_shell_script (script_name)
+@@ -1676,6 +1738,8 @@ open_shell_script (script_name)
      SET_CLOSE_ON_EXEC (fileno (default_input));
  #endif /* !BUFFERED_INPUT */
  
@@ -226,19 +226,19 @@ index 45b77f9..6eaf165 100644
       like `bash -i /dev/stdin' is executed. */
    if (interactive_shell && fd_is_tty)
 diff --git a/shell.h b/shell.h
-index ce08879..e8b8ad0 100644
+index 8b41792..1a3dada 100644
 --- a/shell.h
 +++ b/shell.h
-@@ -193,3 +193,9 @@ extern void restore_parser_state __P((sh_parser_state_t *));
+@@ -227,3 +227,9 @@ extern void restore_parser_state PARAMS((sh_parser_state_t *));
  
- extern sh_input_line_state_t *save_input_line_state __P((sh_input_line_state_t *));
- extern void restore_input_line_state __P((sh_input_line_state_t *));
+ extern sh_input_line_state_t *save_input_line_state PARAMS((sh_input_line_state_t *));
+ extern void restore_input_line_state PARAMS((sh_input_line_state_t *));
 +
 +#ifndef SHELL_IGNORE_NOEXEC
-+extern void check_noexec __P((int, const char *));
++extern void check_noexec PARAMS((int, const char *));
 +#else
 +static inline void check_noexec (int fd, const char *source) {}
 +#endif
 -- 
-2.29.2
+2.31.0
 

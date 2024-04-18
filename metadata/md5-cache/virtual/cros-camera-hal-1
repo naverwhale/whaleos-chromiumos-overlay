@@ -6,4 +6,4 @@ KEYWORDS=*
 LICENSE=metapackage
 RDEPEND=media-libs/cros-camera-hal-usb
 SLOT=0
-_md5_=c182ceab48588554e526e09e6c590810
+_md5_=83fc7bf704bb8aa4722d47097ce2aff5

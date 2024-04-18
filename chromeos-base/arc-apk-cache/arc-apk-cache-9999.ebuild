@@ -1,4 +1,4 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -15,7 +15,7 @@ PLATFORM_SUBDIR="arc/apk-cache"
 inherit cros-workon platform
 
 DESCRIPTION="Maintains APK cache in ARC."
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/arc/apk-cache"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/arc/apk-cache"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
@@ -31,21 +31,11 @@ DEPEND="
 "
 
 src_install() {
-	insinto /etc/init
-	doins init/apk-cache-cleaner.conf
-
-	# Install seccomp policy file.
-	insinto /usr/share/policy
-	use seccomp && newins \
-		"seccomp/apk-cache-cleaner-seccomp-${ARCH}.policy" \
-		apk-cache-cleaner-seccomp.policy
-
-	dosbin "${OUT}/apk-cache-cleaner"
-	dobin  "${OUT}/apk-cache-ctl"
-	dosbin apk-cache-cleaner-jailed
+	platform_src_install
+	platform_fuzzer_install "${S}"/OWNERS "${OUT}"/apk_cache_database_fuzzer \
+		--comp 157100
 }
 
 platform_pkg_test() {
-	platform_test "run" "${OUT}/apk-cache-cleaner_testrunner"
-	platform_test "run" "${OUT}/apk-cache-ctl_testrunner"
+	platform test_all
 }

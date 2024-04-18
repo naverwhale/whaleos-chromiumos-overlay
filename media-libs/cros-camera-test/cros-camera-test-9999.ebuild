@@ -1,7 +1,7 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=5
+EAPI="7"
 
 CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_LOCALNAME="../platform2"
@@ -23,19 +23,14 @@ IUSE="-asan"
 
 RDEPEND="
 	>=chromeos-base/cros-camera-libs-0.0.1-r34:=
-	chromeos-base/chromeos-config-tools
 	chromeos-base/cros-camera-android-deps
 	media-libs/libexif
 	media-libs/libsync
 	media-libs/minigbm
-	virtual/jpeg:0"
+	virtual/jpeg:0="
 
 DEPEND="${RDEPEND}
+	chromeos-base/system_api
 	dev-cpp/gtest:=
 	media-libs/libyuv
 	virtual/pkgconfig"
-
-src_install() {
-	platform_src_install
-	dobin "${OUT}/cros_camera_test"
-}

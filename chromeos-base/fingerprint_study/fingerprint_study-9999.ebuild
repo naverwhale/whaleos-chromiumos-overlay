@@ -1,16 +1,16 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
 CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_SUBTREE="biod/study"
-PYTHON_COMPAT=( python3_{6,7,8} pypy3 )
+PYTHON_COMPAT=( python3_{6..9} pypy3 )
 
-inherit cros-workon python-r1
+inherit cros-workon python-r1 tmpfiles
 
 DESCRIPTION="Chromium OS Fingerprint user study software"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/biod/study"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/biod/study"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
@@ -30,6 +30,12 @@ RDEPEND="
 	dev-python/ws4py[${PYTHON_USEDEP}]
 	virtual/chromeos-fpmcu-test
 	"
+# Dependencies for fpstudy.py. See the header in fpstudy.py for the full
+# dependency list.
+RDEPEND+="
+	media-gfx/imagemagick
+	sys-apps/coreutils
+	"
 
 src_unpack() {
 	cros-workon_src_unpack
@@ -37,9 +43,16 @@ src_unpack() {
 }
 
 src_install() {
+	dotmpfiles tmpfiles.d/*.conf
+
+	insinto /opt/google/fingerprint_study/parameters
+	doins parameters/*.sh
+
 	# install the study local server
 	exeinto /opt/google/fingerprint_study
 	newexe study_serve.py study_serve
+	# Install additional library for use by local server.
+	doexe fpstudy.py
 
 	# Content to serve
 	insinto /opt/google/fingerprint_study/html
@@ -49,7 +62,6 @@ src_install() {
 
 	insinto /etc/init
 	doins init/fingerprint_study.conf
-	doins init/syslog_fingerprint_study.conf
 
 	insinto /etc/bash/bashrc.d
 	doins shell-audit.sh

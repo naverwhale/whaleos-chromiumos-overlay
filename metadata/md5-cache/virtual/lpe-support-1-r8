@@ -7,4 +7,4 @@ KEYWORDS=-* amd64 x86
 LICENSE=metapackage
 RDEPEND=apl_lpe? ( sys-kernel/linux-firmware[linux_firmware_adsp_apl] ) cnl_lpe? ( sys-kernel/linux-firmware[linux_firmware_adsp_cnl] ) glk_lpe? ( sys-kernel/linux-firmware[linux_firmware_adsp_glk] ) kbl_lpe? ( sys-kernel/linux-firmware[linux_firmware_adsp_kbl] ) !has_private_audio_topology? ( media-libs/lpe-support-topology ) has_private_audio_topology? ( media-libs/lpe-support-topology-private ) media-libs/lpe-support-blacklist skl_lpe? ( sys-kernel/linux-firmware[linux_firmware_adsp_skl] )
 SLOT=0
-_md5_=aff770af8dfdc832749f816b44039585
+_md5_=f0436125b37d3c7e609d7ab0bfa358a4

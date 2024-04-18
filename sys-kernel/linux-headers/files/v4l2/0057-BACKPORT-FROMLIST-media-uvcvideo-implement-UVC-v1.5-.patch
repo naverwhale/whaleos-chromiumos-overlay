@@ -1,0 +1,36 @@
+From 072857848b27b6414f524a0ddd691b69c1013889 Mon Sep 17 00:00:00 2001
+From: Yunke Cao <yunkec@chromium.org>
+Date: Fri, 4 Aug 2023 11:08:57 +0900
+Subject: [PATCH 5/5] BACKPORT: FROMLIST: media: uvcvideo: implement UVC v1.5
+ ROI
+
+Copied the definition of V4L2_CID_CAMERA_UVC_BASE from https://patchwork.kernel.org/project/linux-media/patch/20230426082923.132909-10-yunkec@google.com/
+
+Signed-off-by: Yunke Cao <yunkec@google.com>
+---
+ include/uapi/linux/v4l2-controls.h | 9 +++++++++
+ 1 file changed, 9 insertions(+)
+
+diff --git a/include/uapi/linux/v4l2-controls.h b/include/uapi/linux/v4l2-controls.h
+index 6455c8f..818fe2c 100644
+--- a/include/uapi/linux/v4l2-controls.h
++++ b/include/uapi/linux/v4l2-controls.h
+@@ -979,6 +979,15 @@ enum v4l2_auto_focus_range {
+ #define V4L2_CID_PAN_SPEED			(V4L2_CID_CAMERA_CLASS_BASE+32)
+ #define V4L2_CID_TILT_SPEED			(V4L2_CID_CAMERA_CLASS_BASE+33)
+ 
++/* CAMERA-class private control IDs */
++
++/*
++ * The base for the uvc driver controls.
++ * See linux/uvcvideo.h for the list of controls.
++ * We reserve 64 controls for this driver.
++ */
++#define V4L2_CID_CAMERA_UVC_BASE		(V4L2_CID_CAMERA_CLASS_BASE + 0x1000)
++
+ /*
+  * senozhatsky@ b:191930245
+  *
+-- 
+2.41.0.585.gd2178a4bd4-goog
+

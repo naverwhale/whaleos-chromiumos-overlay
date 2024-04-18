@@ -1,0 +1,46 @@
+From 9df18ec5622f7d24a3bc6ada40be684930b8c5b2 Mon Sep 17 00:00:00 2001
+From: Zubin Mithra <zsm@google.com>
+Date: Thu, 15 Jun 2023 19:48:01 +0000
+Subject: [PATCH] cros-syzkaller: log canonicalizer info
+
+---
+ pkg/cover/canonicalizer.go | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/pkg/cover/canonicalizer.go b/pkg/cover/canonicalizer.go
+index c7c385aed..5e6db55ff 100644
+--- a/pkg/cover/canonicalizer.go
++++ b/pkg/cover/canonicalizer.go
+@@ -54,9 +54,12 @@ func NewCanonicalizer(modules []host.KernelModule, flagSignal bool) *Canonicaliz
+ 	if len(modules) == 0 || !flagSignal {
+ 		return &Canonicalizer{}
+ 	}
++	log.Logf(0, "DEBUG: Canonical module count: [%v]", len(modules))
++	log.Logf(0, "DEBUG: Canonical modules : [%v]", len(modules))
+ 	// Create a map of canonical module offsets by name.
+ 	canonicalModules := make(map[string]host.KernelModule)
+ 	for _, module := range modules {
++		log.Logf(0, "-- %v", module.Name)
+ 		canonicalModules[module.Name] = module
+ 	}
+ 
+@@ -73,6 +76,8 @@ func (can *Canonicalizer) NewInstance(modules []host.KernelModule) *Canonicalize
+ 	if can.moduleKeys == nil {
+ 		return &CanonicalizerInstance{}
+ 	}
++	log.Logf(0, "DEBUG: Instance module count: [%v]\n", len(modules))
++	log.Logf(0, "DEBUG: Instance modules : [%v]", len(modules))
+ 	// Save sorted list of module offsets.
+ 	moduleKeys := make([]uint32, len(modules))
+ 	setModuleKeys(moduleKeys, modules)
+@@ -81,6 +86,7 @@ func (can *Canonicalizer) NewInstance(modules []host.KernelModule) *Canonicalize
+ 	instToCanonicalMap := make(map[uint32]*canonicalizerModule)
+ 	canonicalToInstMap := make(map[uint32]*canonicalizerModule)
+ 	for _, module := range modules {
++		log.Logf(0, "-- %v", module.Name)
+ 		discard := false
+ 		canonicalAddr := uint32(0)
+ 		canonicalModule, found := can.modules[module.Name]
+-- 
+2.42.0.515.g380fc7ccd1-goog
+

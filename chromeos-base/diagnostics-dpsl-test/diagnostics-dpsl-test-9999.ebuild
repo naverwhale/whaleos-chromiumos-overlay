@@ -1,7 +1,7 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=6
+EAPI="7"
 
 CROS_WORKON_INCREMENTAL_BUILD=1
 CROS_WORKON_LOCALNAME="platform2"
@@ -10,11 +10,14 @@ CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_SUBTREE="common-mk diagnostics .gn"
 
 PLATFORM_SUBDIR="diagnostics/dpsl"
+# Do not run test parallelly until unit tests are fixed.
+# shellcheck disable=SC2034
+PLATFORM_PARALLEL_GTEST_TEST="no"
 
 inherit cros-workon platform
 
 DESCRIPTION="Diagnostics DPSL test designed to be run inside VM"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/diagnostics/dpsl/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/diagnostics/dpsl/"
 
 LICENSE="BSD-Google"
 SLOT="0"
@@ -22,7 +25,7 @@ KEYWORDS="~*"
 IUSE=""
 
 DEPEND="
-	chromeos-base/libbrillo:=
+	dev-cpp/abseil-cpp:=
 "
 RDEPEND="
 	net-libs/grpc:=
@@ -30,6 +33,8 @@ RDEPEND="
 "
 
 src_install() {
+	platform_src_install
+
 	dobin "${OUT}/diagnostics_dpsl_test_listener"
 	dobin "${OUT}/diagnostics_dpsl_test_requester"
 }

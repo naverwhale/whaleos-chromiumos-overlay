@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # @ECLASS: cros-racc.eclass
@@ -9,12 +9,6 @@
 
 EXPORT_FUNCTIONS src_compile src_install
 
-# @ECLASS-VARIABLE: CROS_RACC_MODEL
-# @DESCRIPTION:
-# Array of models to installed.
-# TODO(b/169428818): Stop maintaining board-model mapping.
-: "${CROS_RACC_MODEL:=}"
-
 # @FUNCTION: cros-racc_src_compile
 # @DESCRIPTION:
 # Remove all indents, line breaks and spaces in json file to reduce disk usage.
@@ -23,14 +17,16 @@ cros-racc_src_compile() {
 
 	local CMD_MINIFY_JSON=("jq" "-c" ".")
 	local BUILD_ROOT="${WORKDIR}/build"
-	local model
-	for model in "${CROS_RACC_MODEL[@]}"; do
-		local CONFIG="runtime_probe/${model}/probe_config.json"
-		mkdir -p "$(dirname "${BUILD_ROOT}/${CONFIG}")"
-		"${CMD_MINIFY_JSON[@]}" \
-			< "${FILESDIR}/${CONFIG}" > "${BUILD_ROOT}/${CONFIG}" ||
-			die "Failed to minify json file: ${CONFIG}"
-	done
+	local config
+	if [[ -d "${FILESDIR}/runtime_probe/" ]]; then
+		# shellcheck disable=SC2015
+		while read -r -d $'\0' config; do
+			mkdir -p "$(dirname "${BUILD_ROOT}/${config}")"
+			"${CMD_MINIFY_JSON[@]}" \
+				< "${FILESDIR}/${config}" > "${BUILD_ROOT}/${config}" ||
+				die "Failed to minify json file: ${config}"
+		done < <(cd "${FILESDIR}" && find "runtime_probe/" -maxdepth 2 -name "*.json" -type f -print0 || die)
+	fi
 }
 
 # @FUNCTION: cros-racc_src_install
@@ -40,12 +36,13 @@ cros-racc_src_compile() {
 cros-racc_src_install() {
 	einfo "cros-racc src_install"
 
-	local model
-	for model in "${CROS_RACC_MODEL[@]}"; do
-		insinto "/etc/runtime_probe/${model}"
-		doins "${WORKDIR}/build/runtime_probe/${model}/probe_config.json"
-	done
+	if [[ -d "${WORKDIR}/build/runtime_probe/" ]]; then
+		insinto /etc/runtime_probe
+		doins -r "${WORKDIR}/build/runtime_probe/"*
+	fi
 
-	insinto /etc/hardware_verifier
-	doins "${FILESDIR}/hw_verification_spec.prototxt"
+	if [[ -e "${FILESDIR}/hw_verification_spec.prototxt" ]]; then
+		insinto /etc/hardware_verifier
+		doins "${FILESDIR}/hw_verification_spec.prototxt"
+	fi
 }

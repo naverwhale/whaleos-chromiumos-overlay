@@ -1,0 +1,13 @@
+DEFINED_PHASES=configure
+DEPEND=!<dev-util/trace-cmd-3.0.0 dev-libs/libtraceevent:= test? ( dev-util/cunit )
+DESCRIPTION=Library to access the Linux tracing tracefs file system
+EAPI=7
+HOMEPAGE=https://www.trace-cmd.org
+IUSE=test
+KEYWORDS=*
+LICENSE=LGPL-2.1
+RDEPEND=!<dev-util/trace-cmd-3.0.0 dev-libs/libtraceevent:=
+SLOT=0/1
+SRC_URI=https://git.kernel.org/pub/scm/libs/libtrace/libtracefs.git/snapshot/libtracefs-1.6.3.tar.gz
+_eclasses_=flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=fa41b06665963d453d1b6f041c7b16bb

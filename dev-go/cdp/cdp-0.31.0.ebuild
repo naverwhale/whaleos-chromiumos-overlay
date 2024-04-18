@@ -1,7 +1,7 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2.
 
-EAPI=5
+EAPI=7
 
 CROS_GO_SOURCE="github.com/mafredri/cdp v0.31.0"
 
@@ -37,8 +37,13 @@ IUSE="test"
 RESTRICT="binchecks strip"
 
 DEPEND="
+	dev-go/go-tools
+	dev-go/misspell
+	dev-go/mod
 	test? (
 		dev-go/cmp
 		dev-go/sync
-	)"
+	)
+	dev-go/websocket
+"
 RDEPEND="dev-go/websocket"

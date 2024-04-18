@@ -1,4 +1,4 @@
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright 2013 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -15,7 +15,7 @@ PLATFORM_SUBDIR="p2p"
 inherit cros-debug cros-workon platform user
 
 DESCRIPTION="Chromium OS P2P"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/p2p/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/p2p/"
 SRC_URI=""
 
 LICENSE="BSD-Google"
@@ -25,10 +25,13 @@ IUSE=""
 
 COMMON_DEPEND=">=chromeos-base/metrics-0.0.1-r3152:=
 	dev-libs/glib:=
-	net-dns/avahi-daemon:=
-	net-firewall/iptables:="
-
-RDEPEND="${COMMON_DEPEND}"
+	net-dns/avahi:=
+	net-firewall/iptables:=
+"
+RDEPEND="
+	${COMMON_DEPEND}
+	net-dns/avahi-daemon
+"
 DEPEND="${COMMON_DEPEND}"
 
 platform_pkg_test() {
@@ -53,6 +56,8 @@ pkg_preinst() {
 }
 
 src_install() {
+	platform_src_install
+
 	dosbin "${OUT}"/p2p-client
 	dosbin "${OUT}"/p2p-server
 	dosbin "${OUT}"/p2p-http-server

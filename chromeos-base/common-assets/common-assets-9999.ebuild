@@ -1,7 +1,7 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2012 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
+EAPI="7"
 
 CROS_WORKON_PROJECT="chromiumos/platform/assets"
 CROS_WORKON_LOCALNAME="platform/assets"
@@ -24,10 +24,6 @@ IUSE="
 RDEPEND="
 	fonts? ( chromeos-base/chromeos-fonts )
 	x11-libs/pango"
-
-# Don't strip NaCl executables. These are not linux executables and the
-# linux host's strip command doesn't know how to handle them correctly.
-STRIP_MASK="*.nexe"
 
 src_install() {
 	insinto /usr/share/chromeos-assets/images

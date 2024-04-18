@@ -1,0 +1,45 @@
+commit 7f302f220e7b8727ed1bf8832dcc2d87b897e527
+Author: Xing Xue <xingxue@outlook.com>
+Date:   Thu Sep 7 14:48:45 2023 -0400
+
+    Revert "[libc++][NFC] Remove __has_keyword"
+    
+    This reverts commit cd34e89cfabbc43a89bac5f0e4e84ebee0e4e167.
+    
+    See https://reviews.llvm.org/D158215#inline-1544266 for details.
+
+diff --git a/libcxx/include/__config b/libcxx/include/__config
+index 0109350d265c..26ee189f22f0 100644
+--- a/libcxx/include/__config
++++ b/libcxx/include/__config
+@@ -356,6 +356,8 @@
+ #    define __has_declspec_attribute(__x) 0
+ #  endif
+ 
++#  define __has_keyword(__x) !(__is_identifier(__x))
++
+ #  ifndef __has_include
+ #    define __has_include(...) 0
+ #  endif
+@@ -1104,7 +1106,7 @@ __sanitizer_verify_double_ended_contiguous_container(const void*, const void*, c
+ #    define _LIBCPP_PROVIDES_DEFAULT_RUNE_TABLE
+ #  endif
+ 
+-#  if __has_feature(cxx_atomic) || __has_extension(c_atomic)
++#  if __has_feature(cxx_atomic) || __has_extension(c_atomic) || __has_keyword(_Atomic)
+ #    define _LIBCPP_HAS_C_ATOMIC_IMP
+ #  elif defined(_LIBCPP_COMPILER_GCC)
+ #    define _LIBCPP_HAS_GCC_ATOMIC_IMP
+diff --git a/libcxx/include/tuple b/libcxx/include/tuple
+index 609ae537b3c0..e5b7a81c9812 100644
+--- a/libcxx/include/tuple
++++ b/libcxx/include/tuple
+@@ -308,7 +308,7 @@ class __tuple_leaf
+ 
+     template <class _Tp>
+     static _LIBCPP_HIDE_FROM_ABI constexpr bool __can_bind_reference() {
+-#if __has_builtin(__reference_binds_to_temporary)
++#if __has_keyword(__reference_binds_to_temporary)
+       return !__reference_binds_to_temporary(_Hp, _Tp);
+ #else
+       return true;

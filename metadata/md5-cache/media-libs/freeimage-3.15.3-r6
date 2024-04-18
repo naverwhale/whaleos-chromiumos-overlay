@@ -1,0 +1,14 @@
+BDEPEND=app-arch/unzip
+DEFINED_PHASES=compile install prepare
+DEPEND=sys-libs/zlib jpeg? ( virtual/jpeg ) jpeg2k? ( media-libs/openjpeg ) mng? ( media-libs/libmng ) openexr? ( media-libs/openexr ) png? ( media-libs/libpng ) raw? ( media-libs/libraw ) tiff? ( media-libs/ilmbase media-libs/tiff ) virtual/pkgconfig app-arch/unzip
+DESCRIPTION=Image library supporting many formats
+EAPI=7
+HOMEPAGE=http://freeimage.sourceforge.net/
+IUSE=jpeg jpeg2k mng openexr png raw static-libs tiff
+KEYWORDS=*
+LICENSE=|| ( GPL-2 FIPL-1.0 )
+RDEPEND=sys-libs/zlib jpeg? ( virtual/jpeg ) jpeg2k? ( media-libs/openjpeg ) mng? ( media-libs/libmng ) openexr? ( media-libs/openexr ) png? ( media-libs/libpng ) raw? ( media-libs/libraw ) tiff? ( media-libs/ilmbase media-libs/tiff )
+SLOT=0
+SRC_URI=mirror://sourceforge/freeimage/FreeImage3153.zip mirror://sourceforge/freeimage/FreeImage3153.pdf
+_eclasses_=eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=da81e48dbf032106e6addca114a988b8

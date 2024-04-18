@@ -1,0 +1,14 @@
+DEFINED_PHASES=configure
+DEPEND=sys-fs/e2fsprogs:=
+DESCRIPTION=fscrypt key management tool
+EAPI=7
+HOMEPAGE=https://github.com/google/fscryptctl
+IUSE=asan cfi cfi_diag cfi_recover coverage fuzzer msan thinlto tsan ubsan
+KEYWORDS=*
+LICENSE=Apache-2.0
+RDEPEND=sys-fs/e2fsprogs:=
+REQUIRED_USE=cfi? ( thinlto ) cfi_diag? ( cfi ) cfi_recover? ( cfi_diag )
+SLOT=0
+SRC_URI=https://github.com/google/fscryptctl/archive/v1.1.0.tar.gz -> fscryptctl-1.1.0.tar.gz
+_eclasses_=cros-sanitizers	4504f3661db0fe02309acd3555785cf2	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=295d4255077306c6dc3150b9f570c87b

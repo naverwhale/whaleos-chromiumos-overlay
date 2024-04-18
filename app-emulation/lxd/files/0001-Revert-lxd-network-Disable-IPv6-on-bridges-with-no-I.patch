@@ -1,0 +1,49 @@
+From bea8d30aca18f9ad84c851ec4ca0b8deee073e63 Mon Sep 17 00:00:00 2001
+From: James Ye <jamesye@google.com>
+Date: Tue, 12 Sep 2023 15:22:09 +1000
+Subject: [PATCH] Revert "lxd/network: Disable IPv6 on bridges with no IPv6
+ address"
+
+This reverts commit 1ef8f65cef7a569d80b4a4897a9076f29186109d.
+---
+ lxd/network/driver_bridge.go | 17 +----------------
+ 1 file changed, 1 insertion(+), 16 deletions(-)
+
+diff --git a/lxd/network/driver_bridge.go b/lxd/network/driver_bridge.go
+index 72a7db561..d266f446e 100644
+--- a/lxd/network/driver_bridge.go
++++ b/lxd/network/driver_bridge.go
+@@ -626,12 +626,7 @@ func (n *bridge) setup(oldConfig map[string]string) error {
+ 			return fmt.Errorf("Network has ipv6.address but kernel IPv6 support is missing")
+ 		}
+ 
+-		err := util.SysctlSet(fmt.Sprintf("net/ipv6/conf/%s/disable_ipv6", n.name), "0")
+-		if err != nil {
+-			return err
+-		}
+-
+-		err = util.SysctlSet(fmt.Sprintf("net/ipv6/conf/%s/autoconf", n.name), "0")
++		err := util.SysctlSet(fmt.Sprintf("net/ipv6/conf/%s/autoconf", n.name), "0")
+ 		if err != nil {
+ 			return err
+ 		}
+@@ -640,16 +635,6 @@ func (n *bridge) setup(oldConfig map[string]string) error {
+ 		if err != nil {
+ 			return err
+ 		}
+-	} else {
+-		// Disable IPv6 if no address is specified. This prevents the
+-		// host being reachable over a guessable link-local address as well as it
+-		// auto-configuring an address should an instance operate an IPv6 router.
+-		if shared.PathExists("/proc/sys/net/ipv6") {
+-			err := util.SysctlSet(fmt.Sprintf("net/ipv6/conf/%s/disable_ipv6", n.name), "1")
+-			if err != nil {
+-				return err
+-			}
+-		}
+ 	}
+ 
+ 	// Get a list of interfaces.
+-- 
+2.42.0.283.g2d96d420d3-goog
+

@@ -1,0 +1,127 @@
+From 959bd8c8b4142117dbedba0591e9db110c713d79 Mon Sep 17 00:00:00 2001
+From: Yu Watanabe <watanabe.yu+github@gmail.com>
+Date: Thu, 11 May 2023 16:20:57 +0900
+Subject: [PATCH] BACKPORT: udev-builtin-path_id: split out add_id_tag()
+
+No functional change, just refactoring.
+
+(cherry picked from commit 5a54a01634fffb1d20db98ea7de9b06528d05ca4)
+
+Backporting notes:
+ - had to rebase across the addition of ascii_isalpha/ascii_isdigit
+   See https://github.com/systemd/systemd/pull/23906
+ - had to readd 'int r;' declaration in builtin_path_id()
+---
+ src/udev/udev-builtin-path_id.c | 74 +++++++++++++++++++--------------
+ 1 file changed, 42 insertions(+), 32 deletions(-)
+
+diff --git a/src/udev/udev-builtin-path_id.c b/src/udev/udev-builtin-path_id.c
+index 65c40de4c8..c1ede2c1c0 100644
+--- a/src/udev/udev-builtin-path_id.c
++++ b/src/udev/udev-builtin-path_id.c
+@@ -14,6 +14,7 @@
+ #include <unistd.h>
+ 
+ #include "alloc-util.h"
++#include "device-util.h"
+ #include "dirent-util.h"
+ #include "fd-util.h"
+ #include "parse-util.h"
+@@ -533,6 +534,42 @@ static sd_device *handle_ap(sd_device *parent, char **path) {
+         return skip_subsystem(parent, "ap");
+ }
+ 
++static void add_id_tag(sd_device *dev, bool test, const char *path) {
++        char tag[UDEV_NAME_SIZE];
++        size_t i;
++        const char *p;
++        int r;
++
++        /* compose valid udev tag name */
++        for (p = path, i = 0; *p; p++) {
++                if ((*p >= '0' && *p <= '9') ||
++                    (*p >= 'A' && *p <= 'Z') ||
++                    (*p >= 'a' && *p <= 'z') ||
++                    *p == '-') {
++                        tag[i++] = *p;
++                        continue;
++                }
++
++                /* skip all leading '_' */
++                if (i == 0)
++                        continue;
++
++                /* avoid second '_' */
++                if (tag[i-1] == '_')
++                        continue;
++
++                tag[i++] = '_';
++        }
++        /* strip trailing '_' */
++        while (i > 0 && tag[i-1] == '_')
++                i--;
++        tag[i] = '\0';
++
++        r = udev_builtin_add_property(dev, test, "ID_PATH_TAG", tag);
++        if (r < 0)
++                log_device_debug_errno(dev, r, "Failed to add ID_PATH_TAG property, ignoring: %m");
++}
++
+ static int builtin_path_id(sd_device *dev, int argc, char *argv[], bool test) {
+         sd_device *parent;
+         _cleanup_free_ char *path = NULL;
+@@ -540,6 +577,7 @@ static int builtin_path_id(sd_device *dev, int argc, char *argv[], bool test) {
+         bool supported_transport = false;
+         bool supported_parent = false;
+         const char *subsystem;
++        int r;
+ 
+         assert(dev);
+ 
+@@ -679,39 +717,11 @@ static int builtin_path_id(sd_device *dev, int argc, char *argv[], bool test) {
+             !supported_transport)
+                 return -ENOENT;
+ 
+-        {
+-                char tag[UDEV_NAME_SIZE];
+-                size_t i;
+-                const char *p;
+-
+-                /* compose valid udev tag name */
+-                for (p = path, i = 0; *p; p++) {
+-                        if ((*p >= '0' && *p <= '9') ||
+-                            (*p >= 'A' && *p <= 'Z') ||
+-                            (*p >= 'a' && *p <= 'z') ||
+-                            *p == '-') {
+-                                tag[i++] = *p;
+-                                continue;
+-                        }
+-
+-                        /* skip all leading '_' */
+-                        if (i == 0)
+-                                continue;
+-
+-                        /* avoid second '_' */
+-                        if (tag[i-1] == '_')
+-                                continue;
+-
+-                        tag[i++] = '_';
+-                }
+-                /* strip trailing '_' */
+-                while (i > 0 && tag[i-1] == '_')
+-                        i--;
+-                tag[i] = '\0';
++        r = udev_builtin_add_property(dev, test, "ID_PATH", path);
++        if (r < 0)
++                log_device_debug_errno(dev, r, "Failed to add ID_PATH property, ignoring: %m");
+ 
+-                udev_builtin_add_property(dev, test, "ID_PATH", path);
+-                udev_builtin_add_property(dev, test, "ID_PATH_TAG", tag);
+-        }
++        add_id_tag(dev, test, path);
+ 
+         /*
+          * Compatible link generation for ATA devices
+-- 
+2.39.2
+

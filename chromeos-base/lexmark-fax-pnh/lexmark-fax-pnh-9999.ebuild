@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -32,6 +32,8 @@ platform_pkg_test() {
 }
 
 src_install() {
+	platform_src_install
+
 	exeinto /usr/libexec/cups/filter
 	doexe "${OUT}"/fax-pnh-filter
 }

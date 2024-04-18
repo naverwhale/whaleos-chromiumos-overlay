@@ -4,11 +4,11 @@
 EAPI=7
 CROS_WORKON_PROJECT=("chromiumos/third_party/hostap" "chromiumos/third_party/hostap")
 CROS_WORKON_LOCALNAME=("../third_party/wpa_supplicant-cros/current" "../third_party/wpa_supplicant-cros/next")
-CROS_WORKON_EGIT_BRANCH=("wpa_supplicant-2.9" "wpa_supplicant-2.9.1")
+CROS_WORKON_EGIT_BRANCH=("wpa_supplicant-2.10.0" "wpa_supplicant-2.10.0")
 CROS_WORKON_DESTDIR=("${S}/wpa_supplicant-cros/current" "${S}/wpa_supplicant-cros/next")
 CROS_WORKON_OPTIONAL_CHECKOUT=("use !supplicant-next" "use supplicant-next")
 
-inherit cros-sanitizers cros-workon cros-fuzzer eutils flag-o-matic qmake-utils systemd toolchain-funcs user
+inherit cros-sanitizers cros-workon cros-fuzzer eutils flag-o-matic qmake-utils systemd tmpfiles toolchain-funcs user
 
 DESCRIPTION="IEEE 802.1X/WPA supplicant for secure wireless transfers"
 HOMEPAGE="https://w1.fi/wpa_supplicant/"
@@ -16,7 +16,7 @@ LICENSE="|| ( GPL-2 BSD )"
 
 SLOT="0"
 KEYWORDS="~*"
-IUSE="ap bindist dbus debug eap-sim fuzzer +hs2-0 libressl mbo p2p ps3 qt5 readline +seccomp selinux smartcard supplicant-next systemd +tdls uncommon-eap-types +wep wifi_hostap_test +wnm wps kernel_linux kernel_FreeBSD wimax"
+IUSE="+ap bindist dbus debug eap-sim fuzzer +hs2-0 libressl +mbo mesh +p2p ps3 qt5 readline +seccomp selinux smartcard supplicant-next systemd tdls uncommon-eap-types +wep wifi_hostap_test +wnm wps kernel_linux kernel_FreeBSD wimax"
 
 CDEPEND="
 	chromeos-base/minijail
@@ -36,9 +36,9 @@ CDEPEND="
 		sys-libs/ncurses:0
 		sys-libs/readline:0
 	)
-	!libressl? ( dev-libs/openssl:0=[bindist=] )
+	!libressl? ( dev-libs/openssl:0= )
 	libressl? ( dev-libs/libressl:0= )
-	smartcard? ( dev-libs/engine_pkcs11 )
+	smartcard? ( dev-libs/libp11 )
 "
 DEPEND="${CDEPEND}
 	virtual/pkgconfig
@@ -48,6 +48,10 @@ RDEPEND="${CDEPEND}
 	!net-wireless/wpa_supplicant-2_8
 	!net-wireless/wpa_supplicant-2_9
 	selinux? ( sec-policy/selinux-networkmanager )
+"
+
+BDEPEND="
+	chromeos-base/minijail
 "
 
 # All the available fuzzers.
@@ -81,17 +85,17 @@ Kconfig_style_config() {
 		CONFIG_PARAM="${CONFIG_HEADER:-CONFIG_}$1"
 		setting="${2:-y}"
 
-		if [ ! $setting = n ]; then
+		if [ ! "${setting}" = n ]; then
 			#first remove any leading "# " if $2 is not n
-			sed -i "/^# *$CONFIG_PARAM=/s/^# *//" .config || echo "Kconfig_style_config error uncommenting $CONFIG_PARAM"
+			sed -i "/^# *${CONFIG_PARAM}=/s/^# *//" .config || echo "Kconfig_style_config error uncommenting ${CONFIG_PARAM}"
 			#set item = $setting (defaulting to y)
-			sed -i "/^$CONFIG_PARAM\>/s/=.*/=$setting/" .config || echo "Kconfig_style_config error setting $CONFIG_PARAM=$setting"
-			if [ -z "$( grep ^$CONFIG_PARAM= .config )" ] ; then
-				echo "$CONFIG_PARAM=$setting" >>.config
+			sed -i "/^${CONFIG_PARAM}\>/s/=.*/=${setting}/" .config || echo "Kconfig_style_config error setting ${CONFIG_PARAM}=${setting}"
+			if ! grep -q "^${CONFIG_PARAM}=" .config; then
+				echo "${CONFIG_PARAM}=${setting}" >>.config
 			fi
 		else
 			#ensure item commented out
-			sed -i "/^$CONFIG_PARAM\>/s/$CONFIG_PARAM/# $CONFIG_PARAM/" .config || echo "Kconfig_style_config error commenting $CONFIG_PARAM"
+			sed -i "/^${CONFIG_PARAM}\>/s/${CONFIG_PARAM}/# ${CONFIG_PARAM}/" .config || echo "Kconfig_style_config error commenting ${CONFIG_PARAM}"
 		fi
 }
 
@@ -146,6 +150,9 @@ src_configure() {
 	sanitizers-setup-env
 	# Toolchain setup
 	append-flags -Werror
+	append-lfs-flags
+	# supplicant is using only CFLAGS so append CPPFLAGS (configured by lfs) to it
+	append-cflags "${CPPFLAGS}"
 	tc-export CC
 
 	cp defconfig .config || die
@@ -159,6 +166,7 @@ src_configure() {
 	Kconfig_style_config IEEE80211R
 	Kconfig_style_config IEEE80211N
 	Kconfig_style_config IEEE80211AC
+	Kconfig_style_config IEEE80211AX
 	Kconfig_style_config HT_OVERRIDES
 	Kconfig_style_config VHT_OVERRIDES
 	Kconfig_style_config OCV
@@ -267,6 +275,8 @@ src_configure() {
 
 	if use tdls ; then
 		Kconfig_style_config TDLS
+	else
+		Kconfig_style_config TDLS n
 	fi
 
 	if use kernel_linux ; then
@@ -313,6 +323,13 @@ src_configure() {
 		Kconfig_style_config WEP
 	fi
 
+	# Access Point Mode. Also, Wi-Fi Direct functionality requires the AP mode to be enabled.
+	if use ap || use p2p; then
+		Kconfig_style_config AP
+	else
+		Kconfig_style_config AP n
+	fi
+
 	# Wi-Fi Direct (WiDi)
 	if use p2p ; then
 		Kconfig_style_config P2P
@@ -322,14 +339,10 @@ src_configure() {
 		Kconfig_style_config WIFI_DISPLAY n
 	fi
 
-	# Access Point Mode
-	if use ap ; then
-		Kconfig_style_config AP
-		# only AP currently support mesh networks.
+	# Only AP currently support mesh networks.
+	if use ap && use mesh; then
 		Kconfig_style_config MESH
 	else
-		# (ChromeOS) Explicitly disable to override enabling from defconfig.
-		Kconfig_style_config AP        n
 		Kconfig_style_config MESH      n
 	fi
 
@@ -348,6 +361,12 @@ src_configure() {
 		eqmake5 wpa_gui.pro
 		popd > /dev/null || die
 	fi
+
+	# Hardcode libp11 paths
+	Kconfig_style_config NO_OPENSC_ENGINE_PATH
+	Kconfig_style_config PKCS11_ENGINE_PATH	"/usr/$(get_libdir)/engines-1.1/libpkcs11.so"
+	Kconfig_style_config PKCS11_MODULE_PATH	"/usr/$(get_libdir)/libchaps.so"
+	Kconfig_style_config NO_LOAD_DYNAMIC_EAP
 }
 
 src_compile() {
@@ -431,26 +450,26 @@ src_install() {
 	if use dbus ; then
 		# DBus introspection XML file.
 		insinto /usr/share/dbus-1/interfaces
-		doins ${FILESDIR}/dbus_bindings/fi.w1.wpa_supplicant1.xml || die
+		doins "${FILESDIR}/dbus_bindings/fi.w1.wpa_supplicant1.xml" || die
 		insinto /etc/dbus-1/system.d
 		# Allow (but don't require) wpa_supplicant to run as root only
 		# when building hwsim targets.
 		if use wifi_hostap_test; then
-			newins "${FILESDIR}"/dbus_permissions/root_fi.w1.wpa_supplicant1.conf \
+			newins "${FILESDIR}/dbus_permissions/root_fi.w1.wpa_supplicant1.conf" \
 				fi.w1.wpa_supplicant1.conf
 		else
-			doins "${FILESDIR}"/dbus_permissions/fi.w1.wpa_supplicant1.conf
+			doins "${FILESDIR}/dbus_permissions/fi.w1.wpa_supplicant1.conf"
 		fi
 	fi
 	# Install the init scripts
+	dotmpfiles "${FILESDIR}/init/wpasupplicant-directories.conf"
 	if use systemd; then
 		insinto /usr/share
-		systemd_dounit ${FILESDIR}/init/wpasupplicant.service
+		systemd_dounit "${FILESDIR}/init/wpasupplicant.service"
 		systemd_enable_service boot-services.target wpasupplicant.service
-		systemd_dotmpfilesd ${FILESDIR}/init/wpasupplicant-directories.conf
 	else
 		insinto /etc/init
-		doins ${FILESDIR}/init/wpasupplicant.conf
+		doins "${FILESDIR}/init/wpasupplicant.conf"
 		if use seccomp; then
 			local policy="${FILESDIR}/seccomp/wpa_supplicant-${ARCH}.policy"
 			local policy_out="${ED}/usr/share/policy/wpa_supplicant.bpf"

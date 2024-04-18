@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -23,3 +23,6 @@ SRC_URI=""
 LICENSE="BSD-Google"
 KEYWORDS="~*"
 IUSE="test"
+
+DEPEND="dev-rust/third-party-crates-src:="
+RDEPEND="${DEPEND}"

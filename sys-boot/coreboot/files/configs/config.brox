@@ -1,0 +1,12 @@
+CONFIG_VENDOR_GOOGLE=y
+CONFIG_BOARD_GOOGLE_BROX=y
+
+# SPI Descriptor
+CONFIG_IFD_BIN_PATH="3rdparty/blobs/mainboard/google/brox/descriptor-brox.bin"
+
+# CSE data
+CONFIG_ME_BIN_PATH="3rdparty/blobs/mainboard/google/brox/csme-brox.bin"
+CONFIG_SOC_INTEL_CSE_RW_FILE="3rdparty/blobs/mainboard/google/brox/me_rw-brox.bin"
+
+# Microcode
+CONFIG_CPU_UCODE_BINARIES="3rdparty/blobs/mainboard/google/brox/ucode-brox.bin"

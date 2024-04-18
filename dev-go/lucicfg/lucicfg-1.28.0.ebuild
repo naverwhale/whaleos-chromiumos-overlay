@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2.
 
 EAPI=7
@@ -20,6 +20,8 @@ LICENSE="Apache-2.0"
 SLOT="0"
 KEYWORDS="amd64 x86 arm arm64"
 IUSE=""
+
+BDEPEND="app-arch/unzip"
 
 S="${WORKDIR}"
 

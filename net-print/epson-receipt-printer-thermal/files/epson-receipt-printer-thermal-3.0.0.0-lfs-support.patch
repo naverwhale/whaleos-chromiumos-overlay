@@ -1,0 +1,24 @@
+From 7e1b666007ff6805e6136192e89c0abc222ede60 Mon Sep 17 00:00:00 2001
+From: Nathan Muggli <nmuggli@google.com>
+Date: Tue, 1 Aug 2023 11:00:07 -0600
+Subject: [PATCH] Add LFS support
+
+---
+ CMakeLists.txt | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index b79fc89..16484a4 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,4 +1,7 @@
+ cmake_minimum_required(VERSION 2.8)
++add_compile_definitions(_FILE_OFFSET_BITS=64)
++add_compile_definitions(_LARGEFILE_SOURCE)
++add_compile_definitions(_LARGEFILE64_SOURCE)
+ add_executable(rastertotmtr
+ 	filter/TmThermalReceipt.c
+ )
+-- 
+2.41.0.585.gd2178a4bd4-goog
+

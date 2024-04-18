@@ -1,0 +1,79 @@
+From 646d40bfe91e7ed795e67e490c6827465b1d13d3 Mon Sep 17 00:00:00 2001
+From: Hans Verkuil <hans.verkuil@cisco.com>
+Date: Mon, 21 May 2018 04:54:44 -0400
+Subject: [PATCH] BACKPORT: media: videodev2.h: Add request_fd field to
+ v4l2_buffer
+
+When queuing buffers allow for passing the request that should
+be associated with this buffer.
+
+If V4L2_BUF_FLAG_REQUEST_FD is set, then request_fd is used as
+the file descriptor.
+
+If a buffer is stored in a request, but not yet queued to the
+driver, then V4L2_BUF_FLAG_IN_REQUEST is set.
+
+Signed-off-by: Hans Verkuil <hans.verkuil@cisco.com>
+Reviewed-by: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>
+Signed-off-by: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>
+(cherry picked from commit 62fed26ff4338eeccc702799be358bbb1471b76c)
+
+Conflicts:
+   drivers/media/v4l2-core/v4l2-compat-ioctl32.c
+
+Non-uAPI changes dropped.
+
+BUG=b:278157861
+TEST=Check header
+
+Change-Id: I161306d5badf8410f38cab48761204a21cc0879e
+Signed-off-by: Chen-Yu Tsai <wenst@chromium.org>
+---
+ include/uapi/linux/videodev2.h | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
+
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index 0989b7e3cebc..00b729a7bdcc 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -909,6 +909,7 @@ struct v4l2_plane {
+  * @length:	size in bytes of the buffer (NOT its payload) for single-plane
+  *		buffers (when type != *_MPLANE); number of elements in the
+  *		planes array for multi-plane buffers
++ * @request_fd: fd of the request that this buffer should use
+  *
+  * Contains data exchanged by application and driver using one of the Streaming
+  * I/O methods.
+@@ -933,7 +934,10 @@ struct v4l2_buffer {
+ 	} m;
+ 	__u32			length;
+ 	__u32			reserved2;
+-	__u32			reserved;
++	union {
++		__s32		request_fd;
++		__u32		reserved;
++	};
+ };
+ 
+ /*  Flags for 'flags' field */
+@@ -951,6 +955,8 @@ struct v4l2_buffer {
+ #define V4L2_BUF_FLAG_BFRAME			0x00000020
+ /* Buffer is ready, but the data contained within is corrupted. */
+ #define V4L2_BUF_FLAG_ERROR			0x00000040
++/* Buffer is added to an unqueued request */
++#define V4L2_BUF_FLAG_IN_REQUEST		0x00000080
+ /* timecode field is valid */
+ #define V4L2_BUF_FLAG_TIMECODE			0x00000100
+ /* Buffer is prepared for queuing */
+@@ -969,6 +975,8 @@ struct v4l2_buffer {
+ #define V4L2_BUF_FLAG_TSTAMP_SRC_SOE		0x00010000
+ /* mem2mem encoder/decoder */
+ #define V4L2_BUF_FLAG_LAST			0x00100000
++/* request_fd is valid */
++#define V4L2_BUF_FLAG_REQUEST_FD		0x00800000
+ 
+ /**
+  * struct v4l2_exportbuffer - export of video buffer as DMABUF file descriptor
+-- 
+2.40.1.606.ga4b1b128d6-goog
+

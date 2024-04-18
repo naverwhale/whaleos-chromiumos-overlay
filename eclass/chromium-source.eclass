@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 
@@ -7,7 +7,7 @@
 # ChromiumOS Build Team
 # @BUGREPORTS:
 # Please report bugs via http://crbug.com/new (with label Build)
-# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/master/eclass/@ECLASS@
+# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/eclass/@ECLASS@
 # @BLURB: helper eclass for building packages using the Chromium source code.
 # @DESCRIPTION:
 # To use this eclass, simply inherit chromium-source in your ebuild.
@@ -82,7 +82,7 @@ chromium_source_compute_origin() {
 
 	case "${CHROMIUM_SOURCE_ORIGIN}" in
 	LOCAL_SOURCE|SERVER_SOURCE)
-		elog "CHROMIUM_SOURCE_ORIGIN is ${CHROMIUM_SOURCE_ORIGIN}"
+		einfo "CHROMIUM_SOURCE_ORIGIN is ${CHROMIUM_SOURCE_ORIGIN}"
 		;;
 	*)
 		die "CHROMIUM_SOURCE_ORIGIN is not one of LOCAL_SOURCE, SERVER_SOURCE"

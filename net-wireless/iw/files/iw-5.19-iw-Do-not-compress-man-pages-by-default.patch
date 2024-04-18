@@ -1,0 +1,33 @@
+From c84ad46faef0980fec8706e6ea57c5be7587fc2b Mon Sep 17 00:00:00 2001
+From: Jun Yu <junyuu@chromium.org>
+Date: Fri, 18 Aug 2023 23:18:49 +0000
+Subject: [PATCH] iw: Do not compress man pages by default
+
+Signed-off-by: Jun Yu <junyuu@chromium.org>
+---
+ Makefile | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 2fb8db8..88ed538 100644
+--- a/Makefile
++++ b/Makefile
+@@ -116,13 +116,13 @@ check:
+ 	@$(NQ) ' GZIP' $<
+ 	$(Q)gzip < $< > $@
+ 
+-install: iw iw.8.gz
++install: iw iw.8
+ 	@$(NQ) ' INST iw'
+ 	$(Q)$(MKDIR) $(DESTDIR)$(SBINDIR)
+ 	$(Q)$(INSTALL) -m 755 iw $(DESTDIR)$(SBINDIR)
+ 	@$(NQ) ' INST iw.8'
+ 	$(Q)$(MKDIR) $(DESTDIR)$(MANDIR)/man8/
+-	$(Q)$(INSTALL) -m 644 iw.8.gz $(DESTDIR)$(MANDIR)/man8/
++	$(Q)$(INSTALL) -m 644 iw.8 $(DESTDIR)$(MANDIR)/man8/
+ 
+ clean:
+ 	$(Q)rm -f iw *.o *~ *.gz version.c *-stamp nl80211-commands.inc
+-- 
+2.42.0.rc1.204.g551eb34607-goog
+

@@ -1,0 +1,35 @@
+From 364a14d75b5f8583cd7dce356d5dfabfbee4ce58 Mon Sep 17 00:00:00 2001
+From: Mattias Nissler <mnissler@chromium.org>
+Date: Fri, 3 Jul 2020 12:10:05 +0200
+Subject: [PATCH] CHROMIUM: Don't read udev rules from /run
+
+Udev rules may contain command in RUN attributes. All runnable code in
+Chrome OS must be subject to code verification, e.g. be located on the
+verified root file system. /run isn't verified and mounted noexec, so
+it's not appropriate to place code there. See also crbug.com/1072486.
+---
+ src/basic/def.h | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/src/basic/def.h b/src/basic/def.h
+index 2e60abb4f1..4678d2ec34 100644
+--- a/src/basic/def.h
++++ b/src/basic/def.h
+@@ -36,14 +36,12 @@
+  * files. */
+ #define CONF_PATHS_NULSTR(n)                    \
+         "/etc/" n "\0"                          \
+-        "/run/" n "\0"                          \
+         "/usr/local/lib/" n "\0"                \
+         "/usr/lib/" n "\0"                      \
+         _CONF_PATHS_SPLIT_USR_NULSTR(n)
+ 
+ #define CONF_PATHS_USR(n)                       \
+         "/etc/" n,                              \
+-        "/run/" n,                              \
+         "/usr/local/lib/" n,                    \
+         "/usr/lib/" n
+ 
+-- 
+2.39.2
+

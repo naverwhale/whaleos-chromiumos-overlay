@@ -1,19 +1,17 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright 2010 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=2
+EAPI=7
 
 # CROS_WORKON_REPO=FILL_YOUR_REPO_URL_HERE
 # inherit toolchain-funcs flag-o-matic cros-workon autotest
 
 DESCRIPTION="All private autotest tests"
-HOMEPAGE="http://src.chromium.org"
-SRC_URI=""
-LICENSE="GPL-2"
+HOMEPAGE="https://dev.chromium.org/chromium-os"
+
+LICENSE="metapackage"
 SLOT="0"
 KEYWORDS="*"
-DEPEND=""
-RDEPEND=""
 
 # This ebuild file is reserved for adding new private tests in your factory
 # process. You can change the CROS_WORKON_REPO to your own server, and uncomment

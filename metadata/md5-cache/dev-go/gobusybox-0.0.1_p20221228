@@ -1,0 +1,12 @@
+BDEPEND=dev-lang/go
+DEFINED_PHASES=compile install nofetch postinst test unpack
+DEPEND=dev-go/mod
+DESCRIPTION=Tools for compiling many Go commands into one binary to save space.
+EAPI=7
+HOMEPAGE=https://github.com/u-root/gobusybox
+KEYWORDS=*
+LICENSE=BSD
+SLOT=0
+SRC_URI=https://github.com/u-root/gobusybox/archive/46b2883a7f908fe80f7a9580e136b8d256856c47.tar.gz -> github.com-u-root-gobusybox-46b2883a7f908fe80f7a9580e136b8d256856c47.tar.gz
+_eclasses_=cros-go	77ba1c1ddf5c20dab7e47e19efeffef7	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=c6de9f9f8670a88e11669129f81676bc

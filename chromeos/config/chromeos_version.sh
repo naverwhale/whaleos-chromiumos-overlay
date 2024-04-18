@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright 2011 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -12,43 +12,29 @@
 #############################################################################
 # SET VERSION NUMBERS
 #############################################################################
-if [ -z "${FLAGS_version}" ]; then
-  # Release Build number.
-  # Increment by 1 for every release build.
-  CHROMEOS_BUILD=14268
+# Release Build number.
+# Increment by 1 for every release build.
+CHROMEOS_BUILD=15662
 
-  # Release Branch number.
-  # Increment by 1 for every release build on a branch.
-  # Reset to 0 when increasing release build number.
-  CHROMEOS_BRANCH=99
+# Release Branch number.
+# Increment by 1 for every release build on a branch.
+# Reset to 0 when increasing release build number.
+CHROMEOS_BRANCH=102
 
-  # Patch number.
-  # Increment by 1 in case a non-scheduled branch release build is necessary.
-  # Reset to 0 when increasing branch number.
-  CHROMEOS_PATCH=0
+# Patch number.
+# Increment by 1 in case a non-scheduled branch release build is necessary.
+# Reset to 0 when increasing branch number.
+CHROMEOS_PATCH=0
 
-  # Official builds must set CHROMEOS_OFFICIAL=1.
-  if [ ${CHROMEOS_OFFICIAL:-0} -ne 1 ]; then
-    # For developer builds, overwrite CHROMEOS_PATCH with a date string
-    # for use by auto-updater.
-    CHROMEOS_PATCH=$(date +%Y_%m_%d_%H%M)
-  fi
-
-  # Version string. Not indentied to appease bash.
-  CHROMEOS_VERSION_STRING=\
+# Version string. Not indentied to appease bash.
+# Suppress unused var warning. This variable is used in show_vars().
+# shellcheck disable=SC2034
+CHROMEOS_VERSION_STRING=\
 "${CHROMEOS_BUILD}.${CHROMEOS_BRANCH}.${CHROMEOS_PATCH}"
-else
-  CHROMEOS_BUILD=$(echo "${FLAGS_version}" | cut -f 1 -d ".")
-  CHROMEOS_BRANCH=$(echo "${FLAGS_version}" | cut -f 2 -d ".")
-  CHROMEOS_PATCH=$(echo "${FLAGS_version}" | cut -f 3 -d ".")
-  CHROMEOS_VERSION_STRING="${FLAGS_version}"
-fi
 
 # Major version for Chrome.
-CHROME_BRANCH=96
-# Set CHROME values (Used for releases) to pass to chromeos-chrome-bin ebuild
-# URL to chrome archive
-CHROME_BASE=
+# shellcheck disable=SC2034
+CHROME_BRANCH=120
 # Set CHROME_VERSION from incoming value or NULL and let ebuild default.
 : "${CHROME_VERSION:=}"
 
@@ -64,7 +50,6 @@ show_vars() {
   done
 }
 show_vars \
-  CHROME_BASE \
   CHROME_BRANCH \
   CHROME_VERSION \
   CHROMEOS_BUILD \

@@ -1,0 +1,13 @@
+BDEPEND=dev-vcs/git app-misc/jq
+DEFINED_PHASES=compile info install setup unpack
+DEPEND=chromeos-base/hps-firmware
+DESCRIPTION=Chrome OS Unsigned HPS firmware for testing
+EAPI=7
+HOMEPAGE=https://chromium.googlesource.com/chromiumos/platform/hps-firmware/+/HEAD
+IUSE=cros_host cros_workon_tree_542e6a4fd398ed8a2c4c22c3c6e72b6cce68ed16
+KEYWORDS=*
+LICENSE=BSD-Google BSD-2 Apache-2.0 MIT 0BSD BSD ISC
+PROPERTIES=live
+SLOT=0
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=b8e5535f600d735cb798090700b82ab1

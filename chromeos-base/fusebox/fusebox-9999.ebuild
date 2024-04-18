@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -24,8 +24,7 @@ IUSE="test"
 COMMON_DEPEND="
 	dev-libs/protobuf:=
 	sys-apps/dbus:=
-	sys-fs/fuse:=
-	sys-libs/libcap:=
+	=sys-fs/fuse-2.9*:=
 "
 
 RDEPEND="${COMMON_DEPEND}"
@@ -35,6 +34,8 @@ DEPEND="${COMMON_DEPEND}
 "
 
 src_install() {
+	platform_src_install
+
 	dobin "${OUT}"/fusebox
 }
 

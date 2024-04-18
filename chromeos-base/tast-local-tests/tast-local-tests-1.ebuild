@@ -1,7 +1,7 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=6
+EAPI="7"
 
 DESCRIPTION="All Tast local test bundles"
 HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform/tast/"

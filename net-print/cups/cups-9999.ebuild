@@ -7,7 +7,7 @@ EAPI=7
 CROS_WORKON_PROJECT="chromiumos/third_party/cups"
 CROS_WORKON_EGIT_BRANCH="chromeos"
 
-inherit cros-debug cros-workon libchrome-version autotools flag-o-matic multilib multilib-minimal pam user systemd toolchain-funcs cros-fuzzer cros-sanitizers tmpfiles
+inherit cros-debug cros-workon autotools flag-o-matic multilib multilib-minimal pam user systemd toolchain-funcs cros-fuzzer cros-sanitizers tmpfiles
 
 MY_P=${P/_rc/rc}
 MY_P=${MY_P/_beta/b}
@@ -24,11 +24,6 @@ IUSE="acl dbus debug kerberos pam
 	+seccomp selinux +ssl static-libs systemd test +threads upstart usb X xinetd zeroconf
 	asan fuzzer"
 
-LANGS="ca cs de es fr it ja ru"
-for X in ${LANGS} ; do
-	IUSE="${IUSE} +linguas_${X}"
-done
-
 CDEPEND="
 	app-text/libpaper
 	acl? (
@@ -40,10 +35,10 @@ CDEPEND="
 	dbus? ( >=sys-apps/dbus-1.6.18-r1[${MULTILIB_USEDEP}] )
 	kerberos? ( >=virtual/krb5-0-r1[${MULTILIB_USEDEP}] )
 	!net-print/lprng
-	pam? ( virtual/pam )
+	pam? ( sys-libs/pam )
 	ssl? (
-		>=dev-libs/libgcrypt-1.5.3:0[${MULTILIB_USEDEP}]
-		>=net-libs/gnutls-2.12.23-r6[${MULTILIB_USEDEP}]
+		>=dev-libs/libgcrypt-1.5.3:0=[${MULTILIB_USEDEP}]
+		>=net-libs/gnutls-2.12.23-r6:=[${MULTILIB_USEDEP}]
 	)
 	systemd? ( sys-apps/systemd )
 	usb? ( virtual/libusb:1 )
@@ -54,6 +49,7 @@ CDEPEND="
 		!<=app-emulation/emul-linux-x86-baselibs-20140508
 		!app-emulation/emul-linux-x86-baselibs[-abi_x86_32(-)]
 	)
+	sys-libs/zlib[${MULTILIB_USEDEP}]
 "
 
 DEPEND="${CDEPEND}
@@ -70,6 +66,11 @@ BDEPEND="
 
 RDEPEND="${CDEPEND}
 	selinux? ( sec-policy/selinux-cups )
+	test? (
+		dev-cpp/gtest:=
+		>=chromeos-base/libchrome-0.0.1-r31:0=[cros-debug=]
+		>=chromeos-base/libbrillo-0.0.1-r1651:=
+	)
 "
 
 REQUIRED_USE="
@@ -110,11 +111,9 @@ src_prepare() {
 
 multilib_src_configure() {
 	sanitizers-setup-env
+	append-lfs-flags
 
 	export DSOFLAGS="${LDFLAGS}"
-
-	einfo LANGS=\"${LANGS}\"
-	einfo LINGUAS=\"${LINGUAS}\"
 
 	local myconf=()
 
@@ -128,9 +127,19 @@ multilib_src_configure() {
 	# We perform further cleanup in multilib_src_install_all().
 	myconf+=( "--with-components=cros-minimal" )
 
+	# Default pkgconfig path is /usr/lib, which isn't correct for 64-bit.
+	myconf+=( "--with-pkgconfpath=/usr/$(get_libdir)/pkgconfig" )
+
+	# Allow non-root to run cupsd so the launcher can access it.
+	myconf+=( "--with-cupsd-file-perm=0555" )
+
+	# Enable compiling extra debug messages.  Only printed when the cupsd
+	# debug level is increased.
+	myconf+=( "--enable-debug-printfs" )
+
 	# The tests use googletest (C++), so make sure correct C++ version is
 	# enabled.
-	append-cxxflags -std=gnu++17
+	append-cxxflags -std=gnu++20
 
 	# explicitly specify compiler wrt bug 524340
 	#
@@ -142,32 +151,31 @@ multilib_src_configure() {
 		LIBS="-lstdc++" \
 		KRB5CONFIG="${EPREFIX}/usr/bin/${CHOST}-krb5-config" \
 		PKGCONFIG="$(tc-getPKG_CONFIG)" \
-		--libdir="${EPREFIX}"/usr/$(get_libdir) \
+		--libdir="${EPREFIX}/usr/$(get_libdir)" \
 		--localstatedir="${EPREFIX}"/var \
 		--with-rundir="${EPREFIX}"/run/cups \
 		--with-printerroot="${EPREFIX}"/var/cache/cups/printers \
 		--with-cups-user=nobody \
 		--with-cups-group=cups \
 		--with-docdir="${EPREFIX}"/usr/share/cups/html \
-		--with-languages="${LINGUAS}" \
+		--with-languages=none \
 		--with-system-groups=lpadmin \
 		--with-xinetd=/etc/xinetd.d \
-		$(multilib_native_use_enable acl) \
+		"$(multilib_native_use_enable acl)" \
 		$(use_enable dbus) \
 		$(use_enable debug) \
 		$(use_enable debug debug-guards) \
 		$(use_enable debug debug-printfs) \
 		$(use_enable kerberos gssapi) \
-		$(multilib_native_use_enable pam) \
+		"$(multilib_native_use_enable pam)" \
 		$(use_enable static-libs static) \
 		$(use_enable threads) \
 		$(use_with ssl tls gnutls) \
 		$(use_with systemd ondemand systemd) \
 		$(use_with upstart ondemand upstart) \
-		$(multilib_native_use_enable usb libusb) \
+		"$(multilib_native_use_enable usb libusb)" \
 		--without-dnssd \
-		--disable-localization \
-		$(multilib_is_native_abi && echo --enable-libpaper || echo --disable-libpaper) \
+		"$(multilib_is_native_abi && echo --enable-libpaper || echo --disable-libpaper)" \
 		"${myconf[@]}"
 
 	# install in /usr/libexec always, instead of using /usr/lib/cups, as that
@@ -175,6 +183,7 @@ multilib_src_configure() {
 	sed -i -e "s:SERVERBIN.*:SERVERBIN = \"\$\(BUILDROOT\)${EPREFIX}/usr/libexec/cups\":" Makedefs || die
 	sed -i -e "s:#define CUPS_SERVERBIN.*:#define CUPS_SERVERBIN \"${EPREFIX}/usr/libexec/cups\":" config.h || die
 	sed -i -e "s:cups_serverbin=.*:cups_serverbin=\"${EPREFIX}/usr/libexec/cups\":" cups-config || die
+	sed -i -e "s:cups_serverbin=.*:cups_serverbin=\"${EPREFIX}/usr/libexec/cups\":" cups.pc || die
 }
 
 multilib_src_compile() {
@@ -183,12 +192,17 @@ multilib_src_compile() {
 		if use test; then
 			tc-export PKG_CONFIG
 			cros-debug-add-NDEBUG
-			export BASE_VER="$(libchrome_ver)"
 			emake compile-test
 		fi
 	else
 		emake libs
 	fi
+
+	# Suppress warning for quoting because we want these to expand into
+	# multiple arguments.
+	# shellcheck disable=SC2086
+	"$(tc-getCC)" ${CFLAGS} ${CPPFLAGS} ${LDFLAGS} -o cups_launcher \
+		"${S}/chromeos/cups_launcher.c"
 }
 
 multilib_src_test() {
@@ -214,12 +228,14 @@ multilib_src_test() {
 }
 
 multilib_src_install() {
+	# Set STRIPPROG to a no-op so we can use portage split debug instead.
 	if multilib_is_native_abi; then
-		emake BUILDROOT="${D}" install
+		emake BUILDROOT="${D}" STRIPPROG=true install
 	else
-		emake BUILDROOT="${D}" install-libs install-headers
+		emake BUILDROOT="${D}" STRIPPROG=true install-libs install-headers
 		dobin cups-config
 	fi
+	dosbin cups_launcher
 }
 
 multilib_src_install_all() {
@@ -242,7 +258,7 @@ multilib_src_install_all() {
 	[[ -n ${neededservices} ]] && neededservices="need${neededservices}"
 	cp "${FILESDIR}"/cupsd.init.d-r1 "${T}"/cupsd || die
 	sed -i \
-		-e "s/@neededservices@/$neededservices/" \
+		-e "s/@neededservices@/${neededservices}/" \
 		"${T}"/cupsd || die
 	doinitd "${T}"/cupsd
 
@@ -292,15 +308,22 @@ multilib_src_install_all() {
 	# http://www.cups.org/pipermail/cups/2016-February/027499.html
 	chmod 0755 "${ED}"/usr/libexec/cups/backend/{dnssd,ipp,lpd}
 
+	# Starting with CUPS v2.4, the usb backend is installed as root owned 0744
+	# because most Linux distros run it as root, even though running as non-root
+	# is a valid use case (CrOS runs it as user cups), so we install it as 0755 as
+	# done in CUPS < v2.4.
+	# Upstream discussion: https://github.com/OpenPrinting/cups/issues/121
+	# Also see b:279508819
+	chmod 0755 "${ED}"/usr/libexec/cups/backend/usb
+
 	# Create a symbolic link from "ippusb' to the ipp backend.
 	dosym ipp /usr/libexec/cups/backend/ippusb
 
 	# Install our own conf files
 	insinto /etc/cups
-	doins "${FILESDIR}"/{cupsd,cups-files}.conf
+	doins "${FILESDIR}"/{cupsd,cupsd-debug,cups-files}.conf
 	if use upstart; then
 		insinto /etc/init
-		doins "${FILESDIR}"/init/cups-post-upstart-socket-bridge.conf
 		doins "${FILESDIR}"/init/cupsd.conf
 	fi
 

@@ -1,4 +1,4 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2012 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -7,8 +7,9 @@ EAPI=7
 CROS_WORKON_PROJECT="chromiumos/third_party/u-boot"
 CROS_WORKON_LOCALNAME="u-boot/files"
 CROS_WORKON_SUBTREE="tools/patman"
+CROS_WORKON_EGIT_BRANCH="chromeos-v2023.10-next"
 
-PYTHON_COMPAT=( python3_6 )
+PYTHON_COMPAT=( python3_{6..11} )
 
 inherit cros-workon distutils-r1
 
@@ -21,19 +22,10 @@ KEYWORDS="~*"
 IUSE=""
 
 BDEPEND="dev-python/setuptools[${PYTHON_USEDEP}]"
-RDEPEND=""
+RDEPEND="dev-libs/u_boot_pylib[${PYTHON_USEDEP}]"
 
-src_prepare() {
-	cd tools/patman
-	distutils-r1_src_prepare
-}
+src_unpack() {
+	cros-workon_src_unpack
 
-src_compile() {
-	cd tools/patman
-	distutils-r1_src_compile
-}
-
-src_install() {
-	cd tools/patman
-	distutils-r1_src_install
+	S+=/tools/patman
 }

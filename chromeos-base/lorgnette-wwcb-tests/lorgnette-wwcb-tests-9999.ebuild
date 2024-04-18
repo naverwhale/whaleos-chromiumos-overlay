@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2.
 
 EAPI=7
@@ -15,6 +15,7 @@ CROS_GO_TEST=(
 )
 
 CROS_GO_BINARIES=(
+	"chromiumos/scanning/scripts/test_scan_source"
 	"chromiumos/scanning/scripts/test_scanner_capabilities"
 )
 

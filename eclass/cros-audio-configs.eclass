@@ -1,8 +1,8 @@
-# Copyright 2015 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 #
-# Original Author: The Chromium OS Authors <chromium-os-dev@chromium.org>
+# Original Author: The ChromiumOS Authors <chromium-os-dev@chromium.org>
 # Purpose: Library for handling installation of audio config files.
 #
 #

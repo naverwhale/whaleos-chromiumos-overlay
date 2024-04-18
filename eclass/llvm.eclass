@@ -1,4 +1,4 @@
-# Copyright 1999-2017 Gentoo Foundation
+# Copyright 1999-2022 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # @ECLASS: llvm.eclass
@@ -6,6 +6,7 @@
 # Michał Górny <mgorny@gentoo.org>
 # @AUTHOR:
 # Michał Górny <mgorny@gentoo.org>
+# @SUPPORTED_EAPIS: 6 7 8
 # @BLURB: Utility functions to build against slotted LLVM
 # @DESCRIPTION:
 # The llvm.eclass provides utility functions that can be used to build
@@ -16,20 +17,21 @@
 # a proper dependency string yourself to guarantee that appropriate
 # version of LLVM is installed.
 #
-# Example use for a package supporting LLVM 3.8 to 5:
+# Example use for a package supporting LLVM 9 to 11:
 # @CODE
-# inherit cmake-utils llvm
+# inherit cmake llvm
 #
 # RDEPEND="
-#	<sys-devel/llvm-6_rc:=
+#	<sys-devel/llvm-11:=
 #	|| (
-#		sys-devel/llvm:5
-#		sys-devel/llvm:4
-#		>=sys-devel/llvm-3.8:0
+#		sys-devel/llvm:9
+#		sys-devel/llvm:10
+#		sys-devel/llvm:11
 #	)
 # "
+# DEPEND=${RDEPEND}
 #
-# LLVM_MAX_SLOT=5
+# LLVM_MAX_SLOT=11
 #
 # # only if you need to define one explicitly
 # pkg_setup() {
@@ -37,12 +39,28 @@
 #	do-something-else
 # }
 # @CODE
+#
+# Example for a package needing LLVM+clang w/ a specific target:
+# @CODE
+# inherit cmake llvm
+#
+# # note: do not use := on both clang and llvm, it can match different
+# # slots then. clang pulls llvm in, so we can skip the latter.
+# RDEPEND="
+#	>=sys-devel/clang-9:=[llvm_targets_AMDGPU(+)]
+# "
+# DEPEND=${RDEPEND}
+#
+# llvm_check_deps() {
+#	has_version -d "sys-devel/clang:${LLVM_SLOT}[llvm_targets_AMDGPU(+)]"
+# }
+# @CODE
 
 case "${EAPI:-0}" in
-	0|1|2|3|4)
+	0|1|2|3|4|5)
 		die "Unsupported EAPI=${EAPI:-0} (too old) for ${ECLASS}"
 		;;
-	5|6)
+	6|7|8)
 		;;
 	*)
 		die "Unsupported EAPI=${EAPI} (unknown) for ${ECLASS}"
@@ -52,6 +70,10 @@ esac
 EXPORT_FUNCTIONS pkg_setup
 
 if [[ ! ${_LLVM_ECLASS} ]]; then
+
+# make sure that the versions installing straight into /usr/bin
+# are uninstalled
+DEPEND="!!sys-devel/llvm:0"
 
 # @ECLASS-VARIABLE: LLVM_MAX_SLOT
 # @DEFAULT_UNSET
@@ -63,21 +85,68 @@ if [[ ! ${_LLVM_ECLASS} ]]; then
 # @INTERNAL
 # @DESCRIPTION:
 # Correct values of LLVM slots, newest first.
-declare -g -r _LLVM_KNOWN_SLOTS=( 5 4 )
+declare -g -r _LLVM_KNOWN_SLOTS=( {15..8} )
 
 # @FUNCTION: get_llvm_prefix
-# @USAGE: [<max_slot>]
+# @USAGE: [-b|-d] [<max_slot>]
 # @DESCRIPTION:
-# Prints the absolute path to an LLVM install prefix corresponding to
-# the newest installed version of LLVM that is not newer than
-# <max_slot>. If no <max_slot> is specified, there is no upper limit.
+# Find the newest LLVM install that is acceptable for the package,
+# and print an absolute path to it.
 #
-# Note that the function does not support lower-bound version, so you
-# need to provide correct dependencies to ensure that a new enough
-# version will be always installed. Otherwise, the function could return
-# a version lower than required.
+# If -b is specified, the checks are performed relative to BROOT,
+# and BROOT-path is returned.  This is appropriate when your package
+# calls llvm-config executable.  -b is supported since EAPI 7.
+#
+# If -d is specified, the checks are performed relative to ESYSROOT,
+# and ESYSROOT-path is returned.  This is appropriate when your package
+# uses CMake find_package(LLVM).  -d is the default.
+#
+# If <max_slot> is specified, then only LLVM versions that are not newer
+# than <max_slot> will be considered. Otherwise, all LLVM versions would
+# be considered acceptable. The function does not support specifying
+# minimal supported version -- the developer must ensure that a version
+# new enough is installed via providing appropriate dependencies.
+#
+# If llvm_check_deps() function is defined within the ebuild, it will
+# be called to verify whether a particular slot is accepable. Within
+# the function scope, LLVM_SLOT will be defined to the SLOT value
+# (0, 4, 5...). The function should return a true status if the slot
+# is acceptable, false otherwise. If llvm_check_deps() is not defined,
+# the function defaults to checking whether sys-devel/llvm:${LLVM_SLOT}
+# is installed.
 get_llvm_prefix() {
 	debug-print-function ${FUNCNAME} "${@}"
+
+	local hv_switch=-d
+	while [[ ${1} == -* ]]; do
+		case ${1} in
+			-b|-d) hv_switch=${1};;
+			*) break;;
+		esac
+		shift
+	done
+
+	local prefix=
+	if [[ ${EAPI} != 6 ]]; then
+		case ${hv_switch} in
+			-b)
+				prefix=${BROOT}
+				;;
+			-d)
+				prefix=${ESYSROOT}
+				;;
+		esac
+	else
+		case ${hv_switch} in
+			-b)
+				die "${FUNCNAME} -b is not supported in EAPI ${EAPI}"
+				;;
+			-d)
+				prefix=${EPREFIX}
+				hv_switch=
+				;;
+		esac
+	fi
 
 	local max_slot=${1}
 	local slot
@@ -91,11 +160,16 @@ get_llvm_prefix() {
 			fi
 		fi
 
-		local p=${EPREFIX}/usr/lib/llvm/${slot}
-		if [[ -x ${p}/bin/llvm-config ]]; then
-			echo "${p}"
-			return
+		if declare -f llvm_check_deps >/dev/null; then
+			local LLVM_SLOT=${slot}
+			llvm_check_deps || continue
+		else
+			# check if LLVM package is installed
+			has_version ${hv_switch} "sys-devel/llvm:${slot}" || continue
 		fi
+
+		echo "${prefix}/usr/lib/llvm/${slot}"
+		return
 	done
 
 	# max_slot should have been unset in the iteration
@@ -103,23 +177,17 @@ get_llvm_prefix() {
 		die "${FUNCNAME}: invalid max_slot=${max_slot}"
 	fi
 
-	# fallback to :0
-	# assume it's always <= 4 (the lower max_slot allowed)
-	p=${EPREFIX}/usr
-	if [[ -x ${p}/bin/llvm-config ]]; then
-		echo "${p}"
-		return
-	fi
-
-	die "No LLVM slot${1:+ <= ${1}} found in PATH!"
+	die "No LLVM slot${1:+ <= ${1}} satisfying the package's dependencies found installed!"
 }
 
 # @FUNCTION: llvm_pkg_setup
 # @DESCRIPTION:
-# Prepend the executable directory corresponding to the newest
-# installed LLVM version that is not newer than ${LLVM_MAX_SLOT}
-# to PATH. If LLVM_MAX_SLOT is unset or empty, the newest installed
-# slot will be used.
+# Prepend the appropriate executable directory for the newest
+# acceptable LLVM slot to the PATH. For path determination logic,
+# please see the get_llvm_prefix documentation.
+#
+# The highest acceptable LLVM slot can be set in LLVM_MAX_SLOT variable.
+# If it is unset or empty, any slot is acceptable.
 #
 # The PATH manipulation is only done for source builds. The function
 # is a no-op when installing a binary package.
@@ -130,7 +198,29 @@ llvm_pkg_setup() {
 	debug-print-function ${FUNCNAME} "${@}"
 
 	if [[ ${MERGE_TYPE} != binary ]]; then
-		export PATH=$(get_llvm_prefix ${LLVM_MAX_SLOT})/bin:${PATH}
+		local llvm_path=$(get_llvm_prefix "${LLVM_MAX_SLOT}")/bin
+		local IFS=:
+		local split_path=( ${PATH} )
+		local new_path=()
+		local x added=
+
+		# prepend new path before first LLVM version found
+		for x in "${split_path[@]}"; do
+			if [[ ${x} == */usr/lib/llvm/*/bin ]]; then
+				if [[ ${x} != ${llvm_path} ]]; then
+					new_path+=( "${llvm_path}" )
+				elif [[ ${added} && ${x} == ${llvm_path} ]]; then
+					# deduplicate
+					continue
+				fi
+				added=1
+			fi
+			new_path+=( "${x}" )
+		done
+		# ...or to the end of PATH
+		[[ ${added} ]] || new_path+=( "${llvm_path}" )
+
+		export PATH=${new_path[*]}
 	fi
 }
 

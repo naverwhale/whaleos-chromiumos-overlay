@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -14,16 +14,22 @@ PLATFORM_SUBDIR="lorgnette"
 inherit cros-workon platform user udev
 
 DESCRIPTION="Document Scanning service for Chromium OS"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/lorgnette/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/lorgnette/"
 LICENSE="BSD-Google"
 KEYWORDS="~*"
 IUSE="test"
 
 COMMON_DEPEND="
 	>=chromeos-base/metrics-0.0.1-r3152:=
+	dev-cpp/abseil-cpp:=
+	dev-libs/protobuf:=
+	dev-libs/re2:=
+	media-libs/libjpeg-turbo:=
 	media-libs/libpng:=
 	media-gfx/sane-airscan:=
 	media-gfx/sane-backends:=
+	media-gfx/sane-backends-extras:=
+	sys-apps/util-linux:=
 	virtual/jpeg:0=
 	virtual/libusb:1
 "
@@ -41,6 +47,10 @@ DEPEND="${COMMON_DEPEND}
 	chromeos-base/system_api:=
 "
 
+BDEPEND="
+	chromeos-base/chromeos-dbus-bindings
+"
+
 pkg_preinst() {
 	enewgroup ippusb
 	enewgroup usbprinter
@@ -48,17 +58,9 @@ pkg_preinst() {
 
 src_install() {
 	platform_src_install
-
-	dobin "${OUT}"/lorgnette
-	insinto /etc/dbus-1/system.d
-	doins dbus_permissions/org.chromium.lorgnette.conf
-	insinto /usr/share/dbus-1/system-services
-	doins dbus_service/org.chromium.lorgnette.service
-	insinto /etc/init
-	doins init/lorgnette.conf
 	udev_dorules udev/*.rules
 }
 
 platform_pkg_test() {
-	platform_test "run" "${OUT}/lorgnette_unittest"
+	platform test_all
 }

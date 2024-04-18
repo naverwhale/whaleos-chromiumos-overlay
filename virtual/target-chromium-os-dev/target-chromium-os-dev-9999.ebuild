@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="7"
@@ -18,19 +18,24 @@ SLOT="0"
 KEYWORDS="~*"
 # Note: Do not utilize USE=internal here.  Update virtual/target-chrome-os-dev.
 IUSE="
+	asan
+	cellular
 	chromeless_tty
 	cras
 	diag
+	hps
 	lldbserver
 	nvme
 	opengl
 	pam
 	+power_management
 	+profile
-	python_targets_python2_7
+	python_targets_python3_8
 	+shill
 	tpm
 	tpm2
+	ubsan
+	ufs
 	usb
 	vaapi
 	video_cards_amdgpu
@@ -61,16 +66,11 @@ IUSE="
 #
 ################################################################################
 CROS_X86_RDEPEND="
-	app-benchmarks/i7z
 	power_management? ( dev-util/turbostat )
 	sys-apps/dmidecode
 	sys-apps/pciutils
 	sys-boot/syslinux
-	vaapi? (
-		chromeos-base/libva-fake-driver
-		media-gfx/vadumpcaps
-		media-video/libva-utils
-	)
+	vaapi? ( media-gfx/vadumpcaps media-video/libva-utils )
 "
 
 RDEPEND="
@@ -112,18 +112,27 @@ RDEPEND="${RDEPEND}
 	)
 	chromeos-base/avtest_label_detect
 	chromeos-base/chromeos-dev-root
-	chromeos-base/cros-config-test
 	chromeos-base/cryptohome-dev-utils
 	tpm2? ( chromeos-base/g2f_tools )
 	!chromeless_tty? ( chromeos-base/graphics-utils-go )
+	hps? (
+		!asan? (
+			!ubsan? (
+				chromeos-base/hps-firmware-tools
+			)
+		)
+		chromeos-base/hps-tool
+	)
 	chromeos-base/policy_utils
 	chromeos-base/protofiles
-	!chromeless_tty? ( chromeos-base/screen-capture-utils )
+	chromeos-base/routing-simulator
+	!chromeless_tty? ( chromeos-base/screen-capture-utils www-apps/novnc )
 	shill? ( chromeos-base/shill-test-scripts )
-	python_targets_python2_7? ( chromeos-base/touch_firmware_test )
+	chromeos-base/touch_firmware_test
 	chromeos-base/usi-test
 	dev-vcs/git
 	net-analyzer/tcpdump
+	net-analyzer/speedtest-cli
 	net-analyzer/traceroute
 	net-dialup/minicom
 	net-dns/bind-tools
@@ -132,23 +141,27 @@ RDEPEND="${RDEPEND}
 	net-misc/iperf:2
 	net-misc/iputils
 	net-misc/openssh
+	net-misc/qlog
 	net-misc/rsync
 	net-wireless/iw
 	net-wireless/wireless-tools
-	python_targets_python2_7? ( dev-lang/python:2.7 )
-	dev-lang/python:3.6
+	python_targets_python3_8? ( dev-lang/python:3.8 )
 	dev-libs/libgpiod
 	dev-python/protobuf-python
 	dev-python/cherrypy
 	dev-python/dbus-python
+	dev-python/pydbus
 	dev-python/hid-tools
-	python_targets_python2_7? ( dev-util/hdctools )
+	dev-util/hdctools
 	lldbserver? ( dev-util/lldb-server )
 	dev-util/mem
 	dev-util/strace
 	media-libs/libyuv-test
 	media-libs/openh264
-	vulkan? ( media-libs/vulkan-layers )
+	vulkan? (
+		dev-util/vulkan-tools
+		media-libs/vulkan-layers
+	)
 	media-tv/v4l-utils
 	media-video/yavta
 	net-dialup/lrzsz
@@ -164,16 +177,21 @@ RDEPEND="${RDEPEND}
 	sys-apps/gawk
 	sys-apps/i2c-tools
 	sys-apps/iotools
-	sys-apps/kbd
+	sys-apps/kexec-lite
 	sys-apps/less
 	sys-apps/mmc-utils
 	nvme? ( sys-apps/nvme-cli )
 	sys-apps/portage
 	sys-apps/smartmontools
+	ufs? (
+		sys-apps/sg3_utils
+		sys-apps/ufs-utils
+	)
 	usb? ( sys-apps/usbutils )
 	sys-apps/which
 	sys-block/fio
 	sys-devel/gdb
+	sys-fs/cryptsetup
 	sys-fs/fuse
 	sys-fs/lvm2
 	sys-fs/mtd-utils

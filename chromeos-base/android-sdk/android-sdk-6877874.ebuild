@@ -1,4 +1,4 @@
-# Copyright 2020 Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -8,8 +8,7 @@ HOMEPAGE="http://developer.android.com"
 
 # NOTE: Due to possible licensing issues, only use AOSP SDK:
 # https://ci.android.com/builds/branches/aosp-sdk-release/grid?
-SRC_URI="https://ci.android.com/builds/submitted/${PV}/sdk/latest/android-sdk_${PV}_linux-x86.zip
-	https://ci.android.com/builds/submitted/4953408/sdk/latest/sdk-repo-linux-platforms-4953408.zip"
+SRC_URI="https://ci.android.com/builds/submitted/${PV}/sdk/latest/android-sdk_${PV}_linux-x86.zip"
 
 LICENSE="
 	AOSP-SDK
@@ -42,24 +41,15 @@ src_install() {
 
 	# Zips to be installed:
 	#  - Android SDK 30: both build-tools and platforms
-	#  - Android SDK 27: only platforms
 
 	# License file for platforms and build-tools is in licenses/AOSP-SDK
 	# TODO(ricardoq): Rename "android-S" to "android-30"
 	insinto "${ANDROID_SDK_DIR}"
 	doins -r ${PN}_${PV}_linux-x86/platforms
 	insopts "-m0755"
-	doins -r ${PN}_${PV}_linux-x86/build-tools
-
-	# In addition to SDK P, some APKs need the older android-platform-27
-	# to compile correctly.
-	insinto "${ANDROID_SDK_DIR}/platforms"
-
-	# Rename directory to match correct version. Zipped directory has the
-	# wrong name.
-	# Also use numbers instead of letters to honor the convention used
-	# by Android Studio.
-	mv "${WORKDIR}/android-Q" "${WORKDIR}/android-27"
-
-	doins -r "android-27"
+	insinto "${ANDROID_SDK_DIR}/build-tools/android-S"
+	doins ${PN}_${PV}_linux-x86/build-tools/android-S/aapt2
+	doins ${PN}_${PV}_linux-x86/build-tools/android-S/apksigner
+	doins ${PN}_${PV}_linux-x86/build-tools/android-S/d8
+	doins -r ${PN}_${PV}_linux-x86/build-tools/android-S/lib
 }

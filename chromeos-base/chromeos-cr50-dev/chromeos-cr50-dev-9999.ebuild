@@ -1,4 +1,4 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE.makefile file.
 
@@ -8,34 +8,38 @@ CROS_WORKON_PROJECT=(
 	"chromiumos/platform/ec"
 	"chromiumos/third_party/tpm2"
 	"chromiumos/third_party/cryptoc"
+	"chromiumos/platform/pinweaver"
 )
 CROS_WORKON_LOCALNAME=(
 	"platform/cr50"
 	"third_party/tpm2"
 	"third_party/cryptoc"
+	"platform/pinweaver"
 )
 CROS_WORKON_DESTDIR=(
 	"${S}/platform/ec"
 	"${S}/third_party/tpm2"
 	"${S}/third_party/cryptoc"
+	"${S}/platform/pinweaver"
 )
 CROS_WORKON_EGIT_BRANCH=(
 	"cr50_stab"
 	"main"
 	"main"
+	"main"
 )
 
-inherit coreboot-sdk cros-ec-board cros-workon toolchain-funcs
+inherit coreboot-sdk cros-workon toolchain-funcs cros-sanitizers
 
 DESCRIPTION="Google Security Chip firmware code"
 HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform/ec/+/refs/heads/cr50_stab"
 MIRROR_PATH="gs://chromeos-localmirror/distfiles/"
-CR50_ROS=(cr50.prod.ro.A.0.0.11 cr50.prod.ro.B.0.0.11)
+CR50_ROS=(cr50.prod.ro.A.0.0.12 cr50.prod.ro.B.0.0.12)
 SRC_URI="${CR50_ROS[*]/#/${MIRROR_PATH}}"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
-IUSE="asan cros_host fuzzer msan quiet ubsan verbose"
+IUSE="asan cros_host fuzzer msan quiet reef ubsan verbose"
 
 COMMON_DEPEND="
 	dev-libs/openssl:0=
@@ -48,6 +52,7 @@ COMMON_DEPEND="
 RDEPEND="
 	!<chromeos-base/chromeos-ec-0.0.2
 	!<chromeos-base/ec-utils-0.0.2
+	chromeos-base/chromeos-gsc-dev
 	${COMMON_DEPEND}
 "
 
@@ -79,8 +84,6 @@ set_build_env() {
 	export HOSTCC=${CC}
 	export BUILDCC=${BUILD_CC}
 
-	get_ec_boards
-
 	EC_OPTS=()
 	use quiet && EC_OPTS+=( -s 'V=0' )
 	use verbose && EC_OPTS+=( 'V=1' )
@@ -110,8 +113,6 @@ src_compile() {
 	set_build_env
 
 	export BOARD=cr50
-	emake -C extra/usb_updater clean
-	emake -C extra/usb_updater gsctool
 
 	if use fuzzer ; then
 		local sanitizers=()
@@ -121,14 +122,34 @@ src_compile() {
 		emake buildfuzztests "${sanitizers[@]}"
 	fi
 
-	if [[ "${EC_BOARDS[0]}" != "reef" ]]; then
+	if ! use reef; then
 		elog "Not building Cr50 binaries"
 		return
 	fi
 
 	emake clean
 	emake "${EC_OPTS[@]}"
+	emake "out=build/cr50_ct" "CRYPTO_TEST=1" "${EC_OPTS[@]}"
+	emake "out=build/cr50_ct_rb" "CRYPTO_TEST=1" "H1_RED_BOARD=1" \
+			"${EC_OPTS[@]}"
 	prepare_cr50_signer_aid
+}
+
+#
+# Install the build artifacts.
+#
+install_cr50_build_artifacts () {
+	local build_dir="${1}"
+	local dest_dir="${2}"
+	local elf_suffix="${3}"
+
+	einfo "Installing cr50 from ${build_dir} into ${dest_dir}"
+
+	insinto "${dest_dir}"
+	doins "${build_dir}/ec.bin"
+	doins "${build_dir}/RW/board/cr50/dcrypto/fips_module.o"
+	newins "${build_dir}/RW/ec.RW.elf.fips" "ec.RW.elf${elf_suffix}"
+	newins "${build_dir}/RW/ec.RW_B.elf.fips" "ec.RW_B.elf${elf_suffix}"
 }
 
 #
@@ -158,13 +179,16 @@ install_cr50_signer_aid () {
 	doins "${S}/util/signer/fuses.xml"
 }
 
+src_configure() {
+	sanitizers-setup-env
+	default
+}
+
 src_install() {
 	local build_dir
 	local dest_dir
 
-	dosbin "extra/usb_updater/gsctool"
 	dosbin "util/chargen"
-	dosym "gsctool" "/usr/sbin/usb_updater"
 
 	if use fuzzer ; then
 		local f
@@ -190,20 +214,25 @@ src_install() {
 		doexe "util/ap_ro_hash.py"
 	fi
 
-	if [[ "${EC_BOARDS[0]}" != "reef" ]]; then
+	if ! use reef; then
 		elog "Not installing Cr50 binaries"
 		return
 	fi
 
-	build_dir="build/cr50"
-	dest_dir='/firmware/cr50'
-	einfo "Installing cr50 from ${build_dir} into ${dest_dir}"
-
-	insinto "${dest_dir}"
-	doins "${build_dir}/ec.bin"
-	doins "${build_dir}/RW/ec.RW.elf"
-	doins "${build_dir}/RW/ec.RW_B.elf"
+	install_cr50_build_artifacts "build/cr50" "/firmware/cr50" ""
 
 	install_cr50_signer_aid
-}
 
+	# Save the CRYPTO_TEST artifacts, so it's easy to run crypto tests for
+	# this build. CRYPTO_TEST images are only going to be dev signed, so
+	# there's no need to install signer artifacts.
+	# The crypto test build should not be prod signed. Do a couple of things
+	# to make sure the signer ignores it. Rename it to "crypto_test" so "50"
+	# isn't in the name. The signer searches for "50" to find the build
+	# artifacts, so it should ignore crypto_test. Change the elf filenames
+	# too just to be safe.
+	install_cr50_build_artifacts "build/cr50_ct" "/firmware/crypto_test" \
+			".test"
+	install_cr50_build_artifacts "build/cr50_ct_rb" \
+			"/firmware/crypto_test_rb" ".test"
+}

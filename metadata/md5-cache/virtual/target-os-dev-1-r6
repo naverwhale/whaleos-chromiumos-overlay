@@ -6,4 +6,4 @@ KEYWORDS=*
 LICENSE=metapackage
 RDEPEND=virtual/target-chromium-os-dev
 SLOT=0
-_md5_=ae88c724c3d2f2b70268cf4e1679aebc
+_md5_=c7d96dd915f5df9bea9fc8d42f558a60

@@ -11,7 +11,7 @@ else
 	KEYWORDS="*"
 fi
 
-PYTHON_COMPAT=( python3_{6..8} )
+PYTHON_COMPAT=( python3_{8..11} )
 
 inherit meson multilib-minimal ${GIT_ECLASS} python-any-r1
 

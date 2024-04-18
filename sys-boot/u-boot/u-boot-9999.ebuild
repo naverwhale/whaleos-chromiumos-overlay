@@ -1,15 +1,15 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
 
 CROS_WORKON_PROJECT=("chromiumos/third_party/u-boot" "chromiumos/platform/vboot_reference")
 CROS_WORKON_LOCALNAME=("u-boot/files" "../platform/vboot_reference")
-CROS_WORKON_EGIT_BRANCH=("chromeos-v2020.01" "master")
+CROS_WORKON_EGIT_BRANCH=("chromeos-v2023.10-next" "master")
 VBOOT_REFERENCE_DESTDIR="${S}/vboot_reference"
 CROS_WORKON_DESTDIR=("${S}" "${VBOOT_REFERENCE_DESTDIR}")
 
-inherit toolchain-funcs flag-o-matic cros-workon cros-unibuild
+inherit toolchain-funcs flag-o-matic cros-workon cros-unibuild cros-sanitizers
 
 DESCRIPTION="Das U-Boot boot loader"
 HOMEPAGE="http://www.denx.de/wiki/U-Boot"
@@ -56,7 +56,8 @@ UB_BUILD_DIR="build"
 # @FUNCTION: get_current_u_boot_config
 # @DESCRIPTION:
 # Finds the config for the current board by checking the master configuration.
-# The default is to use 'coreboot'.
+# The default is to use 'coreboot64' since it supports booting common Linux
+# distros.
 get_current_u_boot_config() {
 	local config
 
@@ -65,15 +66,17 @@ get_current_u_boot_config() {
 	else
 		config="$(cros_config_host get-firmware-build-targets u-boot)"
 	fi
-	echo "${config:-coreboot}"
+	echo "${config:-coreboot64}"
 }
 
 umake() {
 	# Add `ARCH=` to reset ARCH env and let U-Boot choose it.
-	ARCH= emake "${COMMON_MAKE_FLAGS[@]}" "$@"
+	ARCH="" emake "${COMMON_MAKE_FLAGS[@]}" "$@"
 }
 
 src_configure() {
+	sanitizers-setup-env
+
 	local config
 
 	export LDFLAGS=$(raw-ldflags)
@@ -84,9 +87,18 @@ src_configure() {
 	elog "Using U-Boot config: ${config}"
 
 	# Firmware related binaries are compiled with 32-bit toolchain
-	# on 64-bit platforms
+	# on 64-bit platforms, but check for a config ending in 64
+	# (e.g "coreboot64") so we select the right one.
+	OUTPUT_BINARY="u-boot.bin"
 	if ! use cros_host && [[ ${CHOST} == x86_64-* ]]; then
-		CROSS_PREFIX="i686-pc-linux-gnu-"
+		if [[ ${config} == *64 ]]; then
+			CROSS_PREFIX="x86_64-cros-linux-gnu-"
+
+			# 64-bit SPL + U-Boot image
+			OUTPUT_BINARY="u-boot-x86-with-spl.bin"
+		else
+			CROSS_PREFIX="i686-cros-linux-gnu-"
+		fi
 	else
 		CROSS_PREFIX="${CHOST}-"
 	fi
@@ -97,6 +109,7 @@ src_configure() {
 		"HOSTCC=${BUILD_CC}"
 		HOSTSTRIP=true
 		QEMU_ARCH=
+		NO_PYTHON=y
 	)
 	if use vboot; then
 		COMMON_MAKE_FLAGS+=(
@@ -133,7 +146,6 @@ src_install() {
 	local inst_dir="/firmware"
 	local files_to_copy=(
 		System.map
-		u-boot.bin
 		u-boot.dtb
 		u-boot.dtb.out
 		u-boot.img
@@ -162,6 +174,9 @@ src_install() {
 		[[ -f "${UB_BUILD_DIR}/${f}" ]] &&
 			doexe "${f/#/${UB_BUILD_DIR}/}"
 	done
+
+	# Install the correct binary as u-boot.bin
+	newins "${UB_BUILD_DIR}/${OUTPUT_BINARY}" u-boot.bin
 
 	# Install the full image needed by sandbox.
 	if use vboot; then

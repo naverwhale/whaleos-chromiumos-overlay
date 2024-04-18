@@ -1,0 +1,12 @@
+diff --git a/tensorflow/lite/tools/delegates/BUILD b/tensorflow/lite/tools/delegates/BUILD
+index 5e71791..551bd48 100644
+--- a/tensorflow/lite/tools/delegates/BUILD
++++ b/tensorflow/lite/tools/delegates/BUILD
+@@ -19,6 +19,7 @@ cc_library_with_tflite(
+     copts = common_copts,
+     tflite_deps = [
+         "//tensorflow/lite/core/shims:common",
++        "//tensorflow/lite/delegates/gpu:delegate"
+     ],
+     deps = [
+         "//tensorflow/lite/tools:command_line_flags",

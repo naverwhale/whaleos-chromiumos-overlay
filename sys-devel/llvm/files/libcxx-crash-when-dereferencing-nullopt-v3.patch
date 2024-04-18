@@ -1,0 +1,108 @@
+Original author hscham <hscham@chromium.org>.
+
+TODO(b/192529039): this is a temporary patch to address security
+concerns when migrating base:Optional and absl::optional to
+std::optional. libcxx upstream is working on decoupling hardening and
+debugging asserts and this patch should be replaced by the upstream
+patch upon completion.
+
+diff --git a/libcxx/include/optional b/libcxx/include/optional
+index 80146234fc9b..a30aa40ac0ab 100644
+--- a/libcxx/include/optional
++++ b/libcxx/include/optional
+@@ -177,6 +177,8 @@ namespace std {
+ 
+ */
+ 
++#include <stdio.h>
++
+ #include <__assert> // all public C++ headers provide the assertion handler
+ #include <__availability>
+ #include <__compare/compare_three_way_result.h>
+@@ -993,56 +995,86 @@ public:
+     }
+ 
+     _LIBCPP_INLINE_VISIBILITY
++    _LIBCPP_AVAILABILITY_THROW_BAD_OPTIONAL_ACCESS
+     constexpr
+     add_pointer_t<value_type const>
+     operator->() const
+     {
+         _LIBCPP_ASSERT_VALID_ELEMENT_ACCESS(this->has_value(), "optional operator-> called on a disengaged value");
++        if (!this->has_value()) {
++          fprintf(stderr, "optional operator-> called on a disengaged value\n");
++          __builtin_trap();
++        }
+         return _VSTD::addressof(this->__get());
+     }
+ 
+     _LIBCPP_INLINE_VISIBILITY
++    _LIBCPP_AVAILABILITY_THROW_BAD_OPTIONAL_ACCESS
+     constexpr
+     add_pointer_t<value_type>
+     operator->()
+     {
+         _LIBCPP_ASSERT_VALID_ELEMENT_ACCESS(this->has_value(), "optional operator-> called on a disengaged value");
++        if (!this->has_value()) {
++          fprintf(stderr, "optional operator-> called on a disengaged value\n");
++          __builtin_trap();
++        }
+         return _VSTD::addressof(this->__get());
+     }
+ 
+     _LIBCPP_INLINE_VISIBILITY
++    _LIBCPP_AVAILABILITY_THROW_BAD_OPTIONAL_ACCESS
+     constexpr
+     const value_type&
+     operator*() const& noexcept
+     {
+         _LIBCPP_ASSERT_VALID_ELEMENT_ACCESS(this->has_value(), "optional operator* called on a disengaged value");
++        if (!this->has_value()) {
++          fprintf(stderr, "optional operator-> called on a disengaged value\n");
++          __builtin_trap();
++        }
+         return this->__get();
+     }
+ 
+     _LIBCPP_INLINE_VISIBILITY
++    _LIBCPP_AVAILABILITY_THROW_BAD_OPTIONAL_ACCESS
+     constexpr
+     value_type&
+     operator*() & noexcept
+     {
+         _LIBCPP_ASSERT_VALID_ELEMENT_ACCESS(this->has_value(), "optional operator* called on a disengaged value");
++        if (!this->has_value()) {
++          fprintf(stderr, "optional operator-> called on a disengaged value\n");
++          __builtin_trap();
++        }
+         return this->__get();
+     }
+ 
+     _LIBCPP_INLINE_VISIBILITY
++    _LIBCPP_AVAILABILITY_THROW_BAD_OPTIONAL_ACCESS
+     constexpr
+     value_type&&
+     operator*() && noexcept
+     {
+         _LIBCPP_ASSERT_VALID_ELEMENT_ACCESS(this->has_value(), "optional operator* called on a disengaged value");
++        if (!this->has_value()) {
++          fprintf(stderr, "optional operator-> called on a disengaged value\n");
++          __builtin_trap();
++        }
+         return _VSTD::move(this->__get());
+     }
+ 
+     _LIBCPP_INLINE_VISIBILITY
++    _LIBCPP_AVAILABILITY_THROW_BAD_OPTIONAL_ACCESS
+     constexpr
+     const value_type&&
+     operator*() const&& noexcept
+     {
+         _LIBCPP_ASSERT_VALID_ELEMENT_ACCESS(this->has_value(), "optional operator* called on a disengaged value");
++        if (!this->has_value()) {
++          fprintf(stderr, "optional operator-> called on a disengaged value\n");
++          __builtin_trap();
++        }
+         return _VSTD::move(this->__get());
+     }
+ 

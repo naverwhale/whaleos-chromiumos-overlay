@@ -1,8 +1,8 @@
 # Copyright 1999-2009 Gentoo Foundation
-# Copyright 2014 The Chromium OS Authors
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=5
+EAPI=7
 inherit eutils toolchain-funcs multilib
 
 MY_P=${P/_alpha/-a}
@@ -15,42 +15,56 @@ SLOT="0"
 KEYWORDS="*"
 IUSE=""
 
-RDEPEND="
-	net-libs/libtirpc
-"
-DEPEND="
-	${RDEPEND}
-	virtual/pkgconfig
-	"
-
 S="${WORKDIR}/${MY_P}"
 
+PATCHES=(
+	"${FILESDIR}/lmbench-cflags.patch"
+	"${FILESDIR}/${PN}-optional-rpc.patch"
+)
+
 src_prepare() {
+	# shellcheck disable=SC2016
 	sed -i \
 		-e "/\$(BASE)\/lib/s:/lib:/$(get_libdir):g" \
 		-e '/-ranlib/s:ranlib:$(RANLIB):' \
 		src/Makefile || die
-	epatch "${FILESDIR}/lmbench-cflags.patch"
+	default
 }
 
-src_compile() {
+src_configure() {
+	append-lfs-flags
+	default
+}
+
+_emake() {
+	# NB: include "-O1" in CFLAGS because:
+	# (a) we want to respect most CFLAGS from the host build system (e.g.,
+	#     cross-compilation, etc.); but
+	# (b) lmbench intentionally overrides CFLAGS with its preferred
+	#     optimization levels.
+	# As a middle ground, we force our CFLAGS back in, but copy over the
+	# optimization level from lmbench's Makefile.
 	emake \
 		AR="$(tc-getAR)" \
 		RANLIB="$(tc-getRANLIB)" \
 		CC="$(tc-getCC)" \
-		EXTRA_CFLAGS="$($(tc-getPKG_CONFIG) libtirpc --cflags)" \
-		LDLIBS="$($(tc-getPKG_CONFIG) libtirpc --libs)" \
-		build
+		CPPFLAGS="${CPPFLAGS}" \
+		EXTRA_CFLAGS="${CFLAGS} -O1" \
+		"$@"
+}
+
+src_compile() {
+	_emake build
 }
 
 src_install() {
-	cd src
-	emake BASE="${ED}"/usr install
+	cd src || die
+	_emake BASE="${ED}"/usr install
 
 	dodir /usr/share
 	mv "${ED}"/usr/man "${ED}"/usr/share || die
 
-	cd "${S}"
+	cd "${S}" || die
 	mv "${ED}"/usr/bin/stream{,.lmbench}  || die
 
 	# avoid file collision with sys-apps/util-linux

@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -19,16 +19,24 @@ DESCRIPTION="An open-source project for performance instrumentation and tracing.
 HOMEPAGE="https://perfetto.dev/"
 
 KEYWORDS="~*"
-IUSE="cros-debug"
+IUSE="cros_host asan lsan msan tsan ubsan"
 LICENSE="Apache-2.0"
-SLOT="0"
+SLOT="0/${PVR}"
 
 # protobuf dep is for using protoc at build-time to generate perfetto's headers.
+# It is included in DEPEND as a hack to trigger a rebuild when protoc is
+# upgraded.
 BDEPEND="
 	dev-util/gn
 	dev-util/ninja
 	dev-libs/protobuf
 "
+# sqlite is used in building trace_processor_shell
+DEPEND="
+	dev-db/sqlite
+	dev-libs/protobuf:=
+"
+
 BUILD_OUTPUT="${WORKDIR}/out_cros/"
 
 src_configure() {
@@ -49,6 +57,8 @@ src_configure() {
 		"-Wno-suggest-override"
 		"-Wno-reserved-identifier"
 	)
+	append-cflags "${warn_flags[*]}"
+	append-cxxflags "${warn_flags[*]}"
 	# Specify the linker to be used, this will be invoked by
 	# perfetto build as link argument "-fuse-ld=<>" so it needs to be
 	# the linker name bfd/gold/lld etc. that clang/gcc understand.
@@ -71,8 +81,8 @@ target_linker=\"${linker_name}\"
 target_strip=\"${STRIP}\"
 target_cpu=\"${target_cpu}\"
 target_triplet=\"${CHOST}\"
-extra_target_cflags=\"${CFLAGS} ${warn_flags[*]}\"
-extra_target_cxxflags=\"${CXXFLAGS} ${warn_flags[*]}\"
+extra_target_cflags=\"${CFLAGS}\"
+extra_target_cxxflags=\"${CXXFLAGS}\"
 extra_target_ldflags=\"${LDFLAGS}\"
 "
 
@@ -87,32 +97,69 @@ is_hermetic_clang=false
 enable_perfetto_zlib=false
 skip_buildtools_check=true
 perfetto_use_system_protobuf=true
-enable_perfetto_version_gen=false
+enable_perfetto_x64_cpu_opt=false
 "
+	# Extra args for trace_processor_shell.
+	GN_ARGS+="
+perfetto_use_system_sqlite=true
+enable_perfetto_trace_processor_percentile=false
+enable_perfetto_trace_processor_linenoise=false
+enable_perfetto_llvm_demangle=false
+"
+	use asan && GN_ARGS+="
+is_asan=true"
+	use lsan && GN_ARGS+="
+is_lsan=true"
+	use msan && GN_ARGS+="
+is_msan=true"
+	use tsan && GN_ARGS+="
+is_tsan=true"
+	use ubsan && GN_ARGS+="
+is_ubsan=true"
+
 	einfo "GN_ARGS = ${GN_ARGS}"
 	gn gen "${BUILD_OUTPUT}" --args="${GN_ARGS}" || die
+
+	# Extra build flags for building the SDK:
+	# * Override the -fvisibility=hidden setting in the build config so the
+	#   SDK can be linked into a shared library and then used by an
+	#   executable.
+	# * Re-enable RTTI: RTTI is disabled in the build config. The SDK needs
+	#   to enable RTTI since ChromeOS packages are built with RTTI.
+	append-cflags "-fvisibility=default -frtti"
+	append-cxxflags "-fvisibility=default -frtti"
+	# Add extra GN args in generating the SDK source:
+	# * Force disable PERFETTO_DCHECK() in the SDK to avoid inconsistency
+	#   of PERFETTO_DCHECK_IS_ON() in the header and the static library
+	#   caused by cros-debug.
+	# * Disable runloop watchdog.
+	local sdk_gn_args="${GN_ARGS}
+perfetto_force_dcheck=\"off\"
+enable_perfetto_watchdog=false
+extra_target_cflags=\"${CFLAGS}\"
+extra_target_cxxflags=\"${CXXFLAGS}\"
+"
+	# Prepare the SDK source.
+	# --system_buildtools: use gn, ninja and clang++ of the system. Do not
+	#   rely on ${S}/tools/install-build-deps to install build tools. Note
+	#   that unprefixed clang++ is used in this script to generate the
+	#   source, not to build the SDK static library.
+	# --output: where to write the SDK source to.
+	# --gn_args: the extra GN args to pass to the script.
+	# --out: the temporary build output is stored in ${S}/out/sdk_gen
+	# --keep: keep the temporary build output for eninja to build the SDK
+	#   library.
+	"${S}/tools/gen_amalgamated" --system_buildtools \
+		--output "${BUILD_OUTPUT}/sdk/perfetto" \
+		--gn_args "${sdk_gn_args}" --out sdk_gen --keep || \
+		die "Failed to generate the amalgamated SDK"
 }
 
 src_compile() {
-	eninja -C  "${BUILD_OUTPUT}" traced traced_probes perfetto
+	eninja -C "${BUILD_OUTPUT}" traced traced_probes perfetto trace_processor_shell
 
-	# Check the existence of the sdk/ directory before building the sdk static
-	# library, as only the release branches contains the sdk sources to be used.
-	if [[ -d "${S}/sdk" ]]; then
-		# If not building with cros-debug, the SDK should be built with NDEBUG as
-		# well.
-		use cros-debug || append-cxxflags -DNDEBUG
-
-		(set -x; $(tc-getCXX) ${CXXFLAGS} -Wall -Werror -c -pthread -fPIC \
-			"${S}/sdk/perfetto.cc" -o sdk/perfetto.o) || die
-		(set -x; ${AR} rvsc sdk/libperfetto_sdk.a sdk/perfetto.o) || die
-	else
-		if [[ ${PV} == 9999 ]]; then
-			ewarn "Skip the sdk library as directory perfetto/sdk doesn't exist."
-		else
-			die "The Perfetto SDK doesn't exist."
-		fi
-	fi
+	# The SDK build folder is generated under ${S}/out/sdk_gen.
+	eninja -C "${S}/out/sdk_gen" libperfetto_client_experimental
 }
 
 src_install() {
@@ -120,39 +167,62 @@ src_install() {
 	dobin "${BUILD_OUTPUT}/traced_probes"
 	dobin "${BUILD_OUTPUT}/perfetto"
 
-	dotmpfiles "${FILESDIR}/tmpfiles.d/traced.conf"
+	dotmpfiles "${FILESDIR}"/tmpfiles.d/*.conf
 
 	insinto /etc/init
 	doins "${FILESDIR}/init/traced.conf"
 	doins "${FILESDIR}/init/traced_probes.conf"
 
+	if ! use cros_host ; then
+		# Install boot tracing config files.
+		insinto /usr/local/share/boottrace
+		doins "${FILESDIR}/boottrace/boottrace.pbtxt"
+	fi
+
 	insinto /usr/share/policy
 	newins "${FILESDIR}/seccomp/traced-${ARCH}.policy" traced.policy
 	newins "${FILESDIR}/seccomp/traced_probes-${ARCH}.policy" traced_probes.policy
 
-	if [[ -d "${S}/sdk" ]]; then
-		insinto /usr/include/perfetto
-		# Both source and lib are provided for convenience.
-		doins "${S}/sdk/perfetto.cc"
-		doins "${S}/sdk/perfetto.h"
-		dolib.a "${S}/sdk/libperfetto_sdk.a"
+	sdk_install
+	# Change install location to /usr/local/bin for non-host build so
+	# the trace processor will skip non-test images.
+	use cros_host || into /usr/local
+	dobin "${BUILD_OUTPUT}/trace_processor_shell"
+}
 
-		insinto "/usr/$(get_libdir)/pkgconfig"
-		local v=$("${S}/tools/write_version_header.py" --stdout)
-		sed \
-			-e "s/@version@/${v}/g" \
-			-e "s/@lib@/$(get_libdir)/g" \
-			"${FILESDIR}/pkg-configs/perfetto.pc.in" > "${S}/sdk/perfetto.pc" \
-			|| die
-		doins "${S}/sdk/perfetto.pc"
-	fi
+sdk_install() {
+	local sdk_root="${BUILD_OUTPUT}/sdk"
+	[[ -d "${sdk_root}" ]] || die "SDK root not found"
+
+	insinto /usr/include/perfetto
+	# Both source and lib are provided for convenience.
+	doins "${sdk_root}/perfetto.cc"
+	doins "${sdk_root}/perfetto.h"
+	newlib.a "${S}/out/sdk_gen/libperfetto_client_experimental.a" libperfetto_sdk.a
+	# protozero_plugin depends on libprotoc.so and is host-only.
+	exeinto /usr/libexec
+	use cros_host && doexe "${S}/out/sdk_gen/gcc_like_host/protozero_plugin"
+	doins "${S}/out/sdk_gen/gen/build_config/perfetto_build_flags.h"
+
+	insinto "/usr/$(get_libdir)/pkgconfig"
+	local v=$("${S}/tools/write_version_header.py" --stdout)
+	sed \
+		-e "s/@version@/${v}/g" \
+		-e "s/@lib@/$(get_libdir)/g" \
+		"${FILESDIR}/pkg-configs/perfetto.pc.in" > "${sdk_root}/perfetto.pc" \
+		|| die
+	doins "${sdk_root}/perfetto.pc"
 
 	insinto /usr/include/perfetto
 	doins -r include/perfetto
 	insinto /usr/include/perfetto/protos
 	doins -r "${BUILD_OUTPUT}/gen/protos/perfetto"
 	insinto /usr/include/perfetto/perfetto/base
-	doins "${BUILD_OUTPUT}/gen/build_config/perfetto_build_flags.h"
+	# Trace protos are host-only.
+	if use cros_host ; then
+		insinto /usr/include/proto
+		doins -r "${S}/protos/"
+	fi
 }
 
 pkg_preinst() {

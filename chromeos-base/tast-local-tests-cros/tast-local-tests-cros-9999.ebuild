@@ -1,4 +1,4 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -21,13 +21,15 @@ CROS_GO_WORKSPACE=(
 
 CROS_GO_TEST=(
 	# Also test support packages that live above local/bundles/.
-	"chromiumos/tast/..."
+	"go.chromium.org/tast/..."
+	"go.chromium.org/tast-tests/..."
 )
 CROS_GO_VET=(
 	"${CROS_GO_TEST[@]}"
 )
 
 TAST_BUNDLE_EXCLUDE_DATA_FILES="1"
+TAST_BUNDLE_ROOT="go.chromium.org/tast-tests/cros"
 
 inherit cros-workon tast-bundle
 
@@ -43,7 +45,6 @@ IUSE="arc chromeless_tty chromeless_tests cups"
 DEPEND="chromeos-base/tast-build-deps:="
 
 RDEPEND="
-	chromeos-base/policy-testserver
 	chromeos-base/tast-local-helpers-cros
 	chromeos-base/tast-tests-local-data
 	chromeos-base/virtual-usb-printer
@@ -54,6 +55,7 @@ RDEPEND="
 		)
 	)
 	dev-libs/openssl:0=
+	dev-python/pyftdi
 	arc? (
 		chromeos-base/tast-local-apks-cros
 		dev-util/android-tools

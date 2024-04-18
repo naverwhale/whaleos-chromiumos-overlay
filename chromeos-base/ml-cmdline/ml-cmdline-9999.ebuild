@@ -1,13 +1,13 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
 CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_DESTDIR="${S}/platform2"
-CROS_WORKON_SUBTREE="common-mk ml ml_benchmark .gn"
+CROS_WORKON_SUBTREE="common-mk ml ml_benchmark ml_core .gn"
 
-PLATFORM_SUBDIR="ml"
+PLATFORM_SUBDIR="ml/cmdline"
 
 inherit cros-workon platform
 
@@ -22,18 +22,26 @@ IUSE="internal"
 RDEPEND="
 	chromeos-base/chrome-icu:=
 	>=chromeos-base/metrics-0.0.1-r3152:=
+	chromeos-base/minijail:=
 	chromeos-base/ml:=
+	chromeos-base/system_api:=
+	dev-libs/ml-core:=
+	dev-libs/protobuf:=
 	sci-libs/tensorflow:=
+	sys-libs/zlib:=
 "
 
 DEPEND="
 	${RDEPEND}
+	dev-libs/libutf:=
+	dev-libs/marisa-aosp:=
 "
 
-src_install() {
-	dobin "${OUT}"/ml_cmdline
-}
+BDEPEND="
+	chromeos-base/chromeos-dbus-bindings
+	dev-libs/protobuf
+"
 
 platform_pkg_test() {
-	platform_test "run" "${OUT}/ml_cmdline_test"
+	platform test_all
 }

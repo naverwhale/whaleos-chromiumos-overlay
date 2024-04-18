@@ -1,4 +1,4 @@
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright 2013 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -29,8 +29,8 @@ PORT_LOGDIR=${ROOT}tmp/portage/logs/
 PORTAGE_WORKDIR_MODE="0755"
 
 PORTDIR_OVERLAY="
-  /usr/local/portage/chromiumos
-  /usr/local/portage/eclass-overlay
+  /mnt/host/source/src/third_party/chromiumos-overlay
+  /mnt/host/source/src/third_party/eclass-overlay
   ${BOARD_OVERLAY}
 "
 
@@ -40,10 +40,6 @@ PORTAGE_BINPKG_TAR_OPTS="--checkpoint=1000"
 # Our chromium mirror should be more stable since we won't discard packages.
 GENTOO_MIRRORS="https://commondatastorage.googleapis.com/chromeos-localmirror"
 GENTOO_MIRRORS="$GENTOO_MIRRORS https://commondatastorage.googleapis.com/chromeos-mirror/gentoo"
-
-# When building packages for the target, we need to search the target's
-# sysroot for additional m4 files.  The autotools.eclass uses this.
-AT_SYS_M4DIR="\${SYSROOT}/usr/share/aclocal"
 
 # Remove all .la files for non-plugin libraries.
 # Remove Gentoo init files since we use upstart.
@@ -65,6 +61,10 @@ source /mnt/host/source/src/third_party/chromiumos-overlay/chromeos/config/make.
 
 # Recommended MARCH_TUNE, CFLAGS, etc.
 MARCH_TUNE=""
+
+# We maintain the list of SDK packages explicitly and update them in parallel.
+# Disable BDEPEND support when building for boards to speed things up.
+EMERGE_DEFAULT_OPTS="${EMERGE_DEFAULT_OPTS} --with-bdepends=n"
 
 # Allow a board to override or define additional settings.
 source make.conf.board

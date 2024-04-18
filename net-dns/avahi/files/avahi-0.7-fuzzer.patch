@@ -254,7 +254,7 @@ new file mode 100644
 index 0000000..0d626e7
 --- /dev/null
 +++ b/examples/recv_fuzzer.c
-@@ -0,0 +1,200 @@
+@@ -0,0 +1,198 @@
 +#include <assert.h>
 +#include <errno.h>
 +#include <stdio.h>
@@ -330,13 +330,13 @@ index 0000000..0d626e7
 +    destAddr.sin_addr.s_addr = inet_addr(AVAHI_IPV4_MCAST_GROUP);
 +
 +    if (sock < 0) {
-+        avahi_log_warn("socket() failed: %s", strerror(errno));
-+        exit(1);
++        avahi_log_warn("socket() IPv4 failed: %s", strerror(errno));
++        return;
 +    }
 +    reuseaddr(sock);
 +
 +    if (bind(sock, (struct sockaddr *) &local, sizeof(local)) < 0) {
-+        avahi_log_warn("socket() failed: %s", strerror(errno));
++        avahi_log_warn("bind() IPv4 failed: %s", strerror(errno));
 +        return;
 +    }
 +
@@ -346,8 +346,7 @@ index 0000000..0d626e7
 +
 +    ssize_t s;
 +    if ((s = sendto(sock, data, size, 0, (struct sockaddr *) &destAddr, sizeof(destAddr))) < 0) {
-+        avahi_log_warn("socket() failed: %s", strerror(errno));
-+        exit(1);
++        avahi_log_warn("sendto() IPv4 failed: %s", strerror(errno));
 +    }
 +
 +    close(sock);
@@ -375,20 +374,19 @@ index 0000000..0d626e7
 +    inet_pton(AF_INET6, AVAHI_IPV6_MCAST_GROUP, &destAddr.sin6_addr);
 +
 +    if (sock < 0) {
-+        avahi_log_warn("socket() failed: %s", strerror(errno));
-+        exit(1);
++        avahi_log_warn("socket() IPv6 failed: %s", strerror(errno));
++        return;
 +    }
 +
 +    reuseaddr(sock);
 +    if (bind(sock, (struct sockaddr *) &local, sizeof(local)) < 0) {
-+        avahi_log_warn("socket() failed: %s", strerror(errno));
++        avahi_log_warn("bind() IPv6 failed: %s", strerror(errno));
 +        return;
 +    }
 +
 +    ssize_t s;
 +    if ((s = sendto(sock, data, size, 0, (struct sockaddr *) &destAddr, sizeof(destAddr))) < 0) {
-+        avahi_log_warn("socket() failed: %s", strerror(errno));
-+        exit(1);
++        avahi_log_warn("sendto() IPv6 failed: %s", strerror(errno));
 +    }
 +
 +    close(sock);

@@ -1,0 +1,1 @@
+parade-ps8815a2-app-firmware-36.ebuild

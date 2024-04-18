@@ -1,15 +1,21 @@
-# Copyright 2015-2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2015-2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # @ECLASS: cros-go.eclass
 # @MAINTAINER:
-# The Chromium OS Authors <chromium-os-dev@chromium.org>
+# The ChromiumOS Authors <chromium-os-dev@chromium.org>
 # @BUGREPORTS:
 # Please report bugs via https://crbug.com/new (with component "Tools>ChromeOS-Toolchain")
-# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/master/eclass/@ECLASS@
+# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/eclass/@ECLASS@
 # @BLURB: Eclass for fetching, building, and installing Go packages.
 # @DESCRIPTION:
 # See http://www.chromium.org/chromium-os/developer-guide/go-in-chromium-os for details.
+
+
+case ${EAPI} in
+[0-6]) die "${ECLASS}: EAPI ${EAPI} not supported" ;;
+*) ;;
+esac
 
 # @ECLASS-VARIABLE: CROS_GO_SOURCE
 # @PRE_INHERIT
@@ -114,6 +120,24 @@ parse_binspec() {
 # will set main.Version string variable to package version and
 # revision (if any) of the ebuild.
 
+# @ECLASS-VARIABLE: CROS_GO_SKIP_DEP_CHECK
+# @DESCRIPTION:
+# Temporary workaround to allow circular dependencies like:
+# google.golang.org/genproto/googleapis/chromeos/uidetection/v1 requires
+# google.golang.org/grpc which requires other packages in
+# google.golang.org/genproto
+# In the past these have been fixed in GOPATH mode by splitting packages
+# in various ebuilds like dev-go/genproto vs dev-go/genproto-rpc (etc.)
+# and building them sequentially while ignoring upstream module definitions.
+# When switching to Go modules, we need to respect upstream module boundaries
+# and let the Go modules dependency system properly handle circular deps.
+# So in order to merge for eg dev-go/genproto with dev-go/genproto-rpc, we
+# need the temporary ability to relax the dep checking on circular deps.
+# This variable addition and use is temporary for the GOPATH -> Go modules
+# transition and will go away when switching to modules mode.
+# For example:
+#   CROS_GO_SKIP_DEP_CHECK="1"
+
 # @ECLASS-VARIABLE: CROS_GO_PACKAGES
 # @DESCRIPTION:
 # Go packages to install in /usr/lib/gopath.
@@ -148,9 +172,17 @@ parse_binspec() {
 # Flags to pass to "go vet" if CROS_GO_VET is set.
 # See https://golang.org/cmd/vet/ for available flags.
 
+# @FUNCTION: cros-go_out_dir
+# @RETURN: an output directory for compiled CROS_GO_BINARIES
+cros-go_out_dir() {
+	cros_go_out="${T}/go_output"
+	mkdir -p "${cros_go_out}"
+	echo "${cros_go_out}"
+}
+
 inherit toolchain-funcs
 
-DEPEND="dev-lang/go"
+BDEPEND="dev-lang/go"
 
 # @FUNCTION: cros-go_get
 # @USAGE: <source> [variables to extract]
@@ -287,7 +319,7 @@ cros-go_gopath() {
 # Wrapper function for invoking the Go tool from an ebuild.
 # Sets up GOPATH, and uses the appropriate cross-compiler.
 cros_go() {
-	GOPATH="$(cros-go_gopath)" $(tc-getGO) "$@" || die
+	GO111MODULE=${GO111MODULE:-off} GOPATH="$(cros-go_gopath)" $(tc-getGO) "$@" || die
 }
 
 # @FUNCTION: go_list
@@ -295,7 +327,7 @@ cros_go() {
 # List all Go packages matching a pattern.
 # Only list packages in the current workspace.
 go_list() {
-	GOPATH="$(cros-go_workspace)" $(tc-getGO) list "$@" || die
+	GO111MODULE=${GO111MODULE:-off} GOPATH="$(cros-go_workspace)" $(tc-getGO) list "$@" || die
 }
 
 # @FUNCTION: go_test
@@ -303,21 +335,38 @@ go_list() {
 # Wrapper function for building and running unit tests.
 # Package tests are always built and run locally on host.
 go_test() {
-	GOPATH="$(cros-go_gopath)" $(tc-getBUILD_GO) test "$@" || die
+	GO111MODULE=${GO111MODULE:-off} GOPATH="$(cros-go_gopath)" $(tc-getBUILD_GO) test "$@" || die
 }
 
 # @FUNCTION: go_vet
 # @DESCRIPTION:
 # Wrapper function for running "go vet".
 go_vet() {
-	GOPATH="$(cros-go_gopath)" $(tc-getBUILD_GO) vet \
+	# shellcheck disable=SC2154
+	GO111MODULE="${GO111MODULE:-off}" GOPATH="$(cros-go_gopath)" $(tc-getBUILD_GO) vet \
 		"${CROS_GO_VET_FLAGS[@]}" "$@" || die
+}
+
+# @FUNCTION: go_lint
+# @DESCRIPTION:
+# Wrapper function for running "golint"
+go_lint() {
+	# shellcheck disable=SC2154
+	local go_lint_output_base="${CROS_ARTIFACTS_TMP_DIR}/linting_output/go_lint"
+	mkdir -p "${go_lint_output_base}"
+
+	local file_name="${1//'/...'/}"
+	file_name="${file_name//'/'/-}-$(date +%s)"
+
+	GO111MODULE="${GO111MODULE:-off}" GOPATH="$(cros-go_gopath)" golint \
+		"$@" >> "${go_lint_output_base}/${file_name}.txt" || die
 }
 
 # @FUNCTION: cros-go_src_compile
 # @DESCRIPTION:
 # Build CROS_GO_BINARIES.
 cros-go_src_compile() {
+	out_dir=$(cros-go_out_dir)
 	local bin
 	local source
 	local target
@@ -327,7 +376,7 @@ cros-go_src_compile() {
 		IFS=: read source target installdir <<<"$(parse_binspec "${bin}")"
 		cros_go build -v \
 			${CROS_GO_VERSION:+"-ldflags=-X main.Version=${CROS_GO_VERSION}"} \
-			-o "${target}" \
+			-o "${out_dir}/${target}" \
 			"${source}"
 	done
 
@@ -335,6 +384,11 @@ cros-go_src_compile() {
 	for pkg in "${CROS_GO_VET[@]}" ; do
 		einfo "Vetting \"${pkg}\""
 		go_vet "${pkg}"
+		# Enable the option to output to a file so that the chromite build API
+		# can access Go lints.
+		if [[ -n "${ENABLE_GO_LINT}" ]]; then
+			go_lint "${pkg}"
+		fi
 	done
 }
 
@@ -350,6 +404,7 @@ cros-go_src_test() {
 # @DESCRIPTION:
 # Install CROS_GO_BINARIES and CROS_GO_PACKAGES.
 cros-go_src_install() {
+	out_dir=$(cros-go_out_dir)
 	# Install the compiled binaries.
 	local bin
 	local source
@@ -361,7 +416,7 @@ cros-go_src_install() {
 		(
 			# Run in sub-shell so we do not modify env.
 			exeinto "${installdir}"
-			doexe "${target}"
+			doexe "${out_dir}/${target}"
 		)
 	done
 
@@ -370,6 +425,11 @@ cros-go_src_install() {
 	if [[ ${#CROS_GO_PACKAGES[@]} != 0 ]] ; then
 		pkglist=( $(go_list "${CROS_GO_PACKAGES[@]}") )
 	fi
+
+	# Disable strip checks on this path.  It's a minor optimization, but there's
+	# a lot of files in there.
+	dostrip -x /usr/lib/gopath/src/
+
 	local pkg
 	for pkg in "${pkglist[@]}" ; do
 		einfo "Installing \"${pkg}\""
@@ -391,6 +451,9 @@ cros-go_src_install() {
 cros-go_pkg_postinst() {
 	# This only works if we're building and installing from source.
 	[[ "${MERGE_TYPE}" == "source" ]] || return
+
+	# See CROS_GO_SKIP_DEP_CHECK description for details
+	[[ -n "${CROS_GO_SKIP_DEP_CHECK}" ]] && return
 
 	# Get the list of packages from the workspace in ${S}.
 	local pkglist=()

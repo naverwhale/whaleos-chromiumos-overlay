@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright 2010 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -10,12 +10,12 @@ CROS_WORKON_SUBTREE="userfeedback"
 inherit cros-workon systemd
 
 DESCRIPTION="Log scripts used by userfeedback to report cros system information"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/userfeedback/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/userfeedback/"
 
 LICENSE="BSD-Google"
 SLOT="0/0"
 KEYWORDS="~*"
-IUSE="systemd X"
+IUSE="systemd"
 
 RDEPEND="chromeos-base/chromeos-init
 	chromeos-base/crash-reporter
@@ -24,11 +24,9 @@ RDEPEND="chromeos-base/chromeos-init
 	media-libs/fontconfig
 	media-sound/alsa-utils
 	sys-apps/coreboot-utils
-	sys-apps/mosys
 	sys-apps/net-tools
 	sys-apps/pciutils
-	sys-apps/usbutils
-	X? ( x11-apps/setxkbmap )"
+	sys-apps/usbutils"
 
 DEPEND=""
 

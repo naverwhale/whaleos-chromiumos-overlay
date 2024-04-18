@@ -1,6 +1,9 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
 
 send: 1
 getpid: 1
@@ -24,6 +27,7 @@ readlink: 1
 readlinkat: 1
 openat: 1
 close: 1
+close_range: 1
 getdents64: 1
 faccessat: 1
 faccessat2: 1
@@ -44,6 +48,7 @@ set_robust_list: 1
 sched_setattr: 1
 setsockopt: 1
 sendto: 1
+sched_getaffinity: 1
 sched_getattr: 1
 bind: 1
 getpeername: 1
@@ -70,8 +75,9 @@ socket: arg0 == AF_NETLINK || arg0 == AF_UNIX || arg0 == AF_QIPCRTR || \
 # 0x8BE3 == QMI_GET_MEID_IOCTL
 # 0x8BE4 == SIOCIWFIRSTPRIV_CLEANUP
 ioctl: arg1 == TCGETS || arg1 == SIOCGIFINDEX || arg1 == TIOCEXCL || \
-       arg1 == TIOCNXCL || arg1 == TIOCGSERIAL || arg1 == 0x800248a0 || \
-       arg1 == 0x8BE1 || arg1 == 0x8BE2 || arg1 == 0x8BE3 || arg1 == 0x8BE4
+       arg1 == TIOCNXCL || arg1 == TIOCGSERIAL || arg1 == TIOCSSERIAL || \
+       arg1 == 0x800248a0 || arg1 == 0x8BE1 || arg1 == 0x8BE2 || \
+       arg1 == 0x8BE3 || arg1 == 0x8BE4 || arg1 == TCFLSH || arg1 == TCSETS
 dup2: 1
 pipe2: 1
 wait4: 1
@@ -79,13 +85,19 @@ setpgid: 1
 execve: 1
 tgkill: 1
 accept: 1
+accept4: 1
 ARM_set_tls: 1
 set_tid_address: 1
 ugetrlimit: 1
 getuid32: 1
+getuid: 1
 _llseek: 1
 listen: 1
 restart_syscall: 1
 exit: 1
 exit_group: 1
 rt_sigreturn: 1
+sysinfo: 1
+unlink: 1
+unlinkat: 1
+uname: 1

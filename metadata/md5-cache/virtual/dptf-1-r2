@@ -6,4 +6,4 @@ KEYWORDS=-* amd64 x86
 LICENSE=metapackage
 RDEPEND=sys-power/dptf
 SLOT=0
-_md5_=ad800fc192cb3fe242da4242650c0d41
+_md5_=21094a8b6d9fceaa109b415ca7b52924

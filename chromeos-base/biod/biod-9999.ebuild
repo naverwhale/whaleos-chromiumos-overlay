@@ -1,4 +1,4 @@
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Copyright 2016 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -6,31 +6,39 @@ CROS_WORKON_USE_VCSID="1"
 CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_OUTOFTREE_BUILD=1
-CROS_WORKON_SUBTREE="common-mk biod chromeos-config libec metrics .gn"
+CROS_WORKON_SUBTREE="common-mk biod chromeos-config libec libhwsec libhwsec-foundation metrics .gn"
 
 PLATFORM_SUBDIR="biod"
 
-inherit cros-fuzzer cros-sanitizers cros-workon cros-unibuild platform udev user
+inherit cros-fuzzer cros-sanitizers cros-workon cros-unibuild platform \
+	tmpfiles udev user
 
 DESCRIPTION="Biometrics Daemon for Chromium OS"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/biod/README.md"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/biod/README.md"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
 IUSE="
+	factory_branch
 	fp_on_power_button
 	fpmcu_firmware_bloonchipper
 	fpmcu_firmware_dartmonkey
+	fpmcu_firmware_helipilot
 	fpmcu_firmware_nami
 	fpmcu_firmware_nocturne
 	fuzzer
 "
-
+# We must depend on libusb because libec headers make use of libusb.
 COMMON_DEPEND="
 	chromeos-base/chromeos-config-tools:=
 	chromeos-base/libec:=
+	chromeos-base/libhwsec:=[test?]
+	chromeos-base/libhwsec-foundation:=
 	>=chromeos-base/metrics-0.0.1-r3152:=
+	chromeos-base/vboot_reference:=
+	dev-libs/protobuf:=
 	sys-apps/flashmap:=
+	virtual/libusb:1=
 "
 
 # For biod_client_tool. The biod_proxy library will be built on all boards but
@@ -39,20 +47,25 @@ COMMON_DEPEND+="
 	chromeos-base/biod_proxy:=
 "
 
+# The crosec-legacy-drv package is a pinned version of flashrom
+# for production firmware updates.
 RDEPEND="
 	${COMMON_DEPEND}
-	sys-apps/flashrom
-	virtual/chromeos-firmware-fpmcu
+	sys-apps/crosec-legacy-drv:=
+	!factory_branch? ( virtual/chromeos-firmware-fpmcu )
 	"
 
 # Release branch firmware.
 # The USE flags below come from USE_EXPAND variables.
 # See third_party/chromiumos-overlay/profiles/base/make.defaults.
 RDEPEND+="
-	fpmcu_firmware_bloonchipper? ( sys-firmware/chromeos-fpmcu-release-bloonchipper )
-	fpmcu_firmware_dartmonkey? ( sys-firmware/chromeos-fpmcu-release-dartmonkey )
-	fpmcu_firmware_nami? ( sys-firmware/chromeos-fpmcu-release-nami )
-	fpmcu_firmware_nocturne? ( sys-firmware/chromeos-fpmcu-release-nocturne )
+	!factory_branch? (
+		fpmcu_firmware_bloonchipper? ( sys-firmware/chromeos-fpmcu-release-bloonchipper )
+		fpmcu_firmware_dartmonkey? ( sys-firmware/chromeos-fpmcu-release-dartmonkey )
+		fpmcu_firmware_helipilot? ( sys-firmware/chromeos-fpmcu-release-helipilot )
+		fpmcu_firmware_nami? ( sys-firmware/chromeos-fpmcu-release-nami )
+		fpmcu_firmware_nocturne? ( sys-firmware/chromeos-fpmcu-release-nocturne )
+	)
 "
 
 DEPEND="
@@ -63,38 +76,22 @@ DEPEND="
 	dev-libs/openssl:=
 "
 
+BDEPEND="
+	chromeos-base/minijail
+"
+
 pkg_setup() {
 	enewuser biod
 	enewgroup biod
+	enewgroup fpdev
 }
 
 src_install() {
-	dobin "${OUT}"/biod
-
-	dobin "${OUT}"/bio_crypto_init
-	dobin "${OUT}"/bio_wash
-
-	dosbin "${OUT}"/bio_fw_updater
-
-	into /usr/local
-	dobin "${OUT}"/biod_client_tool
-
-	insinto /usr/share/policy
-	local seccomp_src_dir="init/seccomp"
-
-	newins "${seccomp_src_dir}/biod-seccomp-${ARCH}.policy" \
-		biod-seccomp.policy
-
-	newins "${seccomp_src_dir}/bio-crypto-init-seccomp-${ARCH}.policy" \
-		bio-crypto-init-seccomp.policy
-
-	insinto /etc/init
-	doins init/*.conf
-
-	insinto /etc/dbus-1/system.d
-	doins dbus/org.chromium.BiometricsDaemon.conf
+	platform_src_install
 
 	udev_dorules udev/99-biod.rules
+
+	dotmpfiles tmpfiles.d/*.conf
 
 	# Set up cryptohome daemon mount store in daemon's mount
 	# namespace.
@@ -110,5 +107,5 @@ src_install() {
 }
 
 platform_pkg_test() {
-	platform_test "run" "${OUT}/biod_test_runner"
+	platform test_all
 }

@@ -18,11 +18,12 @@ Last-Update: 2016-09-24
  #CUPS_LIBS="-lcups -lcupsimage"
 --- a/src/common/CupsFilter.h
 +++ b/src/common/CupsFilter.h
-@@ -23,6 +23,7 @@
+@@ -23,6 +23,8 @@
  
  #include <cups/cups.h>
  #include <cups/raster.h>
 +#include <cups/ppd.h>
++#include <algorithm>
  #include <memory>
  #include <string>
  #include "CupsPrintEnvironment.h"

@@ -1,7 +1,7 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=5
+EAPI=7
 CROS_WORKON_PROJECT="chromiumos/third_party/autotest"
 CROS_WORKON_LOCALNAME="third_party/autotest/files"
 
@@ -25,6 +25,9 @@ AUTOTEST_FILE_MASK="*.tar.bz2 *.tbz2 *.tgz *.tar.gz"
 DEPEND="
 	>=chromeos-base/protofiles-0.0.43:=
 	chromeos-base/system_api
+"
+
+BDEPEND="
 	dev-libs/protobuf:=
 "
 

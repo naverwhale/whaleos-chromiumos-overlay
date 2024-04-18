@@ -1,0 +1,269 @@
+diff --git a/clvk/src/config.def b/clvk/src/config.def
+index 6d4ba75..232c375 100644
+--- a/clvk/src/config.def
++++ b/clvk/src/config.def
+@@ -29,6 +29,9 @@ OPTION(uint32_t, printf_buffer_size, 1024*1024u)
+ 
+ OPTION(uint32_t, opencl_version, (uint32_t)CL_MAKE_VERSION(3, 0, 0))
+ 
++OPTION(bool, poll_executor, false)
++OPTION(bool, poll_main_thread, false)
++
+ #if COMPILER_AVAILABLE
+ OPTION(std::string, clspv_options, "")
+ #if !CLSPV_ONLINE_COMPILER
+diff --git a/clvk/src/device.hpp b/clvk/src/device.hpp
+index a70556e..9791663 100644
+--- a/clvk/src/device.hpp
++++ b/clvk/src/device.hpp
+@@ -268,6 +268,10 @@ struct cvk_device : public _cl_device_id,
+         return m_clvk_properties->get_num_compute_units();
+     }
+ 
++    bool poll_main_thread() const {
++        return m_clvk_properties->get_poll_main_thread();
++    }
++
+     cl_uint max_samplers() const {
+         // There are only 20 different possible samplers in OpenCL 1.2, cap the
+         // number of supported samplers to that to help with negative testing of
+diff --git a/clvk/src/device_properties.cpp b/clvk/src/device_properties.cpp
+index c8bcb6d..931b324 100644
+--- a/clvk/src/device_properties.cpp
++++ b/clvk/src/device_properties.cpp
+@@ -37,6 +37,13 @@ struct cvk_device_properties_mali : public cvk_device_properties {
+         return (m_deviceID & GPU_ID2_ARCH_MAJOR) <= bifrost_arch_major;
+     }
+ 
++    bool get_poll_main_thread() const override final {
++        if (!config.poll_main_thread.set) {
++            return true;
++        }
++        return cvk_device_properties::get_poll_main_thread();
++    }
++
+ private:
+     const uint32_t m_deviceID;
+ };
+@@ -110,6 +117,26 @@ struct cvk_device_properties_intel : public cvk_device_properties {
+     is_bgra_format_not_supported_for_image1d_buffer() const override final {
+         return true;
+     }
++    bool get_poll_main_thread() const override final {
++        if (!config.poll_main_thread.set) {
++            return old_devices();
++        }
++        return cvk_device_properties::get_poll_main_thread();
++    }
++
++    cvk_device_properties_intel(const uint32_t deviceID)
++        : m_deviceID(deviceID) {}
++
++private:
++    bool old_devices() const {
++        const uint32_t kabylakeDeviceID = 0x5900;
++        const uint32_t cometlakeDeviceID = 0x9b00;
++        const uint32_t geminilakeDeviceID = 0x3180;
++        return (m_deviceID & 0xff00) == kabylakeDeviceID ||
++               (m_deviceID & 0xff00) == cometlakeDeviceID ||
++               (m_deviceID & 0xfff0) == geminilakeDeviceID;
++    }
++    const uint32_t m_deviceID;
+ };
+ 
+ static bool isIntelDevice(const char* name, const uint32_t vendorID) {
+@@ -294,7 +321,7 @@ create_cvk_device_properties(const char* name, const uint32_t vendorID,
+     } else if (strcmp(name, "Adreno (TM) 640") == 0) {
+         RETURN(cvk_device_properties_adreno_640);
+     } else if (isIntelDevice(name, vendorID)) {
+-        RETURN(cvk_device_properties_intel);
++        RETURN(cvk_device_properties_intel, deviceID);
+     } else if (isAMDDevice(name, vendorID)) {
+         RETURN(cvk_device_properties_amd);
+     } else if (strcmp(name, "Samsung Xclipse 920") == 0) {
+diff --git a/clvk/src/device_properties.hpp b/clvk/src/device_properties.hpp
+index e92c37a..3c1f7c1 100644
+--- a/clvk/src/device_properties.hpp
++++ b/clvk/src/device_properties.hpp
+@@ -56,6 +56,10 @@ struct cvk_device_properties {
+         return false;
+     }
+ 
++    virtual bool get_poll_main_thread() const {
++        return config.poll_main_thread();
++    }
++
+     virtual ~cvk_device_properties() {}
+ };
+ 
+diff --git a/clvk/src/event.hpp b/clvk/src/event.hpp
+index 6cbe787..04bf22c 100644
+--- a/clvk/src/event.hpp
++++ b/clvk/src/event.hpp
+@@ -40,7 +40,8 @@ struct cvk_condition_variable {
+     virtual ~cvk_condition_variable() {}
+ 
+     virtual void notify() = 0;
+-    CHECK_RETURN virtual bool wait(std::unique_lock<std::mutex>&) = 0;
++    CHECK_RETURN virtual bool wait(std::unique_lock<std::mutex>& lock,
++                                   bool poll) = 0;
+ 
+     virtual cvk_semaphore* get_semaphore() {
+         CVK_ASSERT(false && "Should never be called");
+@@ -64,9 +65,15 @@ struct cvk_semaphore_condition_variable final : public cvk_condition_variable {
+     ~cvk_semaphore_condition_variable() { m_sem->release(); }
+ 
+     void notify() override final { m_sem->notify(m_value); }
+-    CHECK_RETURN bool wait(std::unique_lock<std::mutex>& lock) override final {
++    CHECK_RETURN bool wait(std::unique_lock<std::mutex>& lock,
++                           bool poll) override final {
+         lock.unlock();
+-        bool ret = m_sem->wait(m_value);
++        bool ret;
++        if (poll) {
++            ret = m_sem->poll(m_value);
++        } else {
++            ret = m_sem->wait(m_value);
++        }
+         lock.lock();
+         return ret;
+     }
+@@ -83,7 +90,8 @@ private:
+ 
+ struct cvk_std_condition_variable final : public cvk_condition_variable {
+     void notify() override final { m_cv.notify_all(); }
+-    CHECK_RETURN bool wait(std::unique_lock<std::mutex>& lock) override final {
++    CHECK_RETURN bool wait(std::unique_lock<std::mutex>& lock,
++                           __attribute__((unused)) bool poll) override final {
+         m_cv.wait(lock);
+         return true;
+     }
+@@ -118,7 +126,7 @@ struct cvk_event : public _cl_event, api_object<object_magic::event> {
+         return m_queue;
+     }
+ 
+-    virtual cl_int wait() = 0 ;
++    virtual cl_int wait(bool poll) = 0 ;
+ 
+     virtual uint64_t get_profiling_info(cl_profiling_info pinfo) const = 0 ;
+     virtual cvk_semaphore* get_semaphore() {
+@@ -170,7 +178,8 @@ struct cvk_event_command : public cvk_event {
+         return m_status;
+     }
+ 
+-    cl_int wait() override final {
++
++    cl_int wait(bool poll) override final {
+         std::unique_lock<std::mutex> lock(m_lock);
+         cvk_debug_group(loggroup::event,
+                         "cvk_event::wait: event = %p, status = %d", this,
+@@ -178,7 +187,7 @@ struct cvk_event_command : public cvk_event {
+         if (m_status > 0) {
+             TRACE_BEGIN_EVENT(command_type(), "queue", (uintptr_t)m_queue,
+                               "command", (uintptr_t)m_cmd);
+-            auto ret = m_cv->wait(lock);
++            auto ret = m_cv->wait(lock, poll);
+             TRACE_END();
+             if (!ret) {
+                 m_status = CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST;
+@@ -273,8 +282,8 @@ struct cvk_event_combine : public cvk_event {
+         return std::min(m_end_event->get_status(), m_start_event->get_status());
+     }
+ 
+-    cl_int wait() override final {
+-        return m_end_event->wait();
++    cl_int wait(bool poll) override final {
++        return m_end_event->wait(poll);
+     }
+ 
+     uint64_t get_profiling_info(cl_profiling_info pinfo) const override final {
+diff --git a/clvk/src/queue.cpp b/clvk/src/queue.cpp
+index 882f34c..055bc20 100644
+--- a/clvk/src/queue.cpp
++++ b/clvk/src/queue.cpp
+@@ -410,7 +410,11 @@ cl_int cvk_command_queue::wait_for_events(cl_uint num_events,
+     // Now wait for all the events
+     for (cl_uint i = 0; i < num_events; i++) {
+         cvk_event* event = icd_downcast(event_list[i]);
+-        if (event->wait() != CL_COMPLETE) {
++        bool poll = config.poll_main_thread();
++        if (!event->is_user_event()) {
++            poll = event->queue()->device()->poll_main_thread();
++        }
++        if (event->wait(poll) != CL_COMPLETE) {
+             ret = CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST;
+         }
+     }
+@@ -418,7 +422,7 @@ cl_int cvk_command_queue::wait_for_events(cl_uint num_events,
+     return ret;
+ }
+ 
+-cl_int cvk_command_group::execute_cmds() {
++cl_int cvk_command_group::execute_cmds(bool poll) {
+     TRACE_FUNCTION();
+     cl_int global_status = CL_SUCCESS;
+     while (!commands.empty()) {
+@@ -426,7 +430,7 @@ cl_int cvk_command_group::execute_cmds() {
+         cvk_debug_fn("executing command %p (%s), event %p", cmd,
+                      cl_command_type_to_string(cmd->type()), cmd->event());
+ 
+-        cl_int status = cmd->execute();
++        cl_int status = cmd->execute(poll);
+         if (status != CL_COMPLETE && global_status == CL_SUCCESS)
+             global_status = status;
+         cvk_debug_fn("command returned %d", status);
+@@ -447,7 +451,7 @@ cl_int cvk_command_queue::execute_cmds_required_by_no_lock(
+ 
+     m_lock.unlock();
+     auto cmds = exec->extract_cmds_required_by(true, num_events, event_list);
+-    auto ret = cmds.execute_cmds();
++    auto ret = cmds.execute_cmds(m_device->poll_main_thread());
+     m_lock.lock();
+ 
+     return ret;
+@@ -535,7 +539,7 @@ void cvk_executor_thread::executor() {
+         CVK_ASSERT(group->commands.size() > 0);
+         cvk_command_queue_holder queue = group->commands.front()->queue();
+ 
+-        group->execute_cmds();
++        group->execute_cmds(config.poll_executor);
+ 
+         queue->group_completed();
+ 
+@@ -609,7 +613,7 @@ cl_int cvk_command_queue::finish() {
+     if (m_finish_event != nullptr) {
+         _cl_event* evt_list = (_cl_event*)&*m_finish_event;
+         execute_cmds_required_by_no_lock(1, &evt_list);
+-        m_finish_event->wait();
++        m_finish_event->wait(m_device->poll_main_thread());
+     }
+ 
+     return CL_SUCCESS;
+diff --git a/clvk/src/queue.hpp b/clvk/src/queue.hpp
+index 8ac8bd5..163b8d3 100644
+--- a/clvk/src/queue.hpp
++++ b/clvk/src/queue.hpp
+@@ -32,7 +32,7 @@ using cvk_command_queue_holder = refcounted_holder<cvk_command_queue>;
+ 
+ struct cvk_command_group {
+     std::deque<cvk_command*> commands;
+-    cl_int execute_cmds();
++    cl_int execute_cmds(bool poll);
+ };
+ 
+ struct cvk_executor_thread {
+@@ -456,12 +456,12 @@ struct cvk_command {
+         m_event_deps.push_back(dep);
+     }
+ 
+-    CHECK_RETURN cl_int execute() {
++    CHECK_RETURN cl_int execute(bool poll) {
+ 
+         // First wait for dependencies
+         cl_int status = CL_COMPLETE;
+         for (auto& ev : m_event_deps) {
+-            if (ev->wait() != CL_COMPLETE) {
++            if (ev->wait(poll) != CL_COMPLETE) {
+                 status = CL_EXEC_STATUS_ERROR_FOR_EVENTS_IN_WAIT_LIST;
+             }
+         }

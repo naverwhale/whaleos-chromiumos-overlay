@@ -1,0 +1,11 @@
+DEFINED_PHASES=compile install
+DEPEND=~sys-libs/glibc-2.35
+DESCRIPTION=Some system locales when apps need more than C (not for apps using ICU for i18n)
+EAPI=7
+HOMEPAGE=http://dev.chromium.org/
+KEYWORDS=*
+LICENSE=public-domain
+RDEPEND=~sys-libs/glibc-2.35
+SLOT=0
+_eclasses_=flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=eb9079c43e7edcf1a509ed676acfd901

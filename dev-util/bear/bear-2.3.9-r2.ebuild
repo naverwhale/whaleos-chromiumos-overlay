@@ -1,1 +1,0 @@
-bear-2.3.9.ebuild

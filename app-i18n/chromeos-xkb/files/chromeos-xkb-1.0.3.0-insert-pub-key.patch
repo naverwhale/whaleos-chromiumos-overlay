@@ -1,5 +1,5 @@
---- manifest.orig.json	2014-07-25 17:18:35.119939346 +0800
-+++ manifest.json	2014-07-25 17:19:01.668457078 +0800
+--- a/manifest.json
++++ b/manifest.json
 @@ -3,6 +3,7 @@
    "version": "1.0.3.0",
    "description": "Chrome OS XKB",

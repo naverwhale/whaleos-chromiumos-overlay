@@ -7,4 +7,4 @@ KEYWORDS=*
 LICENSE=metapackage
 RDEPEND=virtual/target-chromium-os-sdk-post-cross
 SLOT=0
-_md5_=17f8c500efa4f81decbecea0f4f8fcf4
+_md5_=2b3d2cf876a2a3b7c77586056db4c8f0

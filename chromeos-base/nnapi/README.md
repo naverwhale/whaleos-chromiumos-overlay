@@ -102,6 +102,7 @@ Steps:
 1.  Do a non-ff git merge from `origin/upstream`.
 1.  Upload to gerrit.
 1.  Force submit / 'chump' the change since CQ won't process it.
+2.  If you do not have owner permissions then reach out to the [oncall sheriff](go/cros-oncall) and politely ask them for an owners override on your CL.
 1.  Within a few minutes, copybara should update `libcutils` and `libutils`.
 1.  Check the [Copybara dashboard](https://copybara.corp.google.com/list-jobs?piperConfigPath=%2F%2Fdepot%2Fgoogle3%2Fthird_party%2Fcopybara-gsubtreed%2Faosp%2Fcopy.bara.sky).
 
@@ -140,3 +141,47 @@ Steps:
     output of the `get_gid_ids.sh` script.
 1.  Fix any build issues by creating ebuild patches (see the `files` dir).
 1.  Upload to gerrit and review as normal.
+
+### Uprev aosp-frameworks-ml-nn
+
+The majority of times someone will be following this documentation the ultimate goal is
+to update the aosp-framework-ml-nn package from the upstream branch. If this is the case
+continue on with the following instructions.
+
+First, up-rev the neuralnetworks package on which aosp-frameworks-ml-nn depends:
+```bash
+cd src/aosp/hardware/interfaces/neuralnetworks
+git checkout -b merge cros/main
+git merge cros/upstream/master --no-ff
+```
+This may result in a few merge conflicts that can not be automatically resolved. Manually
+fix any conflicts. The correct way to merge any conflicts may only become apparent after
+trying to build and test the aosp-frameworks-ml-nn package. Be prepared to redo the merge
+if you inadvetently leave in/remove the wrong parts.
+
+Now, lets up-rev the aosp-frameworks-ml-nn package:
+```bash
+cd src/aosp/frameworks/ml
+git checkout -b merge cros/main
+git merge cros/upstream/master --no-ff
+```
+The last command will likely generate a bunch of conflicts. Manually resolve them, taking
+note of any comments that exist around the point of conflict which perhaps indicates why
+the previous developer intentionally changed things.
+
+When all files have been merged we need to build and test the nnapi package and the
+aosp-frameworks-ml-nn package. Run
+```bash
+FEATURES=test emerge-$BOARD nnapi
+```
+Resolve any test failures or linking errors that may be reported. Linking errors may require
+edits to the BUILD.gn file to include newly added files, or update paths for files that
+have been moved around. Once NNAPI is passing, do the same things for aosp-frameworks-ml-nn
+```bash
+FEATURES=test emerge-$BOARD aosp-frameworks-ml-nn
+```
+You are quite likely to see build and test failures after this step. Inspect the updates
+for the symbols which the linker may be complaining about and update the BUILD.gn file.
+Some tests may fail if trying to use anything related to Telemetry or Hardware buffers.
+These tests should either be disabled; some code removed which uses these constructs; or
+wrapped in macros which are turned on only if `__ANDROID__` is defined.

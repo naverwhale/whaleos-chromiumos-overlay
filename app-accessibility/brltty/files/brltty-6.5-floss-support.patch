@@ -1,0 +1,1258 @@
+From dc46505e50b1357e2bfb00ebd2fa609ca2471095 Mon Sep 17 00:00:00 2001
+From: Jesse Melhuish <melhuishj@google.com>
+Date: Tue, 5 Sep 2023 21:55:16 +0000
+Subject: [PATCH] Implement Floss in BRLTTY
+
+---
+ Programs/bluetooth_linux.c | 1159 +++++++++++++++++++++++++++++++++++-
+ 1 file changed, 1149 insertions(+), 10 deletions(-)
+
+diff --git a/Programs/bluetooth_linux.c b/Programs/bluetooth_linux.c
+index 5063c51..9e6de7c 100644
+--- a/Programs/bluetooth_linux.c
++++ b/Programs/bluetooth_linux.c
+@@ -34,14 +34,26 @@
+ #include "bluetooth_internal.h"
+ #include "async_handle.h"
+ #include "async_io.h"
++#include "async_wait.h"
+ #include "io_misc.h"
+ #include "timing.h"
+ 
++
++// BlueZ implementations
++
+ struct BluetoothConnectionExtensionStruct {
+   SocketDescriptor socketDescriptor;
+   struct sockaddr_rc localAddress;
+   struct sockaddr_rc remoteAddress;
+   AsyncHandle inputMonitor;
++  uint64_t floss_remote_address;
++  uint8_t floss_remote_uuid[16];
++  // This should only be used when persisting the SocketManager callback ID for
++  // closing the RFCOMM connection. Other, short-lived, callback IDs should be
++  // stored locally.
++  int floss_callback_id;
++  // For storing the RFCOMM socket ID which is needed for closing the socket later.
++  uint64_t floss_socket_id;
+ };
+ 
+ typedef union {
+@@ -75,7 +87,7 @@ bthMakeAddress (bdaddr_t *address, uint64_t bda) {
+ }
+ 
+ BluetoothConnectionExtension *
+-bthNewConnectionExtension (uint64_t bda) {
++bluez_bthNewConnectionExtension (uint64_t bda) {
+   BluetoothConnectionExtension *bcx;
+ 
+   if ((bcx = malloc(sizeof(*bcx)))) {
+@@ -109,7 +121,7 @@ bthCancelInputMonitor (BluetoothConnectionExtension *bcx) {
+ }
+ 
+ void
+-bthReleaseConnectionExtension (BluetoothConnectionExtension *bcx) {
++bluez_bthReleaseConnectionExtension (BluetoothConnectionExtension *bcx) {
+   bthCancelInputMonitor(bcx);
+   closeSocket(&bcx->socketDescriptor);
+   free(bcx);
+@@ -128,7 +140,7 @@ bthGetConnectLogLevel (int error) {
+ }
+ 
+ int
+-bthOpenChannel (BluetoothConnectionExtension *bcx, uint8_t channel, int timeout) {
++bluez_bthOpenChannel (BluetoothConnectionExtension *bcx, uint8_t channel, int timeout) {
+   bcx->remoteAddress.rc_channel = channel;
+ 
+   if ((bcx->socketDescriptor = socket(PF_BLUETOOTH, SOCK_STREAM, BTPROTO_RFCOMM)) != -1) {
+@@ -316,7 +328,7 @@ bthHandleChannelDiscoveryResponse (
+ }
+ 
+ int
+-bthDiscoverChannel (
++bluez_bthDiscoverChannel (
+   uint8_t *channel, BluetoothConnectionExtension *bcx,
+   const void *uuidBytes, size_t uuidLength,
+   int timeout
+@@ -440,12 +452,12 @@ bthMonitorInput (BluetoothConnection *connection, AsyncMonitorCallback *callback
+ }
+ 
+ int
+-bthPollInput (BluetoothConnectionExtension *bcx, int timeout) {
++bluez_bthPollInput (BluetoothConnectionExtension *bcx, int timeout) {
+   return awaitSocketInput(bcx->socketDescriptor, timeout);
+ }
+ 
+ ssize_t
+-bthGetData (
++bluez_bthGetData (
+   BluetoothConnectionExtension *bcx, void *buffer, size_t size,
+   int initialTimeout, int subsequentTimeout
+ ) {
+@@ -453,12 +465,12 @@ bthGetData (
+ }
+ 
+ ssize_t
+-bthPutData (BluetoothConnectionExtension *bcx, const void *buffer, size_t size) {
++bluez_bthPutData (BluetoothConnectionExtension *bcx, const void *buffer, size_t size) {
+   return writeSocket(bcx->socketDescriptor, buffer, size);
+ }
+ 
+ char *
+-bthObtainDeviceName (uint64_t bda, int timeout) {
++bluez_bthObtainDeviceName (uint64_t bda, int timeout) {
+   char *name = NULL;
+   int device = hci_get_route(NULL);
+ 
+@@ -640,7 +652,7 @@ logDBusError (const char *action, const DBusError *error) {
+ #endif /* HAVE_PKG_DBUS */
+ 
+ void
+-bthProcessDiscoveredDevices (
++bluez_bthProcessDiscoveredDevices (
+   DiscoveredBluetoothDeviceTester *testDevice, void *data
+ ) {
+ #ifdef HAVE_PKG_DBUS
+@@ -648,7 +660,7 @@ bthProcessDiscoveredDevices (
+ 
+   DBusError error;
+   DBusConnection *bus;
+- 
++
+   dbus_error_init(&error);
+   bus = dbus_bus_get(DBUS_BUS_SYSTEM, &error);
+ 
+@@ -786,3 +798,1130 @@ bthProcessDiscoveredDevices (
+   }
+ #endif /* HAVE_PKG_DBUS */
+ }
++
++// Floss Implementations
++
++typedef enum {
++  CALLBACK_NOT_STARTED,
++  CALLBACK_PENDING,
++  CALLBACK_COMPLETE,
++  CALLBACK_TIMEOUT,
++  CALLBACK_FAILED,
++} CallbackStatus;
++
++// Data necessary for tracking the state of the RFCOMM callback
++typedef struct {
++  // Caller is responsible for setting this to CALLBACK_PENDING before running
++  // the DBus message loop, and setting to CALLBACK_TIMEOUT if the status was
++  // not changed by the handler
++  CallbackStatus status;
++  // This must be set for the handler to differentiate the correct callback for
++  // a request. Not setting this will almost certainly result in all callbacks
++  // being rejected for an incorrect socket ID
++  uint64_t socket_id;
++  SocketDescriptor socket;
++} CreateRfcommCallback;
++
++static CreateRfcommCallback create_rfcomm_callback = {
++  CALLBACK_NOT_STARTED,
++  // Socket IDs start at 1000 so this should not collide
++  0,
++  // This is not a valid SocketDescriptor
++  -1,
++};
++
++// Parse data and dispatch messages in the DBus queue until we've processed the
++// callback we're looking for or the queue is cleared.
++static void run_dbus_loop() {
++  DBusError dbus_error;
++  DBusConnection *bus;
++  dbus_error_init(&dbus_error);
++  bus = dbus_bus_get(DBUS_BUS_SYSTEM, &dbus_error);
++
++  if (dbus_error_is_set(&dbus_error)) {
++    logDBusError("Unable to get DBus for floss_bthNewConnectionExtension", &dbus_error);
++    dbus_error_free(&dbus_error);
++    return;
++  } else if (!bus) {
++    logMallocError();
++    dbus_error_free(&dbus_error);
++    return;
++  }
++  dbus_error_free(&dbus_error);
++
++  // Clear out all outbound messages and invoke our message handler for any inbound messages.
++  // TDOD: Also check to make sure we're not done processing the message queue
++  while (dbus_connection_read_write_dispatch(bus, 100)) {
++    if (create_rfcomm_callback.status == CALLBACK_COMPLETE) {
++      break;
++    }
++  }
++}
++
++// Returns the callback ID or -1 if callback registration failed.
++static int floss_register_callback(const char *interface_name) {
++  DBusError dbus_error;
++  DBusConnection *bus;
++  dbus_error_init(&dbus_error);
++  bus = dbus_bus_get(DBUS_BUS_SYSTEM, &dbus_error);
++
++  if (dbus_error_is_set(&dbus_error)) {
++    logDBusError("Unable to get DBus for floss_register_callback", &dbus_error);
++    dbus_error_free(&dbus_error);
++    return -1;
++  } else if (!bus) {
++    logMallocError();
++    dbus_error_free(&dbus_error);
++    return -1;
++  }
++  dbus_error_free(&dbus_error);
++
++  DBusMessage *method_call, *reply;
++  method_call = dbus_message_new_method_call(
++      "org.chromium.bluetooth",
++      "/org/chromium/bluetooth/hci0/adapter",
++      interface_name,
++      "RegisterCallback");
++  if (!method_call) {
++    logSystemError("Unable to create DBus method call to register Floss callbacks");
++    return -1;
++  }
++  const char *dbus_floss_object_path = "/org/chromium/brltty/floss";
++  if (!dbus_message_append_args(method_call, DBUS_TYPE_OBJECT_PATH, &dbus_floss_object_path, DBUS_TYPE_INVALID)) {
++    logSystemError("Unable to add callback object path to Floss RegisterCallback method");
++    dbus_message_unref(method_call);
++    return -1;
++  }
++
++  dbus_error_init(&dbus_error);
++  reply = dbus_connection_send_with_reply_and_block(bus, method_call, DBUS_TIMEOUT_USE_DEFAULT, &dbus_error);
++  dbus_message_unref(method_call);
++
++  if (dbus_error_is_set(&dbus_error)) {
++    logDBusError("Got DBus error from Floss RegisterCallback", &dbus_error);
++    dbus_error_free(&dbus_error);
++    return -1;
++  } else if (!reply) {
++    logMallocError();
++    dbus_error_free(&dbus_error);
++    return -1;
++  }
++  dbus_error_free(&dbus_error);
++
++  dbus_error_init(&dbus_error);
++  uint32_t callback_id = 0;
++  if (!dbus_message_get_args(reply, &dbus_error, DBUS_TYPE_UINT32, &callback_id, DBUS_TYPE_INVALID)) {
++    logDBusError("Unable to get CallbackId from Floss", &dbus_error);
++    dbus_message_unref(reply);
++    dbus_error_free(&dbus_error);
++    return -1;
++  }
++  dbus_message_unref(reply);
++  dbus_error_free(&dbus_error);
++  return callback_id;
++}
++
++// Unregisters the callback. Ensure that interface_name matches the interface
++// used to create the callback.
++static void floss_unregister_callback(const char *interface_name, uint32_t callback_id) {
++  DBusError dbus_error;
++  DBusConnection *bus;
++  dbus_error_init(&dbus_error);
++  bus = dbus_bus_get(DBUS_BUS_SYSTEM, &dbus_error);
++
++  if (dbus_error_is_set(&dbus_error)) {
++    logDBusError("Unable to get DBus for floss_unregister_callback", &dbus_error);
++    dbus_error_free(&dbus_error);
++    return;
++  } else if (!bus) {
++    logMallocError();
++    dbus_error_free(&dbus_error);
++    return;
++  }
++  dbus_error_free(&dbus_error);
++
++  DBusMessage *method_call, *reply;
++  method_call = dbus_message_new_method_call(
++      "org.chromium.bluetooth",
++      "/org/chromium/bluetooth/hci0/adapter",
++      interface_name,
++      "UnregisterCallback");
++  if (!method_call) {
++    logSystemError("Unable to create DBus method call to unregister Floss callbacks");
++    return;
++  }
++  if (!dbus_message_append_args(method_call, DBUS_TYPE_UINT32, &callback_id, DBUS_TYPE_INVALID)) {
++    logSystemError("Unable to add callback id to Floss UnregisterCallback method");
++    dbus_message_unref(method_call);
++    return;
++  }
++
++  dbus_error_init(&dbus_error);
++  reply = dbus_connection_send_with_reply_and_block(bus, method_call, DBUS_TIMEOUT_USE_DEFAULT, &dbus_error);
++  dbus_message_unref(method_call);
++
++  if (dbus_error_is_set(&dbus_error)) {
++    logDBusError("Got DBus error from Floss UnregisterCallback", &dbus_error);
++    dbus_message_unref(reply);
++    dbus_error_free(&dbus_error);
++    return;
++  } else if (!reply) {
++    logMallocError();
++    dbus_error_free(&dbus_error);
++    return;
++  }
++  dbus_message_unref(reply);
++  dbus_error_free(&dbus_error);
++}
++
++// Parses a Floss BluetoothDevice from device_iter into
++// DiscoveredBluetoothDevice. Returns 0 on success, or -1 if an error is
++// encountered.
++static int parse_floss_bluetooth_device(DBusMessageIter* device_iter, DiscoveredBluetoothDevice *device) {
++  while (dbus_message_iter_get_arg_type(device_iter) != DBUS_TYPE_INVALID) {
++      if (dbus_message_iter_get_arg_type(device_iter) != DBUS_TYPE_DICT_ENTRY) {
++        logMessage(LOG_ERR, "Expected DBUS_TYPE_DICT_ENTRY (%d) for Floss BluetoothDevice but found %d", DBUS_TYPE_DICT_ENTRY, dbus_message_iter_get_arg_type(device_iter));
++        return -1;
++      }
++      DBusMessageIter properties_dict_iter;
++      dbus_message_iter_recurse(device_iter, &properties_dict_iter);
++
++      // Extract the key
++      if (dbus_message_iter_get_arg_type(&properties_dict_iter) != DBUS_TYPE_STRING) {
++        logMessage(LOG_ERR, "Expected DBUS_TYPE_STRING (%d) for Floss BluetoothDevice but found %d", DBUS_TYPE_STRING, dbus_message_iter_get_arg_type(&properties_dict_iter));
++        return -1;
++      }
++      char *property_name = NULL;
++      dbus_message_iter_get_basic(&properties_dict_iter, &property_name);
++
++      // Advance to the property value
++      dbus_message_iter_next(&properties_dict_iter);
++      if (dbus_message_iter_get_arg_type(&properties_dict_iter) != DBUS_TYPE_VARIANT) {
++        logMessage(LOG_ERR, "Expected DBUS_TYPE_VARIANT (%d) for Floss BluetoothDevice but found %d", DBUS_TYPE_VARIANT, dbus_message_iter_get_arg_type(&properties_dict_iter));
++        return -1;
++      }
++      DBusMessageIter property_value_variant;
++      dbus_message_iter_recurse(&properties_dict_iter, &property_value_variant);
++
++      // Get the property value
++      if (dbus_message_iter_get_arg_type(&property_value_variant) != DBUS_TYPE_STRING) {
++        logMessage(LOG_ERR, "Expected DBUS_TYPE_STRING (%d) for Floss BluetoothDevice but found %d", DBUS_TYPE_STRING, dbus_message_iter_get_arg_type(&property_value_variant));
++        return -1;
++      }
++      char *property_value = NULL;
++      dbus_message_iter_get_basic(&property_value_variant, &property_value);
++
++      if (strcmp(property_name, "name") == 0) {
++        device->name = property_value;
++      } else if (strcmp(property_name, "address") == 0) {
++        bthParseAddress(&device->address, property_value);
++      }
++
++      dbus_message_iter_next(device_iter);
++    }
++  return 0;
++}
++
++// Parses a Floss SocketResult, putting the resulting SocketId into
++// socket_id. Returns the BtStatus unless an error was encountered during
++// parsing, in which case -1 is returned.
++static int parse_floss_socket_result(DBusMessageIter* socket_result_iter, uint64_t *socket_id) {
++  int result = -1;
++  while (dbus_message_iter_get_arg_type(socket_result_iter) != DBUS_TYPE_INVALID) {
++      if (dbus_message_iter_get_arg_type(socket_result_iter) != DBUS_TYPE_DICT_ENTRY) {
++        logMessage(LOG_ERR, "Expected DBUS_TYPE_DICT_ENTRY (%d) for Floss SocketResult but found %d", DBUS_TYPE_DICT_ENTRY, dbus_message_iter_get_arg_type(socket_result_iter));
++        return -1;
++      }
++      DBusMessageIter properties_dict_iter;
++      dbus_message_iter_recurse(socket_result_iter, &properties_dict_iter);
++
++      // Extract the key
++      if (dbus_message_iter_get_arg_type(&properties_dict_iter) != DBUS_TYPE_STRING) {
++        logMessage(LOG_ERR, "Expected DBUS_TYPE_STRING (%d) for Floss SocketResult but found %d", DBUS_TYPE_STRING, dbus_message_iter_get_arg_type(&properties_dict_iter));
++        return -1;
++      }
++      char *property_name = NULL;
++      dbus_message_iter_get_basic(&properties_dict_iter, &property_name);
++
++      // Advance to the property value
++      dbus_message_iter_next(&properties_dict_iter);
++      if (dbus_message_iter_get_arg_type(&properties_dict_iter) != DBUS_TYPE_VARIANT) {
++        logMessage(LOG_ERR, "Expected DBUS_TYPE_VARIANT (%d) for Floss SocketResult but found %d", DBUS_TYPE_VARIANT, dbus_message_iter_get_arg_type(&properties_dict_iter));
++        return -1;
++      }
++      DBusMessageIter property_value_variant;
++      dbus_message_iter_recurse(&properties_dict_iter, &property_value_variant);
++
++      if (strcmp(property_name, "status") == 0) {
++        if (dbus_message_iter_get_arg_type(&property_value_variant) != DBUS_TYPE_UINT32) {
++          logMessage(LOG_ERR, "Expected DBUS_TYPE_UINT32 (%d) for Floss SocketResult but found %d", DBUS_TYPE_UINT32, dbus_message_iter_get_arg_type(&property_value_variant));
++          return -1;
++        }
++        dbus_message_iter_get_basic(&property_value_variant, &result);
++      } else if (strcmp(property_name, "id") == 0) {
++        if (dbus_message_iter_get_arg_type(&property_value_variant) != DBUS_TYPE_UINT64) {
++          logMessage(LOG_ERR, "Expected DBUS_TYPE_UINT64 (%d) for Floss SocketResult but found %d", DBUS_TYPE_UINT64, dbus_message_iter_get_arg_type(&property_value_variant));
++          return -1;
++        }
++        dbus_message_iter_get_basic(&property_value_variant, socket_id);
++      }
++
++      dbus_message_iter_next(socket_result_iter);
++  }
++  return result;
++}
++
++// Parses a FlossSocket, extracting the socket/file descriptor into
++// socket_descriptor. Returns 0 on success, or -1 if an error is encountered.
++static int parse_floss_socket(DBusMessageIter *socket_iter, SocketDescriptor *socket_descriptor) {
++  // Check/Unwrap the optional container
++  if (dbus_message_iter_get_arg_type(socket_iter) != DBUS_TYPE_DICT_ENTRY) {
++    logMessage(LOG_ERR, "Expected DBUS_TYPE_DICT_ENTRY (%d) for FlossSocket but found %d", DBUS_TYPE_DICT_ENTRY, dbus_message_iter_get_arg_type(socket_iter));
++    return -1;
++  }
++  DBusMessageIter optional_wrapper_dict_entry;
++  dbus_message_iter_recurse(socket_iter, &optional_wrapper_dict_entry);
++
++  if (dbus_message_iter_get_arg_type(&optional_wrapper_dict_entry) != DBUS_TYPE_STRING) {
++    logMessage(LOG_ERR, "Expected DBUS_TYPE_STRING (%d) for FlossSocket but found %d", DBUS_TYPE_STRING, dbus_message_iter_get_arg_type(&optional_wrapper_dict_entry));
++    return -1;
++  }
++  char *wrapper_property_name = NULL;
++  dbus_message_iter_get_basic(&optional_wrapper_dict_entry, &wrapper_property_name);
++
++  if (strcmp(wrapper_property_name, "optional_value") != 0) {
++    return -1;
++  }
++
++  dbus_message_iter_next(&optional_wrapper_dict_entry);
++  if (dbus_message_iter_get_arg_type(&optional_wrapper_dict_entry) != DBUS_TYPE_VARIANT) {
++    logMessage(LOG_ERR, "Expected DBUS_TYPE_VARIANT (%d) for FlossSocket but found %d", DBUS_TYPE_VARIANT, dbus_message_iter_get_arg_type(&optional_wrapper_dict_entry));
++    return -1;
++  }
++  DBusMessageIter socket_dict_array_iter;
++  dbus_message_iter_recurse(&optional_wrapper_dict_entry, &socket_dict_array_iter);
++
++  if (dbus_message_iter_get_arg_type(&socket_dict_array_iter) != DBUS_TYPE_ARRAY) {
++    logMessage(LOG_ERR, "Expected DBUS_TYPE_ARRAY (%d) for FlossSocket but found %d", DBUS_TYPE_ARRAY, dbus_message_iter_get_arg_type(&socket_dict_array_iter));
++    return -1;
++  }
++  DBusMessageIter socket_dict_iter;
++  dbus_message_iter_recurse(&socket_dict_array_iter, &socket_dict_iter);
++
++  while (dbus_message_iter_get_arg_type(&socket_dict_iter) != DBUS_TYPE_INVALID) {
++    if (dbus_message_iter_get_arg_type(&socket_dict_iter) != DBUS_TYPE_DICT_ENTRY) {
++      logMessage(LOG_ERR, "Expected DBUS_TYPE_DICT_ENTRY (%d) for FlossSocket but found %d", DBUS_TYPE_DICT_ENTRY, dbus_message_iter_get_arg_type(&socket_dict_iter));
++      return -1;
++    }
++    DBusMessageIter properties_dict_iter;
++    dbus_message_iter_recurse(&socket_dict_iter, &properties_dict_iter);
++
++    // Extract the key as a string
++    if (dbus_message_iter_get_arg_type(&properties_dict_iter) != DBUS_TYPE_STRING) {
++      logMessage(LOG_ERR, "Expected DBUS_TYPE_STRING (%d) for FlossSocket but found %d", DBUS_TYPE_STRING, dbus_message_iter_get_arg_type(&properties_dict_iter));
++      return -1;
++    }
++    char *property_name = NULL;
++    dbus_message_iter_get_basic(&properties_dict_iter, &property_name);
++
++    if (strcmp(property_name, "fd") == 0) {
++      // Advance to the property value (v)
++      dbus_message_iter_next(&properties_dict_iter);
++      if (dbus_message_iter_get_arg_type(&properties_dict_iter) != DBUS_TYPE_VARIANT) {
++        logMessage(LOG_ERR, "Expected DBUS_TYPE_VARIANT (%d) for FlossSocket but found %d", DBUS_TYPE_VARIANT, dbus_message_iter_get_arg_type(&properties_dict_iter));
++        return -1;
++      }
++      DBusMessageIter property_value_variant;
++      dbus_message_iter_recurse(&properties_dict_iter, &property_value_variant);
++
++      // Get array containing variant
++      if (dbus_message_iter_get_arg_type(&property_value_variant) != DBUS_TYPE_ARRAY) {
++        logMessage(LOG_ERR, "Expected DBUS_TYPE_ARRAY (%d) for FlossSocket but found %d", DBUS_TYPE_ARRAY, dbus_message_iter_get_arg_type(&property_value_variant));
++        return -1;
++      }
++      DBusMessageIter property_value_variant_inner_array_iter;
++      dbus_message_iter_recurse(&property_value_variant, &property_value_variant_inner_array_iter);
++
++      // Get the optional value
++      if (dbus_message_iter_get_arg_type(&property_value_variant_inner_array_iter) != DBUS_TYPE_DICT_ENTRY) {
++        logMessage(LOG_ERR, "Expected DBUS_TYPE_DICT_ENTRY (%d) for FlossSocket but found %d", DBUS_TYPE_DICT_ENTRY, dbus_message_iter_get_arg_type(&property_value_variant_inner_array_iter));
++        return -1;
++      }
++      DBusMessageIter socket_optional_dict_entry_iter;
++      dbus_message_iter_recurse(&property_value_variant_inner_array_iter, &socket_optional_dict_entry_iter);
++
++      if (dbus_message_iter_get_arg_type(&socket_optional_dict_entry_iter) != DBUS_TYPE_STRING) {
++        logMessage(LOG_ERR, "Expected DBUS_TYPE_STRING (%d) for FlossSocket but found %d", DBUS_TYPE_STRING, dbus_message_iter_get_arg_type(&socket_optional_dict_entry_iter));
++        return -1;
++      }
++      char *optional_socket_name;
++      dbus_message_iter_get_basic(&socket_optional_dict_entry_iter, &optional_socket_name);
++
++      if (strcmp(optional_socket_name, "optional_value") != 0) {
++        logMessage(LOG_ERR, "Expected optional_value but got %s", optional_socket_name);
++        return -1;
++      }
++      dbus_message_iter_next(&socket_optional_dict_entry_iter);
++
++      if (dbus_message_iter_get_arg_type(&socket_optional_dict_entry_iter) != DBUS_TYPE_VARIANT) {
++        logMessage(LOG_ERR, "Expected DBUS_TYPE_VARIANT (%d) for FlossSocket but found %d", DBUS_TYPE_VARIANT, dbus_message_iter_get_arg_type(&socket_optional_dict_entry_iter));
++        return -1;
++      }
++      DBusMessageIter actual_socket_descriptor_iter;
++      dbus_message_iter_recurse(&socket_optional_dict_entry_iter, &actual_socket_descriptor_iter);
++
++      // And finally, the actual socket descriptor
++      if (dbus_message_iter_get_arg_type(&actual_socket_descriptor_iter) != DBUS_TYPE_UNIX_FD) {
++        logMessage(LOG_ERR, "Expected DBUS_TYPE_UNIX_FD (%d) for FlossSocket but found %d", DBUS_TYPE_UNIX_FD, dbus_message_iter_get_arg_type(&actual_socket_descriptor_iter));
++        return -1;
++      }
++      dbus_message_iter_get_basic(&actual_socket_descriptor_iter, &create_rfcomm_callback.socket);
++      return 0;
++    }
++
++    dbus_message_iter_next(&socket_dict_iter);
++  }
++  return 0;
++}
++
++// Process the OnOutgoingConnectionResult callback from Floss. Parses the result
++// and updates create_rfcomm_callback. If create_rfcomm_callback.status is not
++// CALLBACK_PENDING, this is a no-op.
++static void handle_create_rfcomm_complete(DBusMessage* message) {
++  if (create_rfcomm_callback.status != CALLBACK_PENDING) {
++    return;
++  }
++
++  if (!dbus_message_has_signature(message, "tua{sv}")) {
++    logMessage(LOG_ERR, "Floss OnOutgoingConnectionResult had unexpected signature: %s", dbus_message_get_signature(message));
++    return;
++  }
++
++  DBusMessageIter message_iter, socket_iter;
++  dbus_message_iter_init(message, &message_iter);
++
++  uint64_t socket_id;
++  if (dbus_message_iter_get_arg_type(&message_iter) != DBUS_TYPE_UINT64) {
++    return;
++  }
++  dbus_message_iter_get_basic(&message_iter, &socket_id);
++  dbus_message_iter_next(&message_iter);
++
++  // If the socket IDs don't match this isn't our callback and we should ignore it.
++  if (socket_id != create_rfcomm_callback.socket_id) {
++    logMessage(LOG_WARNING, "Recieved OnOutgoingConnectionResult for an unexpected socket ID");
++    return;
++  }
++
++  uint32_t status;
++  if (dbus_message_iter_get_arg_type(&message_iter) != DBUS_TYPE_UINT32) {
++    return;
++  }
++  dbus_message_iter_get_basic(&message_iter, &status);
++  if (status != 0) {
++    create_rfcomm_callback.status = CALLBACK_FAILED;
++    return;
++  }
++  dbus_message_iter_next(&message_iter);
++
++  dbus_message_iter_recurse(&message_iter, &socket_iter);
++  if (parse_floss_socket(&socket_iter, &create_rfcomm_callback.socket) != 0) {
++    create_rfcomm_callback.status = CALLBACK_FAILED;
++    return;
++  }
++  create_rfcomm_callback.status = CALLBACK_COMPLETE;
++}
++
++// Central handler for Floss callbacks. Determines which callback method should
++// be called and hands off processing.
++static DBusHandlerResult handle_floss_callback(DBusConnection* dbus_connection,
++                                               DBusMessage* message,
++                                               void* arg) {
++  if (dbus_message_is_method_call(message, "org.chromium.bluetooth.SocketManagerCallback", "OnOutgoingConnectionResult")) {
++    handle_create_rfcomm_complete(message);
++    return DBUS_HANDLER_RESULT_HANDLED;
++  }
++  return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
++}
++
++// Runs the dbus loop periodically until tiemout has occurred or the callback
++// state changes.
++ASYNC_CONDITION_TESTER(testCreateRfcommCallbackProcessed) {
++  run_dbus_loop();
++  return create_rfcomm_callback.status != CALLBACK_PENDING;
++}
++
++// There appears to be a Little/Big Endian discrepency between Floss and
++// BRLTTY/BlueZ. Rather than refactor to accomadate both we'll just go
++// ahead and convert for them.
++static void reverse_address(char *bluetooth_address) {
++  sprintf(bluetooth_address, "%c%c:%c%c:%c%c:%c%c:%c%c:%c%c",
++          bluetooth_address[15], bluetooth_address[16],
++          bluetooth_address[12], bluetooth_address[13],
++          bluetooth_address[9], bluetooth_address[10],
++          bluetooth_address[6], bluetooth_address[7],
++          bluetooth_address[3], bluetooth_address[4],
++          bluetooth_address[0], bluetooth_address[1]);
++}
++
++// Populate message such that it represents a Floss BluetoothDevice, without the
++// device name as it is not used.
++static void create_floss_bluetooth_device(DBusMessageIter* message, char* address) {
++  DBusMessageIter dict, dict_entry, dict_entry_value;
++  const char* property_name_address = "address";
++  const char* property_name_name = "name";
++  const char* name = "";
++
++  // Open up the array representing a BluetoothDevice
++  dbus_message_iter_open_container(message, DBUS_TYPE_ARRAY, "{sv}", &dict);
++
++  // Start a dict entry for the address
++  dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY, NULL, &dict_entry);
++  dbus_message_iter_append_basic(&dict_entry, DBUS_TYPE_STRING, &property_name_address);
++
++  // Open up a variant to put the address value into
++  dbus_message_iter_open_container(&dict_entry, DBUS_TYPE_VARIANT, "s", &dict_entry_value);
++  dbus_message_iter_append_basic(&dict_entry_value, DBUS_TYPE_STRING, &address);
++
++  // Close address entry
++  dbus_message_iter_close_container(&dict_entry, &dict_entry_value);
++  dbus_message_iter_close_container(&dict, &dict_entry);
++
++  // Start a dict entry for the name. We don't need to populate this (how would
++  // we?) but it will fail otherwise.
++  dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY, NULL, &dict_entry);
++  dbus_message_iter_append_basic(&dict_entry, DBUS_TYPE_STRING, &property_name_name);
++
++  // Open up a variant to put the name value into
++  dbus_message_iter_open_container(&dict_entry, DBUS_TYPE_VARIANT, "s", &dict_entry_value);
++  dbus_message_iter_append_basic(&dict_entry_value, DBUS_TYPE_STRING, &name);
++
++  // Close name entry
++  dbus_message_iter_close_container(&dict_entry, &dict_entry_value);
++  dbus_message_iter_close_container(&dict, &dict_entry);
++
++  dbus_message_iter_close_container(message, &dict);
++}
++
++// BRLTTY stores the Bluetooth address as a uint64_t, and that's also easier to
++// pass around, but Floss expects a string. This is a convenience function for
++// swapping this for Floss calls.
++static char* get_floss_bluetooth_address_from_uint64_t(uint64_t raw_address) {
++  // Reuse BlueZ's bdaddr_t for convenience
++  bdaddr_t bluez_address;
++  char *address = NULL;
++  bthMakeAddress(&bluez_address, raw_address);
++  address = batostr(&bluez_address);
++  reverse_address(address);
++  return address;
++}
++
++// Resolve the Bluetooth address to a device name using Floss's GetRemoteName
++// method. Returns the name on success, or NULL if an error is encountered.
++char * floss_bthObtainDeviceName (uint64_t bda, int timeout) {
++  char *address = get_floss_bluetooth_address_from_uint64_t(bda);
++
++  // Let Floss resolve the device name if it knows it
++  DBusMessage *method_call, *reply;
++  DBusMessageIter device_address;
++  DBusError dbus_error;
++  DBusConnection *bus;
++
++  dbus_error_init(&dbus_error);
++  bus = dbus_bus_get(DBUS_BUS_SYSTEM, &dbus_error);
++
++  if (dbus_error_is_set(&dbus_error)) {
++    logDBusError("Unable to get DBus for floss_bthObtainDeviceName", &dbus_error);
++    dbus_error_free(&dbus_error);
++    return NULL;
++  } else if (!bus) {
++    logMallocError();
++    dbus_error_free(&dbus_error);
++    return NULL;
++  }
++  dbus_error_free(&dbus_error);
++
++  method_call = dbus_message_new_method_call(
++      "org.chromium.bluetooth",
++      "/org/chromium/bluetooth/hci0/adapter",
++      "org.chromium.bluetooth.Bluetooth",
++      "GetRemoteName");
++
++  if (!method_call) {
++    return NULL;
++  }
++
++  // Populate the args
++  dbus_message_iter_init_append(method_call, &device_address);
++  create_floss_bluetooth_device(&device_address, address);
++
++  dbus_error_init(&dbus_error);
++  reply = dbus_connection_send_with_reply_and_block(bus, method_call, DBUS_TIMEOUT_USE_DEFAULT, &dbus_error);
++  dbus_message_unref(method_call);
++
++  if (dbus_error_is_set(&dbus_error)) {
++    logDBusError("Got DBus error from Floss GetRemoteName", &dbus_error);
++    dbus_message_unref(reply);
++    dbus_error_free(&dbus_error);
++    return NULL;
++  } else if (!reply) {
++    logMallocError();
++    dbus_error_free(&dbus_error);
++    return NULL;
++  }
++  dbus_error_free(&dbus_error);
++
++  dbus_error_init(&dbus_error);
++  char *name;
++  if (!dbus_message_get_args(reply, &dbus_error, DBUS_TYPE_STRING, &name, DBUS_TYPE_INVALID)) {
++    dbus_error_free(&dbus_error);
++    dbus_message_unref(reply);
++    return NULL;
++  }
++  dbus_message_unref(reply);
++  dbus_error_free(&dbus_error);
++
++  return name;
++}
++
++// Setup context data for a Floss connection. Namely, register a DBus object
++// that can be used for callbacks and store the bluetooth address.
++BluetoothConnectionExtension * floss_bthNewConnectionExtension (uint64_t bda) {
++  BluetoothConnectionExtension *floss_connection;
++  if (!(floss_connection = malloc(sizeof(*floss_connection)))) {
++    logMallocError();
++    return NULL;
++  }
++  floss_connection->floss_remote_address = bda;
++  floss_connection->floss_socket_id = 0;
++
++  DBusError dbus_error;
++  DBusConnection *bus;
++  dbus_error_init(&dbus_error);
++  bus = dbus_bus_get(DBUS_BUS_SYSTEM, &dbus_error);
++
++  if (dbus_error_is_set(&dbus_error)) {
++    logDBusError("Unable to get DBus for floss_bthNewConnectionExtension", &dbus_error);
++    dbus_error_free(&dbus_error);
++    return NULL;
++  } else if (!bus) {
++    logMallocError();
++    dbus_error_free(&dbus_error);
++    return NULL;
++  }
++  dbus_error_free(&dbus_error);
++
++  int request_name_response;
++  dbus_error_init(&dbus_error);
++  request_name_response = dbus_bus_request_name(bus, "org.chromium.Brltty", DBUS_NAME_FLAG_ALLOW_REPLACEMENT | DBUS_NAME_FLAG_REPLACE_EXISTING, &dbus_error);
++  if (dbus_error_is_set(&dbus_error)) {
++    syslog(LOG_WARNING, "Requesting dbus name %s", dbus_error.message);
++    dbus_error_free(&dbus_error);
++    return NULL;
++  }
++  if (request_name_response != DBUS_REQUEST_NAME_REPLY_PRIMARY_OWNER) {
++    syslog(LOG_WARNING, "Not primary owner of dbus name.");
++    dbus_error_free(&dbus_error);
++    return NULL;
++  }
++  dbus_error_free(&dbus_error);
++
++  static const DBusObjectPathVTable floss_vtable = {
++    .message_function = handle_floss_callback,
++  };
++  dbus_error_init(&dbus_error);
++  if (!dbus_connection_register_object_path(bus, "/org/chromium/brltty/floss", &floss_vtable, &dbus_error)) {
++    logSystemError("Unable to register object path for Floss adapter callbacks");
++    dbus_error_free(&dbus_error);
++    return NULL;
++  }
++
++  if (dbus_error_is_set(&dbus_error)) {
++    logDBusError("Unable to register object path for Floss adapter callbacks", &dbus_error);
++    dbus_error_free(&dbus_error);
++    return NULL;
++  }
++  dbus_error_free(&dbus_error);
++
++  return floss_connection;
++}
++
++static void floss_close_channel(int floss_callback_id, uint64_t floss_socket_id) {
++  DBusError dbus_error;
++  DBusConnection *bus;
++
++  dbus_error_init(&dbus_error);
++  bus = dbus_bus_get(DBUS_BUS_SYSTEM, &dbus_error);
++
++  if (dbus_error_is_set(&dbus_error)) {
++    logDBusError("Unable to get DBus for floss_close_channel", &dbus_error);
++    dbus_error_free(&dbus_error);
++    return;
++  } else if (!bus) {
++    logMallocError();
++    dbus_error_free(&dbus_error);
++    return;
++  }
++  dbus_error_free(&dbus_error);
++
++  DBusMessage *close_socket_call = dbus_message_new_method_call(
++      "org.chromium.bluetooth",
++      "/org/chromium/bluetooth/hci0/adapter",
++      "org.chromium.bluetooth.SocketManager",
++      "Close");
++
++  if (!close_socket_call) {
++    floss_unregister_callback("org.chromium.bluetooth.SocketManager", floss_callback_id);
++    return;
++  }
++
++  // Add the callback id
++  DBusMessageIter close_socket_message_iter;
++  dbus_message_iter_init_append(close_socket_call, &close_socket_message_iter);
++  dbus_message_iter_append_basic(&close_socket_message_iter, DBUS_TYPE_UINT32, &floss_callback_id);
++  dbus_message_iter_append_basic(&close_socket_message_iter, DBUS_TYPE_UINT64, &floss_socket_id);
++
++  DBusMessage *close_socket_reply;
++  dbus_error_init(&dbus_error);
++  close_socket_reply = dbus_connection_send_with_reply_and_block(bus, close_socket_call, DBUS_TIMEOUT_USE_DEFAULT, &dbus_error);
++  dbus_message_unref(close_socket_call);
++  floss_unregister_callback("org.chromium.bluetooth.SocketManager", floss_callback_id);
++
++  if (dbus_error_is_set(&dbus_error)) {
++    logDBusError("Got DBus error from Floss Close", &dbus_error);
++    dbus_message_unref(close_socket_reply);
++    dbus_error_free(&dbus_error);
++    return;
++  } else if (!close_socket_reply) {
++    logMallocError();
++    dbus_error_free(&dbus_error);
++    return;
++  }
++  dbus_message_unref(close_socket_reply);
++  dbus_error_free(&dbus_error);
++}
++
++// Release the connection. Most importantly, tear down any callback-related setup.
++void floss_bthReleaseConnectionExtension (BluetoothConnectionExtension *floss_connection) {
++  if (floss_connection->floss_socket_id != 0) {
++    floss_close_channel(floss_connection->floss_callback_id, floss_connection->floss_socket_id);
++    floss_connection->floss_socket_id = 0;
++  }
++  if (floss_connection->floss_callback_id != -1) {
++    floss_unregister_callback("org.chromium.bluetooth.SocketManager", floss_connection->floss_callback_id);
++    floss_connection->floss_callback_id = -1;
++  }
++
++  DBusError dbus_error;
++  DBusConnection *bus;
++  dbus_error_init(&dbus_error);
++  bus = dbus_bus_get(DBUS_BUS_SYSTEM, &dbus_error);
++
++  if (dbus_error_is_set(&dbus_error)) {
++    logDBusError("Unable to get DBus for floss_bthObtainDeviceName", &dbus_error);
++    dbus_error_free(&dbus_error);
++    return;
++  } else if (!bus) {
++    logMallocError();
++    dbus_error_free(&dbus_error);
++    return;
++  }
++  dbus_error_free(&dbus_error);
++  dbus_connection_unregister_object_path(bus, "/org/chromium/brltty/floss");
++
++  dbus_error_init(&dbus_error);
++  if (!dbus_bus_release_name(bus, "org.chromium.Brltty", &dbus_error)) {
++    syslog(LOG_WARNING, "Unable to release Brltty service name: ", dbus_error.message);
++    dbus_error_free(&dbus_error);
++    return;
++  }
++  dbus_error_free(&dbus_error);
++}
++
++int floss_bthPollInput(BluetoothConnectionExtension *bcx, int timeout) {
++  return awaitSocketInput(bcx->socketDescriptor, timeout);
++}
++
++ssize_t floss_bthGetData (BluetoothConnectionExtension *bcx, void *buffer, size_t size, int initialTimeout, int subsequentTimeout) {
++  return readSocket(bcx->socketDescriptor, buffer, size, initialTimeout, subsequentTimeout);
++}
++
++ssize_t floss_bthPutData (BluetoothConnectionExtension *bcx, const void *buffer, size_t size) {
++  return writeSocket(bcx->socketDescriptor, buffer, size);
++}
++
++// Find the SPP channel on the device. We don't actually do this as Floss does
++// not require that we connect in this way.
++int floss_bthDiscoverChannel(uint8_t *channel, BluetoothConnectionExtension *floss_connection, const void *uuidBytes, size_t uuidLength, int timeout) {
++  if (uuidLength != 16) {
++    return 0;
++  }
++  // Store the UUID data for later usage in floss_bthOpenChannel
++  for (int i = 0; i < 16; i++) {
++    floss_connection->floss_remote_uuid[i] = ((uint8_t*)uuidBytes)[i];
++  }
++  // RFCOMM channels only go up to 30 so 31 should create an error if it happens
++  // to be used elsewhere, though there is currently no other use for the
++  // channel other than handing it back to Floss.
++  *channel = 31;
++  return TRUE;
++}
++
++// Ask Floss to open an RFCOMM connection for us and store the resulting socket
++// descriptor. Returns TRUE if the channel was successfully opened, and FALSE if
++// any error was encountered.
++int floss_bthOpenChannel(BluetoothConnectionExtension *floss_connection, uint8_t channel, int timeout) {
++  // CreateRfcommSocketToServiceRecord using floss_connection->floss_remote_uuid
++  DBusMessage *method_call, *reply;
++  DBusError dbus_error;
++  DBusConnection *bus;
++
++  dbus_error_init(&dbus_error);
++  bus = dbus_bus_get(DBUS_BUS_SYSTEM, &dbus_error);
++
++  if (dbus_error_is_set(&dbus_error)) {
++    logDBusError("Unable to get DBus for floss_bthDiscoverChannel", &dbus_error);
++    dbus_error_free(&dbus_error);
++    return FALSE;
++  } else if (!bus) {
++    logMallocError();
++    dbus_error_free(&dbus_error);
++    return FALSE;
++  }
++  dbus_error_free(&dbus_error);
++
++  method_call = dbus_message_new_method_call(
++      "org.chromium.bluetooth",
++      "/org/chromium/bluetooth/hci0/adapter",
++      "org.chromium.bluetooth.SocketManager",
++      "CreateRfcommSocketToServiceRecord");
++
++  if (!method_call) {
++    return FALSE;
++  }
++
++  // RegisterCallback
++  floss_connection->floss_callback_id = floss_register_callback("org.chromium.bluetooth.SocketManager");
++  if (floss_connection->floss_callback_id == -1) {
++    dbus_message_unref(method_call);
++    logSystemError("Unable to register Floss Callback, abandoning");
++    return FALSE;
++  }
++
++  // Add the callback id
++  DBusMessageIter message_iter, callback_id_iter, device_iter, remote_uuid_iter, remote_uuid_byte_array_iter;
++  dbus_message_iter_init_append(method_call, &message_iter);
++  dbus_message_iter_append_basic(&message_iter, DBUS_TYPE_UINT32, &floss_connection->floss_callback_id);
++  // Add the Bluetooth device
++  dbus_message_iter_init_append(method_call, &device_iter);
++  char *address = get_floss_bluetooth_address_from_uint64_t(floss_connection->floss_remote_address);
++  create_floss_bluetooth_device(&device_iter, address);
++  // Add the remote UUID
++  dbus_message_iter_init_append(method_call, &remote_uuid_iter);
++  dbus_message_iter_open_container(&remote_uuid_iter, DBUS_TYPE_ARRAY, "y", &remote_uuid_byte_array_iter);
++  for (int i =0; i < 16; i++) {
++    dbus_message_iter_append_basic(&remote_uuid_byte_array_iter, DBUS_TYPE_BYTE, &floss_connection->floss_remote_uuid[i]);
++  }
++  dbus_message_iter_close_container(&remote_uuid_iter, &remote_uuid_byte_array_iter);
++
++  dbus_error_init(&dbus_error);
++  reply = dbus_connection_send_with_reply_and_block(bus, method_call, DBUS_TIMEOUT_USE_DEFAULT, &dbus_error);
++  dbus_message_unref(method_call);
++
++  if (dbus_error_is_set(&dbus_error)) {
++    logDBusError("Got DBus error from Floss CreateRfcommSocketToServiceRecord", &dbus_error);
++    dbus_message_unref(reply);
++    dbus_error_free(&dbus_error);
++    floss_unregister_callback("org.chromium.bluetooth.SocketManager", floss_connection->floss_callback_id);
++    floss_connection->floss_callback_id = -1;
++    return FALSE;
++  } else if (!reply) {
++    logMallocError();
++    dbus_error_free(&dbus_error);
++    floss_unregister_callback("org.chromium.bluetooth.SocketManager", floss_connection->floss_callback_id);
++    floss_connection->floss_callback_id = -1;
++    return FALSE;
++  }
++  dbus_error_free(&dbus_error);
++
++  if (!dbus_message_has_signature(reply, "a{sv}")) {
++    syslog(LOG_WARNING, "Received malformed CreateRfcommSocketToServiceRecord response from Floss");
++    dbus_message_unref(reply);
++    floss_unregister_callback("org.chromium.bluetooth.SocketManager", floss_connection->floss_callback_id);
++    floss_connection->floss_callback_id = -1;
++    return FALSE;
++  }
++
++  DBusMessageIter reply_message_iter, socket_result_iter;
++  dbus_message_iter_init(reply, &reply_message_iter);
++  dbus_message_iter_recurse(&reply_message_iter, &socket_result_iter);
++  uint64_t socket_id = 0;
++  // Check for sucess status
++  if (parse_floss_socket_result(&socket_result_iter, &socket_id) != 0) {
++    logSystemError("CreateRfcommSocketToServiceRecord failed");
++    dbus_message_unref(reply);
++    floss_unregister_callback("org.chromium.bluetooth.SocketManager", floss_connection->floss_callback_id);
++    floss_connection->floss_callback_id = -1;
++    return FALSE;
++  }
++    dbus_message_unref(reply);
++
++  create_rfcomm_callback.socket_id = socket_id;
++  create_rfcomm_callback.status = CALLBACK_PENDING;
++  // asyncAwaitCondition for connection established
++  asyncAwaitCondition(timeout, testCreateRfcommCallbackProcessed, NULL);
++  if (create_rfcomm_callback.status == CALLBACK_PENDING) {
++    create_rfcomm_callback.status = CALLBACK_TIMEOUT;
++  }
++  if (create_rfcomm_callback.status != CALLBACK_COMPLETE) {
++    floss_close_channel(floss_connection->floss_callback_id, socket_id);
++    floss_connection->floss_callback_id = -1;
++    return FALSE;
++  }
++
++  // Store socket information
++  floss_connection->floss_socket_id = socket_id;
++  floss_connection->socketDescriptor = create_rfcomm_callback.socket;
++  setBlockingIo(floss_connection->socketDescriptor, 0);
++  return TRUE;
++}
++
++// Fetch the list of discovered devices from Floss and let BRLTTY test each of
++// them.
++void floss_bthProcessDiscoveredDevices(DiscoveredBluetoothDeviceTester *testDevice, void *data) {
++  DBusMessage *method_call, *reply;
++  DBusMessageIter message_iter, device_array_iter;
++  DBusError dbus_error;
++  DBusConnection *bus;
++
++  dbus_error_init(&dbus_error);
++  bus = dbus_bus_get(DBUS_BUS_SYSTEM, &dbus_error);
++
++  if (dbus_error_is_set(&dbus_error)) {
++    logDBusError("Unable to get DBus for floss_bthProcessDiscoveredDevices", &dbus_error);
++    dbus_error_free(&dbus_error);
++    return;
++  } else if (!bus) {
++    logMallocError();
++    dbus_error_free(&dbus_error);
++    return;
++  }
++  dbus_error_free(&dbus_error);
++
++  method_call = dbus_message_new_method_call(
++      "org.chromium.bluetooth",
++      "/org/chromium/bluetooth/hci0/adapter",
++      "org.chromium.bluetooth.Bluetooth",
++      "GetBondedDevices");
++
++  if (!method_call) {
++    return;
++  }
++
++  dbus_error_init(&dbus_error);
++  reply = dbus_connection_send_with_reply_and_block(bus, method_call, DBUS_TIMEOUT_USE_DEFAULT, &dbus_error);
++  dbus_message_unref(method_call);
++
++  if (dbus_error_is_set(&dbus_error)) {
++    logDBusError("Got DBus error from Floss GetBondedDevices", &dbus_error);
++    dbus_message_unref(reply);
++    dbus_error_free(&dbus_error);
++    return;
++  } else if (!reply) {
++    logMallocError();
++    dbus_error_free(&dbus_error);
++    return;
++  }
++  dbus_error_free(&dbus_error);
++
++  if (!dbus_message_has_signature(reply, "aa{sv}")) {
++    syslog(LOG_WARNING, "Received malformed GetBondedDevices response from Floss");
++    dbus_message_unref(reply);
++    return;
++  }
++
++  dbus_message_iter_init(reply, &message_iter);
++  dbus_message_iter_recurse(&message_iter, &device_array_iter);
++
++  while (dbus_message_iter_get_arg_type(&device_array_iter) != DBUS_TYPE_INVALID) {
++    if (dbus_message_iter_get_arg_type(&device_array_iter) != DBUS_TYPE_ARRAY) {
++      dbus_message_unref(reply);
++      return;
++    }
++
++    // Recurse into the device (a{sv})
++    DBusMessageIter device_iter;
++    dbus_message_iter_recurse(&device_array_iter, &device_iter);
++
++    DiscoveredBluetoothDevice device;
++    parse_floss_bluetooth_device(&device_iter, &device);
++    if (testDevice(&device, data)) {
++      dbus_message_unref(reply);
++      dbus_message_unref(bus);
++      return;
++    }
++    dbus_message_iter_next(&device_array_iter);
++  }
++  dbus_message_unref(reply);
++}
++
++// bluetooth_stack_intf abstracts which stack is actually in use.
++typedef struct {
++  char* (*bthObtainDeviceName)(uint64_t bda, int timeout);
++  BluetoothConnectionExtension * (*bthNewConnectionExtension)(uint64_t bda);
++  void (*bthReleaseConnectionExtension)(BluetoothConnectionExtension *bcx);
++  int (*bthPollInput)(BluetoothConnectionExtension *bcx, int timeout);
++  ssize_t (*bthGetData)(BluetoothConnectionExtension *bcx, void *buffer, size_t size, int initialTimeout, int subsequentTimeout);
++  ssize_t (*bthPutData)(BluetoothConnectionExtension *bcx, const void *buffer, size_t size);
++  int (*bthDiscoverChannel)(uint8_t *channel, BluetoothConnectionExtension *bcx, const void *uuidBytes, size_t uuidLength, int timeout);
++  int (*bthOpenChannel)(BluetoothConnectionExtension *bcx, uint8_t channel, int timeout);
++  void (*bthProcessDiscoveredDevices)(DiscoveredBluetoothDeviceTester *testDevice, void *data);
++} bluetooth_stack_intf;
++
++static const bluetooth_stack_intf bluez_stack = {
++  &bluez_bthObtainDeviceName,
++  &bluez_bthNewConnectionExtension,
++  &bluez_bthReleaseConnectionExtension,
++  &bluez_bthPollInput,
++  &bluez_bthGetData,
++  &bluez_bthPutData,
++  &bluez_bthDiscoverChannel,
++  &bluez_bthOpenChannel,
++  &bluez_bthProcessDiscoveredDevices,
++};
++
++static const bluetooth_stack_intf floss_stack = {
++  &floss_bthObtainDeviceName,
++  &floss_bthNewConnectionExtension,
++  &floss_bthReleaseConnectionExtension,
++  &floss_bthPollInput,
++  &floss_bthGetData,
++  &floss_bthPutData,
++  &floss_bthDiscoverChannel,
++  &floss_bthOpenChannel,
++  &floss_bthProcessDiscoveredDevices,
++};
++
++static bluetooth_stack_intf *stack = NULL;
++
++// Check GetFlossEnabled
++static int is_floss_detected() {
++  DBusError dbus_error;
++  DBusConnection *bus;
++
++  dbus_error_init(&dbus_error);
++  bus = dbus_bus_get(DBUS_BUS_SYSTEM, &dbus_error);
++
++  if (dbus_error_is_set(&dbus_error)) {
++    logDBusError("Unable to get DBus for Floss presence test", &dbus_error);
++    dbus_error_free(&dbus_error);
++    return FALSE;
++  } else if (!bus) {
++    logMallocError();
++    return FALSE;
++  }
++  dbus_error_free(&dbus_error);
++
++  DBusMessage *get_floss_enabled_call = dbus_message_new_method_call(
++      "org.chromium.bluetooth.Manager",
++      "/org/chromium/bluetooth/Manager",
++      "org.chromium.bluetooth.Manager",
++      "GetFlossEnabled");
++
++  if (!get_floss_enabled_call) {
++    logMallocError();
++    return FALSE;
++  }
++
++  dbus_error_init(&dbus_error);
++  DBusMessage *get_floss_enabled_reply = dbus_connection_send_with_reply_and_block(
++      bus, get_floss_enabled_call, -1, &dbus_error);
++  dbus_message_unref(get_floss_enabled_reply);
++
++  if (dbus_error_is_set(&dbus_error)) {
++    logDBusError("Error fetching managed objects for Floss", &dbus_error);
++    dbus_error_free(&dbus_error);
++    return FALSE;
++  } else if (!get_floss_enabled_reply) {
++    logMallocError();
++    return FALSE;
++  }
++  dbus_error_free(&dbus_error);
++
++  dbus_bool_t enabled = 0;
++  dbus_error_init(&dbus_error);
++  if (!dbus_message_get_args(get_floss_enabled_reply, &dbus_error, DBUS_TYPE_BOOLEAN, &enabled,
++                             DBUS_TYPE_INVALID)) {
++    dbus_error_free(&dbus_error);
++    return FALSE;
++  }
++  dbus_error_free(&dbus_error);
++
++  return enabled;
++}
++
++// Bluetooth stack should always be fetched through this method to ensure the
++// correct stack is being used.
++static bluetooth_stack_intf* get_stack() {
++  if (!stack) {
++    stack = is_floss_detected() ? &floss_stack : &bluez_stack;
++  }
++
++  return stack;
++}
++
++// Implementations for bluetooth_internal.h
++
++char *
++bthObtainDeviceName (uint64_t bda, int timeout) {
++  return get_stack()->bthObtainDeviceName(bda, timeout);
++}
++
++BluetoothConnectionExtension *
++bthNewConnectionExtension (uint64_t bda) {
++  return get_stack()->bthNewConnectionExtension(bda);
++}
++
++void
++bthReleaseConnectionExtension (BluetoothConnectionExtension *bcx) {
++  get_stack()->bthReleaseConnectionExtension(bcx);
++}
++
++int
++bthPollInput (BluetoothConnectionExtension *bcx, int timeout) {
++  return get_stack()->bthPollInput(bcx, timeout);
++}
++
++ssize_t
++bthGetData (
++  BluetoothConnectionExtension *bcx, void *buffer, size_t size,
++  int initialTimeout, int subsequentTimeout
++) {
++  return get_stack()->bthGetData(bcx, buffer, size, initialTimeout, subsequentTimeout);
++}
++
++ssize_t
++bthPutData (BluetoothConnectionExtension *bcx, const void *buffer, size_t size) {
++  return get_stack()->bthPutData(bcx, buffer, size);
++}
++
++int
++bthDiscoverChannel (
++  uint8_t *channel, BluetoothConnectionExtension *bcx,
++  const void *uuidBytes, size_t uuidLength,
++  int timeout
++) {
++  return get_stack()->bthDiscoverChannel(channel, bcx, uuidBytes, uuidLength, timeout);
++}
++
++int
++bthOpenChannel (BluetoothConnectionExtension *bcx, uint8_t channel, int timeout) {
++  return get_stack()->bthOpenChannel(bcx, channel, timeout);
++}
++
++void
++bthProcessDiscoveredDevices (
++  DiscoveredBluetoothDeviceTester *testDevice, void *data
++) {
++  get_stack()->bthProcessDiscoveredDevices(testDevice, data);
++}
+-- 
+2.42.0.582.g8ccd20d70d-goog
+

@@ -1,7 +1,7 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2.
 
-EAPI=5
+EAPI=7
 
 CROS_GO_SOURCE="github.com/golang/freetype bcfeb16b74e8aea9e2fe043406f2ef74b1cb0759"
 

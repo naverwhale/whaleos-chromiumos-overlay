@@ -1,1 +1,0 @@
-op-logging-0.0.1.ebuild

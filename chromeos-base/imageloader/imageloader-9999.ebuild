@@ -1,4 +1,4 @@
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Copyright 2016 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -7,20 +7,21 @@ CROS_WORKON_INCREMENTAL_BUILD=1
 CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_OUTOFTREE_BUILD=1
-CROS_WORKON_SUBTREE="common-mk imageloader .gn"
+CROS_WORKON_SUBTREE="common-mk dlcservice/metadata imageloader .gn"
 
 PLATFORM_SUBDIR="imageloader"
 
 inherit cros-workon platform user
 
 DESCRIPTION="Allow mounting verified utility images"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/imageloader/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/imageloader/"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
 IUSE="fuzzer"
 
 RDEPEND="
+	chromeos-base/dlcservice-metadata:=
 	chromeos-base/vboot_reference:=
 	chromeos-base/minijail:=
 	dev-libs/openssl:=
@@ -31,30 +32,14 @@ RDEPEND="
 DEPEND="${RDEPEND}
 	chromeos-base/system_api:=[fuzzer?]"
 
+BDEPEND="
+	chromeos-base/chromeos-dbus-bindings
+	chromeos-base/minijail
+	dev-libs/protobuf
+"
+
 src_install() {
-	# Install manifest parsing libraries
-	dolib.so "${OUT}/lib/libimageloader-manifest.so"
-	insinto "/usr/$(get_libdir)/pkgconfig"
-	doins libimageloader-manifest.pc
-
-	insinto "/usr/include/libimageloader"
-	doins manifest.h
-
-	# Install seccomp policy file.
-	insinto /usr/share/policy
-	newins "seccomp/imageloader-seccomp-${ARCH}.policy" imageloader-seccomp.policy
-	newins "seccomp/imageloader-helper-seccomp-${ARCH}.policy" imageloader-helper-seccomp.policy
-	cd "${OUT}"
-	dosbin imageloader
-	cd "${S}"
-	insinto /etc/dbus-1/system.d
-	doins dbus_permissions/org.chromium.ImageLoader.conf
-	insinto /usr/share/dbus-1/system-services
-	doins dbus_service/org.chromium.ImageLoader.service
-	insinto /etc/init
-	doins init/imageloader.conf
-	doins init/imageloader-init.conf
-	doins init/imageloader-shutdown.conf
+	platform_src_install
 
 	local fuzzer_component_id="188251"
 	platform_fuzzer_install "${S}"/OWNERS "${OUT}"/imageloader_helper_process_receiver_fuzzer \
@@ -65,7 +50,7 @@ src_install() {
 }
 
 platform_pkg_test() {
-	platform_test "run" "${OUT}/run_tests"
+	platform test_all
 }
 
 pkg_preinst() {

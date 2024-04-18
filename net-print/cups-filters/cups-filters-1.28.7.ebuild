@@ -5,7 +5,7 @@ EAPI=7
 
 GENTOO_DEPEND_ON_PERL=no
 
-inherit perl-module systemd flag-o-matic cros-sanitizers
+inherit perl-module systemd flag-o-matic autotools cros-sanitizers
 
 if [[ "${PV}" == "9999" ]] ; then
 	inherit git-r3
@@ -62,6 +62,8 @@ src_prepare() {
 
 	# Bug #626800
 	append-cxxflags -std=c++11
+
+	eautomake
 }
 
 src_configure() {

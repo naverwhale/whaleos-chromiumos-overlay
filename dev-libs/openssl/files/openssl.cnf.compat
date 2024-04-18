@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
@@ -13,7 +13,20 @@
 openssl_conf = default_openssl_conf
 
 [ default_openssl_conf ]
+providers = providers
 ssl_conf = compat_ssl_conf
+
+[ providers ]
+default = default_provider
+legacy = legacy_provider
+
+[ default_provider ]
+activate = 1
+
+# The legacy provider is needed for schemes that depend on MD4 such as
+# EAP-MS-CHAPv2. (b/299712464)
+[ legacy_provider ]
+activate = 1
 
 [ compat_ssl_conf ]
 system_default = system_compat_ssl_conf
@@ -57,3 +70,6 @@ MaxProtocol = TLSv1.2
 # We should still phase out support for inadequate crypto rather sooner than
 # later, but that's a project of its own with a considerable timeline.
 CipherString = DEFAULT:@SECLEVEL=0
+
+# WPA Enterprise often requires SSL_OP_LEGACY_SERVER_CONNECT (b/307305251).
+Options = UnsafeLegacyServerConnect

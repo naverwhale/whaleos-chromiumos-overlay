@@ -1,13 +1,15 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2012 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=4
+EAPI="7"
+
+inherit udev
 
 DESCRIPTION="Rules for setting permissions right on /dev/mali0"
 
 LICENSE="BSD-Google"
 SLOT="0"
-KEYWORDS="arm"
+KEYWORDS="*"
 IUSE=""
 
 # Because this ebuild has no source package, "${S}" doesn't get
@@ -19,6 +21,5 @@ IUSE=""
 S="${WORKDIR}"
 
 src_install() {
-	insinto /etc/udev/rules.d
-	doins "${FILESDIR}"/50-mali.rules
+	udev_dorules "${FILESDIR}"/50-mali.rules
 }

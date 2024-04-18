@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -16,12 +16,20 @@ LICENSE="BSD-Google"
 KEYWORDS="~*"
 IUSE=""
 
-# TODO(b/182898188): Re-add test-plan once proto changes have been integrated.
 DEPEND="
-	dev-util/provision-server
+	dev-util/android-provision
+	dev-util/cros-dut
+	dev-util/cros-provision
+	dev-util/cros-publish
+	dev-util/cros-servod
+	dev-util/cros-test
+	dev-util/cros-test-finder
+	!dev-util/fw-provision
+	dev-util/cros-fw-provision
+	dev-util/pre-process
 	dev-util/testlabenv-local
-	dev-util/test-exec-server
-	dev-util/dut-server
+	dev-util/test-plan
+	dev-util/vm-provision
 "
 RDEPEND="
 	${DEPEND}

@@ -1,6 +1,9 @@
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Copyright 2016 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
+
 accept: 1
 access: 1
 bind: 1
@@ -15,8 +18,10 @@ connect: 1
 dup: 1
 dup2: 1
 epoll_create: 1
+epoll_create1: 1
 epoll_ctl: 1
 epoll_wait: 1
+eventfd2: 1
 execve: 1
 exit: 1
 exit_group: 1
@@ -26,6 +31,7 @@ faccessat2: 1
 fchmod: 1
 fchown32: 1
 fcntl64: 1
+flock: 1
 fstat64: 1
 fstatat64: 1
 fstatfs: 1
@@ -62,10 +68,11 @@ lstat64: 1
 madvise: 1
 memfd_create: 1
 mkdir: 1
-mmap2: 1
-mprotect: 1
+mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
+mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mremap: 1
 munmap: 1
+name_to_handle_at: 1
 nanosleep: 1
 clock_nanosleep: 1
 clock_nanosleep_time64: 1
@@ -88,11 +95,14 @@ rename: 1
 restart_syscall: 1
 rmdir: 1
 rt_sigaction: 1
+rt_sigpending: 1
 rt_sigprocmask: 1
 _newselect: 1
 pselect6: 1
 pselect6_time64: 1
 send: 1
+sendfile: 1
+sendfile64: 1
 sendmmsg: 1
 sendmsg: 1
 sendto: 1

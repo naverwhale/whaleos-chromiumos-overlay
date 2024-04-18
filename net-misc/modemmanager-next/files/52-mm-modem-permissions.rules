@@ -1,4 +1,4 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -9,8 +9,18 @@
 # 77-mm-*.rules.
 
 #-------------------------------------------------------------------------------
-# PCIe devices exposed by ccci kernel driver
+# 'pcie' devices
 KERNEL=="ttyCMBIM[0-9]", SUBSYSTEM=="ccci_node", GOTO="modem_change_mode"
+KERNEL=="wwan0mbim*", SUBSYSTEM=="wwan", GOTO="modem_change_mode"
+KERNEL=="wwan0at0", SUBSYSTEM=="wwan", GOTO="modem_change_mode"
+
+# Allow modem group to call for cold reboot of FM350 (mtk_t7xx driver).
+# In this case, we catch the following path:
+# /devices/pci0000:00/0000:00:AA.0/0000:BB:00.0/wwan/wwan0 (wwan)
+# We set wwan device's cold_reboot endpoint as writable by modem group.
+DRIVERS=="mtk_t7xx", ACTION=="add", DEVPATH=="*wwan/wwan0", \
+    RUN+="/bin/chgrp modem $sys/$devpath/device/cold_reboot" \
+    RUN+="/bin/chmod g+w $sys/$devpath/device/cold_reboot"
 
 #-------------------------------------------------------------------------------
 # 'usb' devices

@@ -1,0 +1,40 @@
+From 965a388fa881855a46c48c82e5c4f019bb2076b9 Mon Sep 17 00:00:00 2001
+From: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Date: Fri, 11 Oct 2019 06:32:42 -0300
+Subject: [PATCH] BACKPORT: media: videodev2.h: add V4L2_DEC_CMD_FLUSH
+
+Add this new V4L2_DEC_CMD_FLUSH decoder command and document it.
+
+Reviewed-by: Boris Brezillon <boris.brezillon@collabora.com>
+Reviewed-by: Alexandre Courbot <acourbot@chromium.org>
+Signed-off-by: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Signed-off-by: Jernej Skrabec <jernej.skrabec@siol.net>
+Signed-off-by: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>
+(cherry picked from commit bac06ec36ea2012ff0daa9767d0f77bf9c6064ec)
+
+Non-uAPI changes dropped.
+
+BUG=b:278157861
+TEST=Check header
+
+Change-Id: I773e4a64e7a4aee87c57a6b597224342116d9313
+Signed-off-by: Chen-Yu Tsai <wenst@chromium.org>
+---
+ include/uapi/linux/videodev2.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index 1d698c934ddf..37862bfda4b1 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -1912,6 +1912,7 @@ struct v4l2_encoder_cmd {
+ #define V4L2_DEC_CMD_STOP        (1)
+ #define V4L2_DEC_CMD_PAUSE       (2)
+ #define V4L2_DEC_CMD_RESUME      (3)
++#define V4L2_DEC_CMD_FLUSH       (4)
+ 
+ /* Flags for V4L2_DEC_CMD_START */
+ #define V4L2_DEC_CMD_START_MUTE_AUDIO	(1 << 0)
+-- 
+2.40.1.606.ga4b1b128d6-goog
+

@@ -1,0 +1,47 @@
+From 252ce4d2519c1dd6725ac8334a730d428e7786b4 Mon Sep 17 00:00:00 2001
+From: Ritul Jasuja <ritul.jasuja@intel.com>
+Date: Thu, 31 Aug 2023 18:29:55 +0000
+Subject: [PATCH] [NPU Plugin] Remove opencv depdendency
+
+Removes opencv dependency in tools
+
+Signed-off-by: Ritul Jasuja <ritul.jasuja@intel.com>
+---
+ tools/CMakeLists.txt | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/tools/CMakeLists.txt b/tools/CMakeLists.txt
+index b0ea98eca7b1..913a2a77cfb1 100644
+--- a/tools/CMakeLists.txt
++++ b/tools/CMakeLists.txt
+@@ -3,10 +3,14 @@
+ # SPDX-License-Identifier: Apache 2.0
+ #
+ 
+-add_subdirectory(model-comparator)
++if (NOT TARGET_OS_NAME STREQUAL "CHROMIUMOS")
++    add_subdirectory(model-comparator)
++endif()
+ 
+ add_subdirectory(test_classification)
+-add_subdirectory(single-image-test)
++if (NOT TARGET_OS_NAME STREQUAL "CHROMIUMOS")
++    add_subdirectory(single-image-test)
++endif()
+ add_subdirectory(sol-generator)
+ add_subdirectory(query_model)
+ 
+@@ -18,7 +22,9 @@ add_subdirectory(profiling_parser)
+ 
+ add_subdirectory(vpux-binutils)
+ 
+-add_subdirectory(legacy/single-image-test)
++if (NOT TARGET_OS_NAME STREQUAL "CHROMIUMOS")
++    add_subdirectory(legacy/single-image-test)
++endif()
+ 
+ 
+ #
+-- 
+2.25.1
+

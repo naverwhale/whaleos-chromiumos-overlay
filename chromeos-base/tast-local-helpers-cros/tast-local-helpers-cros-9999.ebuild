@@ -1,4 +1,4 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -11,30 +11,70 @@ CROS_WORKON_SUBTREE=("common-mk .gn" "helpers")
 
 PLATFORM_SUBDIR="tast-tests/helpers/local"
 
-inherit cros-workon platform
+inherit cros-workon cros-rust platform
 
 DESCRIPTION="Compiled executables used by local Tast tests in the cros bundle"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform/tast-tests/+/master/helpers"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform/tast-tests/+/HEAD/helpers"
 
 LICENSE="BSD-Google GPL-3"
 SLOT="0/0"
 KEYWORDS="~*"
 
 COMMON_DEPEND="
+	chromeos-base/metrics:=
 	dev-cpp/gtest:=
 	media-libs/minigbm:=
 	x11-libs/libdrm:=
 "
 RDEPEND="
 	${COMMON_DEPEND}
+	chromeos-base/featured
 	chromeos-base/goldctl
+	chromeos-base/mitmproxy
+	dev-go/martian
+	media-video/ffmpeg
 "
-DEPEND="${RDEPEND}"
+DEPEND="${RDEPEND}
+	dev-rust/libchromeos:=
+	dev-rust/metrics_rs:=
+"
+
+BDEPEND="
+	chromeos-base/google-breakpad
+"
+
+src_unpack() {
+	platform_src_unpack
+	cros-rust_src_unpack
+}
+
+src_configure() {
+	platform_src_configure
+	cros-rust_src_configure
+}
+
+src_compile() {
+	platform_src_compile
+	cros-rust_src_compile
+}
+
+src_test() {
+	platform_src_test
+	cros-rust_src_test
+}
+
 
 src_install() {
+	platform_src_install
+
 	# Executable files' names take the form <category>.<TestName>.<bin_name>.
 	exeinto /usr/libexec/tast/helpers/local/cros
 	doexe "${OUT}"/*.[A-Z]*.*
+
+	local build_dir="$(cros-rust_get_build_dir)"
+	newexe "${build_dir}/crash_rust_panic" crash.Rust.panic
+	newexe "${build_dir}/metrics_rust_bindings" metrics.RustBindings
+
 	# Install symbol list file to the location required by minidump_stackwalk.
 	# See https://www.chromium.org/developers/decoding-crash-dumps for details.
 	local crasher_exec="${OUT}/platform.UserCrash.crasher"

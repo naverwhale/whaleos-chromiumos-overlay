@@ -1,5 +1,5 @@
+BDEPEND=dev-lang/go
 DEFINED_PHASES=compile install nofetch postinst test unpack
-DEPEND=dev-lang/go
 DESCRIPTION=Go package for UUIDs based on RFC 4122 and DCE 1.1: Authentication and Security Services.
 EAPI=7
 HOMEPAGE=https://github.com/google/uuid
@@ -8,5 +8,5 @@ LICENSE=BSD
 RESTRICT=binchecks strip
 SLOT=0
 SRC_URI=https://github.com/google/uuid/archive/v1.1.1.tar.gz -> github.com-google-uuid-v1.1.1.tar.gz
-_eclasses_=cros-go	157c7bac0e032e424ec1c3316c127db8	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
-_md5_=2e0471de93a3b523dc19caa31fa84758
+_eclasses_=cros-go	77ba1c1ddf5c20dab7e47e19efeffef7	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=c907eb27208305ee8e5c248b6edc0efe

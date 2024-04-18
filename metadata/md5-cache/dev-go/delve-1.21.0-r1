@@ -1,0 +1,11 @@
+BDEPEND=dev-lang/go
+DEFINED_PHASES=compile install nofetch postinst test unpack
+DESCRIPTION=A debugger for the go programming language.
+EAPI=7
+HOMEPAGE=https://github.com/go-delve/delve
+KEYWORDS=-* x86 amd64 arm64
+LICENSE=MIT
+SLOT=0
+SRC_URI=https://github.com/go-delve/delve/archive/v1.21.0.tar.gz -> github.com-go-delve-delve-v1.21.0.tar.gz
+_eclasses_=cros-go	77ba1c1ddf5c20dab7e47e19efeffef7	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=b715d64177552464d838266445317518

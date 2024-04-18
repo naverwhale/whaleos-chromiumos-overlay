@@ -1,9 +1,7 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright 2011 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=4
-
-inherit base
+EAPI=7
 
 DESCRIPTION="To record and replay data from kernel evdev devices"
 HOMEPAGE="http://bitmath.org/code/evemu/"
@@ -15,6 +13,7 @@ IUSE="X"
 
 RDEPEND="X? ( >=x11-base/xorg-server-1.8 )"
 DEPEND="${RDEPEND}"
+BDEPEND="sys-devel/gnuconfig"
 
 PATCHES=(
         "${FILESDIR}/1.0.5-signal_exit.patch"

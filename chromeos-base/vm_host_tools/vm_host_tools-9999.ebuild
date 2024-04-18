@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -10,8 +10,12 @@ CROS_WORKON_INCREMENTAL_BUILD=1
 
 PLATFORM2_PATHS=(
 	common-mk
+	featured
 	metrics
+	net-base
 	.gn
+	spaced
+	libcrossystem
 
 	vm_tools/BUILD.gn
 	vm_tools/host
@@ -19,9 +23,11 @@ PLATFORM2_PATHS=(
 
 	vm_tools/cicerone
 	vm_tools/concierge
+	vm_tools/dbus_bindings
 	vm_tools/dbus
 	vm_tools/init
 	vm_tools/maitred/client.cc
+	vm_tools/modprobe
 	vm_tools/pstore_dump
 	vm_tools/seneschal
 	vm_tools/syslog
@@ -31,47 +37,68 @@ PLATFORM2_PATHS=(
 
 	# Required by the fuzzer
 	vm_tools/OWNERS
+
+	# Required by the vm_concierge
+	chromeos-config
 )
 CROS_WORKON_SUBTREE="${PLATFORM2_PATHS[*]}"
 
 PLATFORM_SUBDIR="vm_tools"
+# Do not run test parallelly until unit tests are fixed.
+# shellcheck disable=SC2034
+PLATFORM_PARALLEL_GTEST_TEST="no"
 
 inherit tmpfiles cros-workon platform udev user arc-build-constants
 
 DESCRIPTION="VM host tools for Chrome OS"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/vm_tools"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/vm_tools"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
-# The crosvm-wl-dmabuf and crosvm-virtio-video USE flags
-# are used when preprocessing concierge source.
-IUSE="+kvm_host +seccomp +crosvm-wl-dmabuf fuzzer wilco +crosvm-virtio-video vulkan"
+IUSE="+kvm_host +seccomp fuzzer wilco +crosvm-virtio-video vulkan libglvnd virtgpu_native_context cross_domain_context iioservice vfio_gpu arcvm_gki borealis_host test"
 REQUIRED_USE="kvm_host"
 
 COMMON_DEPEND="
 	app-arch/libarchive:=
 	!!chromeos-base/vm_tools
 	chromeos-base/chunnel:=
+	chromeos-base/chromeos-config-tools:=
 	chromeos-base/crosvm:=
-	>=chromeos-base/metrics-0.0.1-r3152:=
+	chromeos-base/libcrossystem:=[test?]
+	>=chromeos-base/metrics-0.0.1-r3617:=
 	chromeos-base/minijail:=
-	chromeos-base/patchpanel:=
+	chromeos-base/net-base:=
 	chromeos-base/patchpanel-client:=
-	net-libs/grpc:=
+	chromeos-base/spaced
+	dev-cpp/abseil-cpp:=
 	dev-libs/protobuf:=
+	dev-libs/re2:=
+	net-libs/grpc:=
+	sys-apps/util-linux:=
 "
 
 RDEPEND="
 	${COMMON_DEPEND}
 	dev-rust/s9
+	borealis_host? ( chromeos-base/shadercached:= )
 "
 DEPEND="
 	${COMMON_DEPEND}
 	chromeos-base/dlcservice-client:=
+	chromeos-base/featured:=
+	chromeos-base/perfetto:=
+	chromeos-base/session_manager-client:=
 	chromeos-base/shill-client:=
 	chromeos-base/system_api:=[fuzzer?]
+	chromeos-base/vboot_reference:=
 	chromeos-base/vm_protos:=
 	fuzzer? ( dev-libs/libprotobuf-mutator:= )
+"
+
+BDEPEND="
+	chromeos-base/chromeos-dbus-bindings
+	chromeos-base/minijail
+	dev-libs/protobuf
 "
 
 get_vmlog_forwarder_start_services() {
@@ -85,7 +112,7 @@ get_vmlog_forwarder_start_services() {
 get_vmlog_forwarder_stop_services() {
 	local stop_services="stopped vm_concierge"
 	if use wilco; then
-		stop_services+=" and stopped wilco_dtc_dispatcher"
+		stop_services="stopping system-services"
 	fi
 	echo "${stop_services}"
 }
@@ -106,7 +133,6 @@ src_install() {
 	platform_src_install
 
 	dobin "${OUT}"/cicerone_client
-	dobin "${OUT}"/concierge_client
 	dobin "${OUT}"/maitred_client
 	dobin "${OUT}"/seneschal
 	dobin "${OUT}"/seneschal_client
@@ -130,6 +156,9 @@ src_install() {
 
 	insinto /etc/init
 	doins init/seneschal.conf
+	# TODO(b/288998343): remove when bug is fixed and interrupted discards are
+	# not lost.
+	doins init/trim_filesystem.conf
 	doins init/vm_cicerone.conf
 	doins init/vm_concierge.conf
 
@@ -144,12 +173,19 @@ src_install() {
 	insinto /etc/dbus-1/system.d
 	doins dbus/*.conf
 
-	insinto /usr/local/vms/etc
-	doins init/arcvm_dev.conf
+	if use vfio_gpu; then
+		insinto /etc/modprobe.d
+		doins modprobe/vfio-dgpu.conf
 
-	# TODO(b/159953121): File and steps below should be removed later.
-	insinto /etc
-	newins init/arcvm_dev.conf_deprecated arcvm_dev.conf
+		exeinto /sbin
+		doexe modprobe/dgpu.sh
+
+		# Udev rules to bind dGPU to different modules.
+		udev_dorules udev/45-vfio-dgpu.rules
+	fi
+
+	insinto /usr/local/vms/etc
+	doins concierge/config/arcvm_dev.conf
 
 	insinto /usr/share/policy
 	if use seccomp; then
@@ -163,7 +199,7 @@ src_install() {
 	# Create daemon store folder for crosvm and pvm
 	local crosvm_store="/etc/daemon-store/crosvm"
 	dodir "${crosvm_store}"
-	fperms 0700 "${crosvm_store}"
+	fperms 0750 "${crosvm_store}"
 	fowners crosvm:crosvm "${crosvm_store}"
 
 	local pvm_store="/etc/daemon-store/pvm"
@@ -177,6 +213,7 @@ platform_pkg_test() {
 		cicerone_test
 		concierge_test
 		syslog_forwarder_test
+		vsh_test
 	)
 	if use arcvm; then
 		tests+=(

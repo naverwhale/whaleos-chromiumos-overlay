@@ -1,0 +1,10 @@
+DEFINED_PHASES=install
+DESCRIPTION=Virtual Sensor Policy for Intel(R) Dynamic Platform & Thermal Framework
+EAPI=7
+KEYWORDS=*
+LICENSE=LICENSE.intel-dptf-private
+RESTRICT=mirror
+SLOT=0
+SRC_URI=gs://chromeos-binaries/HOME/bcs-chipset-kbl-private/chipset-kbl-private/dptf/DptfPolicyVirtualSensor-9.0.11363.tbz2
+_eclasses_=cros-binary	fd1672f424e9ce110e07cb4da844e20f
+_md5_=39de66d3eb6128f390d674a103006a56

@@ -1,4 +1,4 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="7"
@@ -21,73 +21,92 @@ KEYWORDS="~*"
 # NB: Flags listed here are off by default unless prefixed with a '+'.
 IUSE="
 	amd64
+	amd_cpu
 	android-container-pi
+	android-container-rvc
 	android-vm-pi
 	android-vm-rvc
+	android-vm-tm
 	arc
-	arc-camera1
 	arc-camera3
 	arc-launched-32bit-abi
-	arc_uses_cros_video_decoder
 	arcpp
 	arcvm
+	arcvm_data_migration
+	arcvm_virtio_blk_data
 	arm
 	arm64
 	asan
 	betty
 	biod
+	downloads_bind_mount
 	borealis_host
+	borealis_nvidia
+	camera_feature_auto_framing
+	camera_feature_effects
+	camera_feature_hdrnet
+	camera_feature_portrait_mode
 	cdm_factory_daemon
 	cert_provision
 	cheets_user
 	cheets_user_64
 	cheets_userdebug
 	cheets_userdebug_64
+	chrome_dcheck
 	chrome_internal
 	chrome_media
 	chromeless_tty
+	chromeos_kernelci_builder
+	clvk
 	containers
-	coresched
 	cr50_onboard
+	+cras
 	crosvm-gpu
+	crosvm-swap
 	cups
 	diagnostics
 	disable_cros_video_decoder
 	dptf
 	elm-kernelnext
+	debug
 	direncription_allow_v2
 	dlc
 	dlc_test
 	+drivefs
 	drm_atomic
 	elm
+	faceauth
 	fizz
+	flex_id
 	force_breakpad
 	fwupd
-	gboard_decoder
 	grunt
 	hammerd
 	hana
 	hana-kernelnext
+	hibernate
 	houdini
 	houdini64
 	hps
 	iioservice
+	inference_accuracy_eval
 	internal
+	intel_psr
 	iwlwifi_rescan
-	kernel-3_18
-	kernel-4_4
+	kcov
 	kernel-4_14
 	kernel-4_19
 	kernel-5_4
 	kernel-5_10
+	kernel-5_15
+	kernel-6_1
 	kernel-upstream
 	kukui
 	kvm_host
-	kvm_transition
+	lockdebug
+	lvm_stateful_partition
 	lxc
-	manatee
-	mbo
+	+mbo
 	memd
 	ml_benchmark_drivers
 	ml_service
@@ -105,23 +124,33 @@ IUSE="
 	ocr
 	octopus
 	ondevice_document_scanner
+	ondevice_document_scanner_dlc
+	ondevice_grammar
+	ondevice_image_content_annotation
 	ondevice_handwriting
+	ondevice_speech
+	ondevice_text_suggestions
 	pinweaver_csme
 	pita
+	postscript
+	printscanmgr
 	racc
 	rialto
 	rk3399
 	sata
 	selinux
 	selinux_experimental
-	sirenia
 	skate
 	smartdim
 	snow
 	spring
 	+storage_wearout_detect
 	tablet_form_factor
+	ti50_onboard
+	tpm
 	tpm2
+	tpm2_simulator
+	tpm_dynamic
 	transparent_hugepage
 	ubsan
 	unibuild
@@ -131,15 +160,16 @@ IUSE="
 	veyron_mickey
 	veyron_rialto
 	video_cards_amdgpu
+	video_cards_iHD
 	video_cards_intel
 	video_cards_mediatek
 	video_cards_msm
 	virtio_gpu
+	vkms
 	vulkan
 	watchdog
 	wifi_hostap_test
 	wilco
-	+wired_8021x
 	+wpa3_sae
 	zork
 "
@@ -154,10 +184,11 @@ src_install() {
 EOF
 
 	# If you need to inspect a new flag, add it to $IUSE at the top of the file.
+	# shellcheck disable=SC2206
 	local flags=( ${IUSE} )
 	local flag
 	for flag in "${flags[@]/#[-+]}" ; do
-		usev ${flag}
+		usev "${flag}"
 	done | sort -u >>"${path}"
 
 	insinto /etc

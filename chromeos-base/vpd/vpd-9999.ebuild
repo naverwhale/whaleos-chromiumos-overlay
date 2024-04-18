@@ -1,59 +1,68 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2012 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
-CROS_WORKON_PROJECT="chromiumos/platform/vpd"
-CROS_WORKON_LOCALNAME="platform/vpd"
+CROS_WORKON_PROJECT=("chromiumos/platform2" "chromiumos/platform/vpd")
+CROS_WORKON_LOCALNAME=("platform2" "platform/vpd")
+CROS_WORKON_DESTDIR=("${S}/platform2" "${S}/platform2/vpd")
+CROS_WORKON_SUBTREE=("common-mk .gn" "")
 
-inherit cros-workon systemd
+PLATFORM_SUBDIR="vpd"
+
+inherit cros-workon platform systemd
 
 DESCRIPTION="ChromeOS vital product data utilities"
 HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform/vpd/"
-SRC_URI=""
+SRC_URI="gs://chromeos-localmirror/distfiles/${PN}-testdata-0.0.3.tar.xz"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
-IUSE="static systemd"
+IUSE="cros_host systemd test"
 
 # util-linux is for libuuid.
-DEPEND="sys-apps/util-linux:="
+DEPEND="
+	sys-apps/flashmap:=
+	sys-apps/flashrom:=
+	sys-apps/util-linux:=
+"
+
 # shflags for dump_vpd_log.
 # chromeos-activate-date for ActivateDate upstart and script.
 RDEPEND="
-	sys-apps/flashrom
-	dev-util/shflags
-	virtual/chromeos-activate-date
-	"
+	${DEPEND}
+	test? ( app-alternatives/tar )
+	!cros_host? (
+		dev-util/shflags
+		virtual/chromeos-activate-date
+	)
+"
 
-src_compile() {
-	tc-export CC
-	use static && append-ldflags -static
-	emake all
+# Unit tests generate FMAP files with fmaptool from coreboot-utils.
+BDEPEND="
+	test? ( sys-apps/coreboot-utils )
+"
+
+src_unpack() {
+	platform_src_unpack
+	cd "${S}" || die
+	unpack "${A}"
 }
 
 src_install() {
-	# This target list should be architecture specific
-	# (no ACPI stuff on ARM for instance)
-	dosbin vpd vpd_s
-	dosbin util/check_rw_vpd util/dump_vpd_log util/update_rw_vpd
-	dosbin util/vpd_get_value util/vpd_icc
+	platform_src_install
 
 	# install the init script
 	if use systemd; then
 		systemd_dounit init/vpd-log.service
 		systemd_enable_service boot-services.target vpd-log.service
-	else
-		insinto /etc/init
-		doins init/check-rw-vpd.conf
-		doins init/vpd-icc.conf
-		doins init/vpd-log.conf
 	fi
 }
 
-src_test() {
-	if ! use x86 && ! use amd64; then
-		ewarn "Skipping unittests for non-x86 arches"
-		return
-	fi
-	emake test
+platform_pkg_test() {
+	platform test_all
+
+	# This is not a gtest binary; avoid platform_test appending
+	# gtest-specific args.
+	PLATFORM_PARALLEL_GTEST_TEST="no" \
+		platform_test run "tests/run_tests"
 }

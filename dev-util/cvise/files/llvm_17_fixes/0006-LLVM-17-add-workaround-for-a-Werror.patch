@@ -1,0 +1,49 @@
+From ab37cba079049e3c920357c3c25e2deb476b6c32 Mon Sep 17 00:00:00 2001
+From: Martin Liska <mliska@suse.cz>
+Date: Fri, 2 Jun 2023 21:02:57 +0200
+Subject: [PATCH 6/6] LLVM 17: add workaround for a Werror
+
+---
+ CMakeLists.txt | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 4a177e4..1db47ce 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -22,7 +22,7 @@ if(CMAKE_SOURCE_DIR STREQUAL PROJECT_BINARY_DIR)
+   message(FATAL_ERROR "CMAKE_SOURCE_DIR should be different from PROJECT_BINARY_DIR")
+ endif()
+ 
+-###############################################################################
++##############################################################################
+ 
+ # Locate LLVM and check its version.  Do this here because we need the LLVM
+ # package definitions in the "CMakeLists.txt" files for multiple subdirs.
+@@ -152,6 +152,12 @@ check_cxx_compiler_flag(
+   SUPPORTS_MAYBE_UNINITIALIZED
+ )
+ 
++# XXX remove in the future once LLVM 17 gets released 
++check_cxx_compiler_flag(
++  "-Wclass-memaccess"
++  SUPPORTS_CLASS_MEMACCESS
++)
++
+ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
+     OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+   # XXX figure out how to get "-std=c++17 -fno-rtti" from LLVM.  That's how we
+@@ -169,6 +175,10 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
+     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-error=maybe-uninitialized")
+     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=maybe-uninitialized")
+   endif()
++  if(SUPPORTS_CLASS_MEMACCESS)
++    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-error=class-memaccess")
++    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-error=class-memaccess")
++  endif()
+ 
+   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
+   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELEASE} -O3 -g")
+-- 
+2.41.0.255.g8b1d071c50-goog
+

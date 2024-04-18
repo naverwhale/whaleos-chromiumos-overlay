@@ -1,4 +1,4 @@
-# Copyright (c) 2015 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # Settings that are common to all host sdks.  Do not place any board specific
@@ -15,6 +15,9 @@ USE="${USE} hardened multilib pic pie -introspection -cracklib"
 # Custom USE flag ebuilds can use to determine whether it's going into the sdk
 # or into a target board.
 USE="${USE} cros_host"
+
+# We do not use cron in the SDK.
+USE="${USE} -cron"
 
 # Disable all x11 USE flags for packages within chroot.
 USE="${USE} -gtk2 -gtk3 -qt4"
@@ -36,12 +39,19 @@ USE="${USE} -vala"
 # We only have one rootfs.
 USE="${USE} -split-usr"
 
+# We don't need smi so don't enable it to simplify dependencies.
+USE="${USE} -smi"
+
+# We shouldn't need VA-API accel in the SDK.
+USE="${USE} -vaapi"
+
 # Various runtime features that control emerge behavior.
 # See "man 5 make.conf" for details.
 FEATURES="allow-missing-manifests buildpkg clean-logs -collision-protect
           -ebuild-locks force-mirror -merge-sync -pid-sandbox
           parallel-install preserve-libs sandbox -strict userfetch
-          userpriv usersandbox -unknown-features-warn network-sandbox"
+          userpriv usersandbox -unknown-features-warn network-sandbox
+          -binpkg-multi-instance"
 
 # This is used by profiles/base/profile.bashrc to figure out that we
 # are targeting the cros-sdk (in all its various modes).  It should
@@ -49,20 +59,23 @@ FEATURES="allow-missing-manifests buildpkg clean-logs -collision-protect
 CROS_SDK_HOST="cros-sdk-host"
 
 # Qemu targets we care about.
-QEMU_SOFTMMU_TARGETS="aarch64 arm i386 mips mips64 mips64el mipsel x86_64"
-QEMU_USER_TARGETS="aarch64 arm i386 mips mips64 mips64el mipsel x86_64"
+QEMU_SOFTMMU_TARGETS="aarch64 arm i386 x86_64"
+QEMU_USER_TARGETS="aarch64 arm i386 x86_64"
 
 # Various compiler defaults.  Should be no arch-specific bits here.
 CFLAGS="-O2 -pipe"
 LDFLAGS="-Wl,-O2 -Wl,--as-needed"
+
+# The SDK doesn't have video cards.
+VIDEO_CARDS="-*"
 
 # We want to migrate away from this at some point.
 # https://crbug.com/360346
 SYMLINK_LIB="yes"
 
 # Default target(s) for python-r1.eclass
-PYTHON_TARGETS="-python2_7 python3_6"
-PYTHON_SINGLE_TARGET="-python2_7 python3_6"
+PYTHON_TARGETS="-* python3_8"
+PYTHON_SINGLE_TARGET="-* python3_8"
 
 # Use clang as the default compiler.
 CC=x86_64-pc-linux-gnu-clang

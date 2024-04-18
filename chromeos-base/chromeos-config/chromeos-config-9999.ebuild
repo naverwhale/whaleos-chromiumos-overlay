@@ -1,20 +1,41 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
 
 CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_PROJECT="chromiumos/platform2"
-CROS_WORKON_SUBTREE="chromeos-config/cros_config_host"
+CROS_WORKON_SUBTREE="chromeos-config"
 
-inherit cros-unibuild cros-workon
+PYTHON_COMPAT=( python3_{8..11} )
+
+inherit cros-unibuild cros-workon python-any-r1
 
 DESCRIPTION="Chromium OS-specific configuration"
 HOMEPAGE="https://chromium.googlesource.com/chromiumos/config/"
 SRC_URI=""
 LICENSE="BSD-Google"
 KEYWORDS="~*"
-IUSE="zephyr_ec"
+IUSE="unibuild"
+REQUIRED_USE="unibuild"
+
+RDEPEND="
+	chromeos-base/crosid
+	!<chromeos-base/chromeos-config-tools-0.0.5
+"
+
+# shellcheck disable=SC2016
+BDEPEND="
+	$(python_gen_any_dep '
+		dev-python/jsonschema[${PYTHON_USEDEP}]
+		dev-python/pyyaml[${PYTHON_USEDEP}]
+	')
+"
+
+python_check_deps() {
+	python_has_version -b "dev-python/jsonschema[${PYTHON_USEDEP}]" &&
+		python_has_version -b "dev-python/pyyaml[${PYTHON_USEDEP}]"
+}
 
 # This ebuild creates the Chrome OS master configuration file stored in
 # ${UNIBOARD_JSON_INSTALL_PATH}. See go/cros-unified-builds-design for
@@ -43,7 +64,7 @@ run_cros_config_tool() {
 	shift
 
 	PYTHONPATH="${S}/chromeos-config/cros_config_host" \
-		python3 -m "${tool}" "$@"
+		"${EPYTHON}" -m "${tool}" "$@"
 }
 
 # Merges all of the source YAML config files and generates the
@@ -53,7 +74,6 @@ src_compile() {
 	local input_yaml_files=()
 	local schema_flags=()
 	local yaml="${WORKDIR}/config.yaml"
-	local c_file="${WORKDIR}/config.c"
 	local configfs_image="${WORKDIR}/configfs.img"
 	local gen_yaml="${SYSROOT}${UNIBOARD_YAML_DIR}/config.yaml"
 
@@ -72,10 +92,6 @@ src_compile() {
 		fi
 	done
 
-	if use zephyr_ec; then
-		schema_flags+=( --zephyr-ec-configs-only )
-	fi
-
 	if [[ "${#input_yaml_files[@]}" -ne 0 ]]; then
 		run_cros_config_tool cros_config_schema "${schema_flags[@]}" \
 			-o "${yaml}" \
@@ -83,11 +99,9 @@ src_compile() {
 			|| die "cros_config_schema failed for build config."
 
 		run_cros_config_tool cros_config_schema -c "${yaml}" \
-			--configfs-output "${configfs_image}" -g "${WORKDIR}" -f "True" \
+			--configfs-output "${configfs_image}" -f "True" \
+			--identity-table-out "${WORKDIR}/identity.bin" \
 			|| die "cros_config_schema failed for platform config."
-	else
-		einfo "Emitting empty C interface config for mosys."
-		cp "${FILESDIR}/empty_config.c" "${c_file}"
 	fi
 }
 
@@ -97,12 +111,21 @@ src_install() {
 	if [[ -e "${WORKDIR}/configfs.img" ]]; then
 		doins "${WORKDIR}/configfs.img"
 	fi
+	if [[ -e "${WORKDIR}/identity.bin" ]]; then
+		doins "${WORKDIR}/identity.bin"
+	fi
 
 	insinto "${UNIBOARD_YAML_DIR}"
-	doins "${WORKDIR}/config.c"
 	if [[ -e "${WORKDIR}/config.yaml" ]]; then
 		doins "${WORKDIR}/config.yaml"
 	fi
+
+	# Install the setup script.
+	newsbin chromeos-config/scripts/cros_config_setup.sh cros_config_setup
+
+	# Install init scripts.
+	insinto /etc/init
+	doins chromeos-config/init/*.conf
 }
 
 # @FUNCTION: _verify_config_dump

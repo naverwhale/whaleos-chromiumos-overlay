@@ -1,10 +1,11 @@
 #!/bin/sh
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-exec gawk '
-match($0, /m4_define\(\[qmi_(major|minor|micro)_version\], \[([0-9]+)\]\)/,
-      matches) { version[matches[1]] = matches[2] }
-END { print version["major"] "." version["minor"] "." version["micro"] }' \
-  "$1/configure.ac"
+awk '
+  match($0, "^ *version *: *.([0-9.]+)", v) {
+    print v[1]
+    exit
+  }
+' "$1/meson.build"

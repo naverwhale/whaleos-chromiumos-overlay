@@ -1,4 +1,4 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -38,6 +38,7 @@ src_configure() {
 	append-ldflags "$(${CHOST}-cups-config --libs)"
 	append-ldflags "$($(tc-getPKG_CONFIG) --libs libchrome)"
 	append-cppflags "$($(tc-getPKG_CONFIG) --cflags libchrome)"
+	append-cxxflags -std=gnu++20
 }
 
 src_compile() {

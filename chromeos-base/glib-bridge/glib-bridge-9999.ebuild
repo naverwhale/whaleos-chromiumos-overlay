@@ -1,7 +1,7 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=6
+EAPI="7"
 
 CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_LOCALNAME="platform2"
@@ -14,7 +14,7 @@ PLATFORM_SUBDIR="glib-bridge"
 inherit cros-workon platform
 
 DESCRIPTION="libchrome-glib message loop bridge"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/glib-bridge"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/glib-bridge"
 
 LICENSE="BSD-Google"
 SLOT="0"
@@ -27,6 +27,8 @@ RDEPEND="
 DEPEND="${RDEPEND}"
 
 src_install() {
+	platform_src_install
+
 	dolib.so "${OUT}"/lib/libglib_bridge.so
 
 	# Install headers.
@@ -41,4 +43,6 @@ src_install() {
 
 platform_pkg_test() {
 	platform_test "run" "${OUT}/glib_bridge_test_runner"
+	platform_test "run" "${OUT}/glib_structured_logger_test_runner"
+	platform_test "run" "${OUT}/glib_unstructured_logger_test_runner"
 }

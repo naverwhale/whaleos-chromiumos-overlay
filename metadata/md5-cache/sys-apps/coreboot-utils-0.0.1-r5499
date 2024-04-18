@@ -1,0 +1,15 @@
+BDEPEND=virtual/pkgconfig dev-vcs/git app-misc/jq
+DEFINED_PHASES=compile configure info install setup unpack
+DEPEND=!static? ( dev-libs/openssl sys-apps/pciutils sys-apps/flashrom ) static? ( dev-libs/openssl[static-libs(+)] sys-apps/pciutils[static-libs(+)] sys-apps/flashrom )
+DESCRIPTION=Utilities for modifying coreboot firmware images
+EAPI=7
+HOMEPAGE=http://coreboot.org
+IUSE=cros_host mma +pci static cros_host cros_workon_tree_030eb32017711e3bed6e6b3a94d66f9f93cb4131_004d69667991fed6fdc5c41f706f6d8de5a4116b_5954704d5f30d3fe3c21aab2d249ae00bddc1760_3c4c2d1f78d70547ae755c56c69f969581b0b975_6862f9c9dfc325a641da7b72a18ce048cbc09d97_46a40d0d85cd9ad718e03f158c0bbdc30da23968_30cc0ecbbf814acd8a29dd2044e3d266afa3ff6e_a7657b348c5a8426cdf6358ce41d8bd551daebde_007bbccdbe3a9583d5b3edd1cb3dab919df41d4f_83dfbbe5c697b3f246c8c2b5d0ab987ec4027e32_5d571b60cf18aaca5199bfa5fe231e88465fdd17_30b301e5f4f1bf6703521fb794c5a53fbff7349b_d81ce78ca82f241cfc0473b4bd037c9f541a40db_3c7de6316ebdc7d62b958199ee523fd303e314d7_270f0b93b199814e88671a10bbdc338e2e28531b_0aa1ed596daf0e1c2011889a39a1e9b7bb31dfd5_f9660e0eadff1f6e87a84f57c9862c49f4dbde66 asan cfi cfi_diag cfi_recover coverage fuzzer msan thinlto tsan ubsan
+KEYWORDS=*
+LICENSE=GPL-2
+PROPERTIES=live
+RDEPEND=!static? ( dev-libs/openssl sys-apps/pciutils sys-apps/flashrom )
+REQUIRED_USE=cfi? ( thinlto ) cfi_diag? ( cfi ) cfi_recover? ( cfi_diag )
+SLOT=0
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-sanitizers	4504f3661db0fe02309acd3555785cf2	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=63a5bbc38550efbfbda4e260222ab120

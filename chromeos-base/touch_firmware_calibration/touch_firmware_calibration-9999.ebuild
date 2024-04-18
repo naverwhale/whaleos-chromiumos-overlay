@@ -1,7 +1,7 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
+EAPI="7"
 CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_INCREMENTAL_BUILD=1
@@ -13,7 +13,7 @@ PLATFORM_SUBDIR="touch_firmware_calibration"
 inherit cros-workon platform user udev
 
 DESCRIPTION="Touch Firmware Calibration"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/touch_firmware_calibration/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/touch_firmware_calibration/"
 SRC_URI=""
 
 LICENSE="BSD-Google"
@@ -29,6 +29,8 @@ pkg_preinst() {
 }
 
 src_install() {
+	platform_src_install
+
 	# Install a tool to override max pressure.
 	exeinto "$(get_udevdir)"
 	doexe "${OUT}/override-max-pressure"

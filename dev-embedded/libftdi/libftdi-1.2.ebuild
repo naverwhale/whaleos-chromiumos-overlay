@@ -1,10 +1,10 @@
 # Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=6
+EAPI="7"
 
-PYTHON_COMPAT=( python2_7 python3_4 python3_5 python3_6 )
-inherit cmake-utils python-single-r1
+PYTHON_COMPAT=( python3_{6..8} )
+inherit cmake python-single-r1
 
 MY_P="${PN}1-${PV}"
 if [[ ${PV} == 9999* ]] ; then
@@ -53,11 +53,11 @@ src_configure() {
 		-DFTDI_EEPROM=$(usex tools)
 		-DCMAKE_SKIP_BUILD_RPATH=ON
 	)
-	cmake-utils_src_configure
+	cmake_src_configure
 }
 
 src_install() {
-	cmake-utils_src_install
+	cmake_src_install
 	use python && python_optimize
 	dodoc AUTHORS ChangeLog README TODO
 

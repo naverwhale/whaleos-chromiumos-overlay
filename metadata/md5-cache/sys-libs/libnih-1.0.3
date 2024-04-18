@@ -1,0 +1,14 @@
+BDEPEND=>=app-portage/elt-patches-20170815 || ( >=sys-devel/automake-1.16.5-r1:1.16 >=sys-devel/automake-1.15.1-r2:1.15 ) >=sys-devel/autoconf-2.69 >=sys-devel/libtool-2.4
+DEFINED_PHASES=configure install prepare test
+DEPEND=dbus? ( dev-libs/expat >=sys-apps/dbus-1.2.16 ) sys-devel/gettext virtual/pkgconfig
+DESCRIPTION=Light-weight 'standard library' of C functions
+EAPI=7
+HOMEPAGE=https://launchpad.net/libnih
+IUSE=+dbus nls static-libs +threads split-usr
+KEYWORDS=*
+LICENSE=GPL-2
+RDEPEND=dbus? ( dev-libs/expat >=sys-apps/dbus-1.2.16 )
+SLOT=0
+SRC_URI=https://launchpad.net/libnih/1.0/1.0.3/+download/libnih-1.0.3.tar.gz
+_eclasses_=autotools	9adb87822e85056674b476e1090a72ae	flag-o-matic	ad475baa777c9978fa035216c8264a10	libtool	f143db5a74ccd9ca28c1234deffede96	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	usr-ldscript	766f0a506b45f02361ad1b8ca205b7e1
+_md5_=643b59b2ebe3e3ba3848f6f1d3a52ed6

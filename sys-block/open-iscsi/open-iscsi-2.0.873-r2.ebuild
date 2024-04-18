@@ -1,1 +1,0 @@
-open-iscsi-2.0.873-r1.ebuild

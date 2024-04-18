@@ -1,9 +1,0 @@
-DEFINED_PHASES=compile install
-DESCRIPTION=7-ZIP LZMA SDK with specific patches for Intel ME
-EAPI=6
-HOMEPAGE=https://www.7-zip.org/sdk.html
-KEYWORDS=*
-LICENSE=public-domain
-SLOT=0
-SRC_URI=gs://chromeos-localmirror/distfiles/lzma423.tar.bz2
-_md5_=11539ab771a186b7e7d4a9b383a7a8ea

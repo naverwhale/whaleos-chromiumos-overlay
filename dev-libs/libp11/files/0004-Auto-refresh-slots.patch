@@ -1,0 +1,20 @@
+Refresh slot list on each load operation (private key, certificate, ..).
+On ChromeOS the user slot is loaded when the user logs in.
+
+--- a/src/eng_back.c
++++ b/src/eng_back.c
+@@ -605,6 +605,14 @@ static void *ctx_load_object(ENGINE_CTX *ctx,
+ 		return NULL;
+ 	}
+ 
++	/* Refresh slot list because on ChromeOS the 'user' slot may have been
++	 * loaded since libp11 was initialized. */
++	if (ctx_enumerate_slots_unlocked(ctx, ctx->pkcs11_ctx) == 0) {
++		ENGerr(ENG_F_CTX_LOAD_OBJECT, ENG_R_OBJECT_NOT_FOUND);
++		pthread_mutex_unlock(&ctx->lock);
++		return NULL;
++	}
++
+ 	if (!ctx->force_login) {
+ 		ERR_clear_error();
+ 		obj = ctx_try_load_object(ctx, object_typestr, match_func,

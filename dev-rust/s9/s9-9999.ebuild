@@ -1,4 +1,4 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -27,12 +27,8 @@ RDEPEND="
 	!dev-rust/9s
 "
 DEPEND="
-	=dev-rust/getopts-0.2*:=
-	=dev-rust/libc-0.2*:=
+	dev-rust/third-party-crates-src:=
 	dev-rust/libchromeos:=
-	=dev-rust/log-0.4*:=
-	dev-rust/p9:=
-	dev-rust/sys_util:=
 "
 
 src_install() {

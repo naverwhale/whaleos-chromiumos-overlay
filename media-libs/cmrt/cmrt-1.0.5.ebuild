@@ -1,9 +1,9 @@
 # Copyright 1999-2012 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=5
+EAPI="7"
 
-inherit autotools eutils
+inherit autotools
 
 DESCRIPTION="C for Media Runtime"
 HOMEPAGE="https://github.com/01org/cmrt"
@@ -19,8 +19,12 @@ DEPEND="${RDEPEND}
 	x11-libs/libva
 	virtual/pkgconfig"
 
+PATCHES=(
+	"${FILESDIR}/${P}-use-right-cpp.patch"
+)
+
 src_prepare() {
-	epatch "${FILESDIR}/${P}-use-right-cpp.patch"
+	default
 	eautoreconf
 }
 
@@ -31,5 +35,5 @@ src_configure() {
 
 src_install() {
 	default
-	prune_libtool_files
+	find "${ED}" -name '*.la' -delete || die
 }

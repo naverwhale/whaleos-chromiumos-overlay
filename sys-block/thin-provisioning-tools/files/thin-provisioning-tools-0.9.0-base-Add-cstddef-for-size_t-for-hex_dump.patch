@@ -1,0 +1,26 @@
+From ae7fd8753faec723d6732ea23e6f7a1847e4eb28 Mon Sep 17 00:00:00 2001
+From: Jordan R Abrahams-Whitehead <ajordanr@google.com>
+Date: Thu, 27 Jul 2023 23:44:45 +0000
+Subject: [PATCH] [base] Add cstddef for size_t for hex_dump
+
+This is needed for compiling with LLVM-17, as
+iosfwd will not define it for us.
+---
+ persistent-data/hex_dump.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/persistent-data/hex_dump.h b/persistent-data/hex_dump.h
+index 7633a50..9d69ed6 100644
+--- a/persistent-data/hex_dump.h
++++ b/persistent-data/hex_dump.h
+@@ -19,6 +19,7 @@
+ #ifndef HEX_DUMP_H
+ #define HEX_DUMP_H
+ 
++#include <cstddef>
+ #include <iosfwd>
+ 
+ //----------------------------------------------------------------
+-- 
+2.41.0.487.g6d72f3e995-goog
+

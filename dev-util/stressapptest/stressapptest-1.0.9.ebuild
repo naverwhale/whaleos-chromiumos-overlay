@@ -1,7 +1,7 @@
 # Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="6"
+EAPI="7"
 
 inherit eutils flag-o-matic binutils-funcs toolchain-funcs
 
@@ -33,7 +33,7 @@ src_prepare() {
 	# To build 64-bit version for arm64.
 	if need_static_arm64; then
 		export S64="${S}_64"
-		cp -r "${S}" "${S64}" || die
+		cp -a "${S}" "${S64}" || die
 	fi
 }
 
@@ -51,7 +51,7 @@ build_static_arm64() {
 	# Use headers and libraries from "/" instead of "/build/${BOARD}"
 	export SYSROOT=""
 
-	# The following logic is copied from cros-kernel2.eclass
+	# The following logic is copied from cros-kernel.eclass
 	export CHOST=aarch64-cros-linux-gnu
 	export CTARGET=aarch64-cros-linux-gnu
 	export ABI=arm64

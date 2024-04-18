@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright 2011 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -11,6 +11,7 @@ CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_OUTOFTREE_BUILD=1
 CROS_WORKON_SUBTREE="common-mk system_api .gn"
+CROS_WORKON_INCREMENTAL_BUILD="1"
 
 PLATFORM_SUBDIR="system_api"
 WANT_LIBBRILLO="no"
@@ -18,22 +19,24 @@ WANT_LIBBRILLO="no"
 inherit cros-fuzzer cros-go cros-workon platform
 
 DESCRIPTION="Chrome OS system API (D-Bus service names, etc.)"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/system_api/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/system_api/"
 LICENSE="BSD-Google"
-# The subslot should be manually bumped any time protobuf is upgraded
-# to a newer version whose libraries are incompatible with the
-# generated sources of the previous version. As a rule of thumb if the
-# minor version of protobuf has changed, the subslot should be incremented.
-SLOT="0/1"
 KEYWORDS="~*"
 IUSE="cros_host"
 
-RDEPEND=""
+RDEPEND="
+	dev-libs/protobuf:=
+	cros_host? ( net-libs/grpc:= )
+"
 
 DEPEND="${RDEPEND}
 	dev-go/protobuf:=
-	dev-libs/protobuf:=
-	cros_host? ( net-libs/grpc:= )
+	dev-go/protobuf-legacy-api:=
+"
+
+BDEPEND="
+	dev-go/protobuf-legacy-api
+	dev-libs/protobuf
 "
 
 src_unpack() {
@@ -42,18 +45,16 @@ src_unpack() {
 }
 
 src_install() {
-	insinto /usr/"$(get_libdir)"/pkgconfig
-	doins system_api.pc
+	platform_src_install
 
-	insinto /usr/include/chromeos
-	doins -r dbus switches constants
-	find "${D}" -name OWNERS -delete || die
+	find "${D}"/usr/include/ \
+		'(' -name OWNERS -o -name DIR_METADATA -o -name '*.md' ')' \
+		-delete || die
 
 	# Install the dbus-constants.h files in the respective daemons' client library
 	# include directory. Users will need to include the corresponding client
 	# library to access these files.
 	local dir dirs=(
-		arc-data-snapshotd
 		anomaly_detector
 		attestation
 		biod
@@ -62,6 +63,7 @@ src_install() {
 		cros_healthd
 		cryptohome
 		debugd
+		discod
 		dlcservice
 		kerberos
 		login_manager
@@ -70,11 +72,15 @@ src_install() {
 		runtime_probe
 		pciguard
 		permission_broker
+		printscanmgr
 		power_manager
+		rgbkbd
 		rmad
+		shadercached
 		shill
 		smbprovider
 		tpm_manager
+		u2f
 		update_engine
 		wilco_dtc_supportd
 	)
@@ -82,28 +88,6 @@ src_install() {
 		insinto /usr/include/"${dir}"-client/"${dir}"
 		doins dbus/"${dir}"/dbus-constants.h
 	done
-
-	# These are files/projects installed in the common dir.
-	dirs=( system_api )
-
-	# These are project-specific files.
-	dirs+=( $(
-		cd "${S}/dbus" || die
-		dirname */*.proto | sort -u
-	) )
-
-	for dir in "${dirs[@]}"; do
-		insinto /usr/include/"${dir}"/proto_bindings
-		doins "${OUT}"/gen/include/"${dir}"/proto_bindings/*.h
-
-		if [[ "${dir}" == "system_api" ]]; then
-			dolib.a "${OUT}/libsystem_api-protos.a"
-		else
-			dolib.a "${OUT}/libsystem_api-${dir}-protos.a"
-		fi
-	done
-
-	dolib.so "${OUT}/lib/libsystem_api.so"
 
 	cros-go_src_install
 }

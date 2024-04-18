@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -20,10 +20,18 @@ LICENSE="BSD-Google"
 KEYWORDS="~*"
 
 BDEPEND="
+	chromeos-base/chromeos-dbus-bindings
+"
+
+# Workaround to rebuild this package on the chromeos-dbus-bindings update.
+# Please find the comment in chromeos-dbus-bindings for its background.
+DEPEND="
 	chromeos-base/chromeos-dbus-bindings:=
 "
 
 src_install() {
+	platform_src_install
+
 	# Install D-Bus client library.
 	platform_install_dbus_client_lib "ml"
 }

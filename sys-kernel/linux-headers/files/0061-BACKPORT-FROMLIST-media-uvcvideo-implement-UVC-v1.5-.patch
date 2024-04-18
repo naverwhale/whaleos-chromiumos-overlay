@@ -1,0 +1,57 @@
+From 8c7b9f5c2c6d6dcc78f5a65fef335af5592a3aeb Mon Sep 17 00:00:00 2001
+From: Yunke Cao <yunkec@chromium.org>
+Date: Fri, 4 Aug 2023 11:01:34 +0900
+Subject: [PATCH 1/5] BACKPORT:FROMLIST:media: uvcvideo: implement UVC v1.5 ROI
+
+Implement support for ROI as described in UVC 1.5:
+4.2.2.1.20 Digital Region of Interest (ROI) Control
+
+ROI control is implemented using V4L2 control API as
+two UVC-specific controls:
+V4L2_CID_UVC_REGION_OF_INTEREST_RECT and
+V4L2_CID_UVC_REGION_OF_INTEREST_AUTO.
+
+Reviewed-by: Ricardo Ribalda <ribalda@chromium.org>
+Signed-off-by: Yunke Cao <yunkec@google.com>
+(am from https://patchwork.kernel.org/project/linux-media/patch/20230426082923.132909-10-yunkec@google.com/)
+
+Only includes changes in
+include/uapi/linux/uvcvideo.h
+---
+ include/uapi/linux/uvcvideo.h | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
+
+diff --git a/include/uapi/linux/uvcvideo.h b/include/uapi/linux/uvcvideo.h
+index e80b465..d669cf2 100644
+--- a/include/uapi/linux/uvcvideo.h
++++ b/include/uapi/linux/uvcvideo.h
+@@ -16,6 +16,7 @@
+ #define UVC_CTRL_DATA_TYPE_BOOLEAN	3
+ #define UVC_CTRL_DATA_TYPE_ENUM		4
+ #define UVC_CTRL_DATA_TYPE_BITMASK	5
++#define UVC_CTRL_DATA_TYPE_RECT		6
+ 
+ /* Control flags */
+ #define UVC_CTRL_FLAG_SET_CUR		(1 << 0)
+@@ -34,6 +35,18 @@
+ 	 UVC_CTRL_FLAG_GET_MAX | UVC_CTRL_FLAG_GET_RES | \
+ 	 UVC_CTRL_FLAG_GET_DEF)
+ 
++/* V4L2 driver-specific controls */
++#define V4L2_CID_UVC_REGION_OF_INTEREST_RECT	(V4L2_CID_CAMERA_UVC_BASE + 1)
++#define V4L2_CID_UVC_REGION_OF_INTEREST_AUTO	(V4L2_CID_CAMERA_UVC_BASE + 2)
++#define V4L2_UVC_REGION_OF_INTEREST_AUTO_EXPOSURE		(1 << 0)
++#define V4L2_UVC_REGION_OF_INTEREST_AUTO_IRIS			(1 << 1)
++#define V4L2_UVC_REGION_OF_INTEREST_AUTO_WHITE_BALANCE		(1 << 2)
++#define V4L2_UVC_REGION_OF_INTEREST_AUTO_FOCUS			(1 << 3)
++#define V4L2_UVC_REGION_OF_INTEREST_AUTO_FACE_DETECT		(1 << 4)
++#define V4L2_UVC_REGION_OF_INTEREST_AUTO_DETECT_AND_TRACK	(1 << 5)
++#define V4L2_UVC_REGION_OF_INTEREST_AUTO_IMAGE_STABILIZATION	(1 << 6)
++#define V4L2_UVC_REGION_OF_INTEREST_AUTO_HIGHER_QUALITY		(1 << 7)
++
+ struct uvc_menu_info {
+ 	__u32 value;
+ 	__u8 name[32];
+-- 
+2.41.0.585.gd2178a4bd4-goog
+

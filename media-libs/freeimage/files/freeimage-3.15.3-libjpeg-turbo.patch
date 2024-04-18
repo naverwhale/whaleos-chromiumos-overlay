@@ -1,8 +1,8 @@
 Fix freeimage compilation errors for newer version of libjpeg-turbo.
 Patch from Christian Heimes's fork at ttps://bitbucket.org/tiran/freeimageturbo
 
---- /dev/null	2013-09-04 18:06:09.961000800 +1000
-+++ LibJPEG/jpegcomp.h	2013-09-08 12:00:09.770737557 +1000
+--- /dev/null
++++ b/LibJPEG/jpegcomp.h
 @@ -0,0 +1,26 @@
 +/*
 + * jpegcomp.h
@@ -30,8 +30,8 @@ Patch from Christian Heimes's fork at ttps://bitbucket.org/tiran/freeimageturbo
 +#define _jpeg_width image_width
 +#define _jpeg_height image_height
 +#endif
---- LibJPEG-orig/jpegint.h	2012-02-19 18:33:18.000000000 +1100
-+++ LibJPEG/jpegint.h	2013-09-08 12:00:09.770737557 +1000
+--- a/LibJPEG/jpegint.h
++++ b/LibJPEG/jpegint.h
 @@ -2,7 +2,7 @@
   * jpegint.h
   *
@@ -169,8 +169,8 @@ Patch from Christian Heimes's fork at ttps://bitbucket.org/tiran/freeimageturbo
  
  /* Arithmetic coding probability estimation tables in jaricom.c */
  extern const INT32 jpeg_aritab[];
---- LibJPEG-orig/transupp.h	2012-02-19 18:33:18.000000000 +1100
-+++ LibJPEG/transupp.h	2013-09-08 12:00:09.820737560 +1000
+--- a/LibJPEG/transupp.h
++++ b/LibJPEG/transupp.h
 @@ -1,7 +1,7 @@
  /*
   * transupp.h
@@ -232,8 +232,8 @@ Patch from Christian Heimes's fork at ttps://bitbucket.org/tiran/freeimageturbo
    JDIMENSION crop_xoffset;	/* X offset of selected region */
    JCROP_CODE crop_xoffset_set;	/* (negative measures from right edge) */
    JDIMENSION crop_yoffset;	/* Y offset of selected region */
---- LibJPEG-orig/transupp.c	2012-02-19 18:33:18.000000000 +1100
-+++ LibJPEG/transupp.c	2013-09-08 12:00:09.819737560 +1000
+--- a/LibJPEG/transupp.c
++++ b/LibJPEG/transupp.c
 @@ -1,7 +1,8 @@
  /*
   * transupp.c

@@ -1,3 +1,1 @@
-basni@chromium.org
-chadversary@chromium.org
-olv@chromium.org
+include chromiumos/platform/graphics:/OWNERS.vulkan_base

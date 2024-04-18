@@ -3,13 +3,18 @@
 # Common settings across all sdks.
 source /mnt/host/source/src/third_party/chromiumos-overlay/chromeos/config/make.conf.common
 
+# Pull in definition of at least { CHOST, [BOARD_OVERLAY] }
+source make.conf.board_setup
+
 # We initialize PORTDIR_OVERLAY here to clobber any redefinitions elsewhere.
 # This has to be the first overlay so crossdev finds the correct gcc and
 # glibc ebuilds.
 PORTDIR_OVERLAY="
   /usr/local/portage/crossdev
-  /usr/local/portage/chromiumos
-  /usr/local/portage/eclass-overlay
+  /mnt/host/source/src/third_party/toolchains-overlay
+  /mnt/host/source/src/third_party/chromiumos-overlay
+  /mnt/host/source/src/third_party/eclass-overlay
+  /mnt/host/source/src/overlays/overlay-amd64-host
 "
 
 # Where to store built packages.
@@ -17,9 +22,8 @@ PKGDIR="/var/lib/portage/pkgs"
 
 PORT_LOGDIR="/var/log/portage"
 
-source /usr/local/portage/chromiumos/chromeos/binhost/host/amd64-PREFLIGHT_BINHOST.conf
-FULL_BINHOST="gs://chromeos-prebuilt/host/amd64/amd64-host/chroot-2021.10.05.002450/packages/"
-PORTAGE_BINHOST="$PREFLIGHT_BINHOST $FULL_BINHOST"
+FULL_BINHOST="gs://chromeos-prebuilt/host/amd64/amd64-host/chroot-2023.10.29.140059/packages/"
+PORTAGE_BINHOST="$FULL_BINHOST"
 
 GENTOO_MIRRORS="https://commondatastorage.googleapis.com/chromeos-localmirror"
 GENTOO_MIRRORS="$GENTOO_MIRRORS https://commondatastorage.googleapis.com/chromeos-mirror/gentoo"

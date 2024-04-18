@@ -1,0 +1,48 @@
+commit dc7aa0a143fe177508ada7f065d1d6bb48e92c34
+Author: Joel E. Denny <jdenny.ornl@gmail.com>
+Date:   Thu Sep 7 12:34:43 2023 -0400
+
+    Revert "[lit] Fix c981c533055e's remaining test fails under windows"
+    
+    This reverts commit 012d844fb856a89368aca95ca994726554b90f22.
+    
+    The reason for the revert is discussed at:
+    https://discourse.llvm.org/t/rfc-improving-lits-debug-output/72839/52
+
+diff --git a/llvm/utils/lit/tests/Inputs/shtest-output-printing/lit.cfg b/llvm/utils/lit/tests/Inputs/shtest-output-printing/lit.cfg
+index 141fc3a596e7..c53fd157b6ae 100644
+--- a/llvm/utils/lit/tests/Inputs/shtest-output-printing/lit.cfg
++++ b/llvm/utils/lit/tests/Inputs/shtest-output-printing/lit.cfg
+@@ -2,5 +2,5 @@ import lit.formats
+ 
+ config.name = "shtest-output-printing"
+ config.suffixes = [".txt"]
+-config.substitutions.append(("%{python}", f'"{sys.executable}"'))
++config.substitutions.append(("%{python}", sys.executable))
+ config.test_format = lit.formats.ShTest(execute_external=False)
+diff --git a/llvm/utils/lit/tests/shtest-output-printing.py b/llvm/utils/lit/tests/shtest-output-printing.py
+index 3e49197520a9..427ce8f235dd 100644
+--- a/llvm/utils/lit/tests/shtest-output-printing.py
++++ b/llvm/utils/lit/tests/shtest-output-printing.py
+@@ -8,7 +8,7 @@
+ #       CHECK: -- Testing: {{.*}}
+ #       CHECK: FAIL: shtest-output-printing :: basic.txt {{.*}}
+ #  CHECK-NEXT: ***{{\**}} TEST 'shtest-output-printing :: basic.txt' FAILED ***{{\**}}
+-#  CHECK-NEXT: Exit Code: 1
++#  CHECK-NEXT: Exit Code: {{[1-9][0-9]*}}
+ # CHECK-EMPTY:
+ #  CHECK-NEXT: Command Output (stdout):
+ #  CHECK-NEXT: --
+diff --git a/llvm/utils/lit/tests/shtest-shell.py b/llvm/utils/lit/tests/shtest-shell.py
+index a957fdda7b3c..97d946643b39 100644
+--- a/llvm/utils/lit/tests/shtest-shell.py
++++ b/llvm/utils/lit/tests/shtest-shell.py
+@@ -475,7 +475,7 @@
+ # CHECK-NEXT: # executed command: true
+ 
+ #      CHECK: diff -U0 {{.*}}.foo {{.*}}.bar && false || true
+-# CHECK-NEXT: # executed command: diff -U0 {{.+}}.foo{{.*}} {{.+}}.bar{{.*}}
++# CHECK-NEXT: diff -U0 {{.*}}.foo {{.*}}.bar
+ # CHECK-NEXT: # .---command stdout{{-*}}
+ #      CHECK: # | @@ {{.*}} @@
+ # CHECK-NEXT: # | -6 foo

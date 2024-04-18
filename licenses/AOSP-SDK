@@ -12,14 +12,14 @@ modification, are permitted provided that the following conditions are met:
     * Redistributions in binary form must reproduce the above copyright
       notice, this list of conditions and the following disclaimer in the
       documentation and/or other materials provided with the distribution.
-    * Neither the name of Google Inc. nor the names of its contributors may
+    * Neither the name of Google LLC nor the names of its contributors may
       be used to endorse or promote products derived from this software
       without specific prior written permission.
 
-THIS SOFTWARE IS PROVIDED BY Google Inc. ``AS IS'' AND ANY EXPRESS OR
+THIS SOFTWARE IS PROVIDED BY Google LLC ``AS IS'' AND ANY EXPRESS OR
 IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
 MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
-EVENT SHALL Google Inc. BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+EVENT SHALL Google LLC BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
 SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
 PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
 OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
@@ -1040,7 +1040,7 @@ Notices for file(s):
 /obj/GYP/shared_intermediates/mksnapshot.arm
 /obj/GYP/shared_intermediates/protoc
 ------------------------------------------------------------
-// Copyright (c) 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
@@ -1052,7 +1052,7 @@ Notices for file(s):
 // copyright notice, this list of conditions and the following disclaimer
 // in the documentation and/or other materials provided with the
 // distribution.
-//    * Neither the name of Google Inc. nor the names of its
+//    * Neither the name of Google LLC nor the names of its
 // contributors may be used to endorse or promote products derived from
 // this software without specific prior written permission.
 //
@@ -1087,7 +1087,7 @@ Notices for file(s):
  *
  ***************************************************************/
 
-/* Copyright (c) 2008-2009, Google Inc.
+/* Copyright 2008-2009 Google LLC
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1096,7 +1096,7 @@ Notices for file(s):
  *
  *     * Redistributions of source code must retain the above copyright
  * notice, this list of conditions and the following disclaimer.
- *     * Neither the name of Google Inc. nor the names of its
+ *     * Neither the name of Google LLC nor the names of its
  * contributors may be used to endorse or promote products derived from
  * this software without specific prior written permission.
  *
@@ -1152,7 +1152,7 @@ Notices for file(s):
  *
  * ***** END LICENSE BLOCK ***** */
 
-// Copyright (c) 2006, Google Inc.
+// Copyright 2006 Google LLC
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -1165,7 +1165,7 @@ Notices for file(s):
 // copyright notice, this list of conditions and the following disclaimer
 // in the documentation and/or other materials provided with the
 // distribution.
-//     * Neither the name of Google Inc. nor the names of its
+//     * Neither the name of Google LLC nor the names of its
 // contributors may be used to endorse or promote products derived from
 // this software without specific prior written permission.
 //
@@ -1456,7 +1456,7 @@ POSSIBILITY OF SUCH DAMAGE.
       same "printed page" as the copyright notice for easier
       identification within third-party archives.
 
-   Copyright 2007-2009 Google Inc.
+   Copyright 2007-2009 Google LLC
    Copyright 2007-2009 WebDriver committers
 
    Licensed under the Apache License, Version 2.0 (the "License");
@@ -1577,7 +1577,7 @@ notice, this list of conditions and the following disclaimer.
 copyright notice, this list of conditions and the following disclaimer
 in the documentation and/or other materials provided with the
 distribution.
-    * Neither the name of Google Inc. nor the names of its
+    * Neither the name of Google LLC nor the names of its
 contributors may be used to endorse or promote products derived from
 this software without specific prior written permission.
 
@@ -1934,7 +1934,7 @@ consider it more useful to permit linking proprietary applications with the
 library.  If this is what you want to do, use the GNU Library General
 Public License instead of this License.
 
-// Copyright (c) 2012 The Chromium Authors. All rights reserved.
+// Copyright 2012 The Chromium Authors
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
@@ -1946,7 +1946,7 @@ Public License instead of this License.
 // copyright notice, this list of conditions and the following disclaimer
 // in the documentation and/or other materials provided with the
 // distribution.
-//    * Neither the name of Google Inc. nor the names of its
+//    * Neither the name of Google LLC nor the names of its
 // contributors may be used to endorse or promote products derived from
 // this software without specific prior written permission.
 //
@@ -2175,7 +2175,7 @@ Public License instead of this License.
       same "printed page" as the copyright notice for easier
       identification within third-party archives.
 
-   Copyright (c) 2008, Google Inc.
+   Copyright 2008 Google LLC
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -2200,7 +2200,7 @@ Brent Fulgham, Cameron Zwarich, Charles Samuels, Christian Dywan,
 Collabora Ltd., Cyrus Patel, Daniel Molkentin, Dave Maclachlan, David
 Smith, Dawit Alemayehu, Dirk Mueller, Dirk Schulze, Don Gibson, Enrico
 Ros, Eric Seidel, Frederik Holljen, Frerich Raabe, Friedmann Kleint,
-George Staikos, Google Inc., Graham Dennis, Harri Porten, Henry Mason,
+George Staikos, Google LLC, Graham Dennis, Harri Porten, Henry Mason,
 Hiroyuki Ikezoe, Holger Hans Peter Freyther, IBM, James G. Speth, Jan
 Alonzo, Jean-Loup Gailly, John Reis, Jonas Witt, Jon Shier, Jonas
 Witt, Julien Chaffraix, Justin Haygood, Kevin Ollivier, Kevin Watters,
@@ -3172,7 +3172,7 @@ DAMAGES.
 //     disclaimer in the documentation and/or other materials provided
 //     with the distribution.
 //
-//     Neither the name of TransGaming Inc., Google Inc., 3DLabs Inc.
+//     Neither the name of TransGaming Inc., Google LLC, 3DLabs Inc.
 //     Ltd., nor the names of their contributors may be used to endorse
 //     or promote products derived from this software without specific
 //     prior written permission.
@@ -3439,7 +3439,7 @@ EINES DELIKTES ODER ANDERS IM ZUSAMMENHANG MIT DER SOFTWARE ODER
 SONSTIGER VERWENDUNG DER SOFTWARE ENTSTANDEN. 
 
 
-// Copyright (c) 2010 The Chromium Authors. All rights reserved.
+// Copyright 2010 The Chromium Authors
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
@@ -3451,7 +3451,7 @@ SONSTIGER VERWENDUNG DER SOFTWARE ENTSTANDEN.
 // copyright notice, this list of conditions and the following disclaimer
 // in the documentation and/or other materials provided with the
 // distribution.
-//    * Neither the name of Google Inc. nor the names of its
+//    * Neither the name of Google LLC nor the names of its
 // contributors may be used to endorse or promote products derived from
 // this software without specific prior written permission.
 //
@@ -4588,7 +4588,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       same "printed page" as the copyright notice for easier
       identification within third-party archives.
 
-   Copyright 2011 Google Inc. All Rights Reserved.
+   Copyright 2011 Google LLC
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -4800,7 +4800,7 @@ Legal Terms
 
 --- end of FTL.TXT ---
 
-// Copyright (c) 2013 The Chromium Authors. All rights reserved.
+// Copyright 2013 The Chromium Authors
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
@@ -4812,7 +4812,7 @@ Legal Terms
 // copyright notice, this list of conditions and the following disclaimer
 // in the documentation and/or other materials provided with the
 // distribution.
-//    * Neither the name of Google Inc. nor the names of its
+//    * Neither the name of Google LLC nor the names of its
 // contributors may be used to endorse or promote products derived from
 // this software without specific prior written permission.
 //
@@ -6295,7 +6295,7 @@ notice, this list of conditions and the following disclaimer.
 copyright notice, this list of conditions and the following disclaimer
 in the documentation and/or other materials provided with the
 distribution.
-   * Neither the name of Google Inc. nor the names of its
+   * Neither the name of Google LLC nor the names of its
 contributors may be used to endorse or promote products derived from
 this software without specific prior written permission.
 
@@ -6358,7 +6358,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
 THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Copyright (c) 2013, Google Inc.
+Copyright 2013 Google LLC
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without modification,
@@ -6459,7 +6459,7 @@ We are required to state that
     CompuServe Incorporated.  GIF(sm) is a Service Mark property of
     CompuServe Incorporated."
 
-Copyright (C) 2011 Google Inc.
+Copyright 2011 Google LLC
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -7110,7 +7110,7 @@ That's all there is to it!
     TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-Copyright (c) 2010, Google Inc. All rights reserved.
+Copyright 2010 Google LLC
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions are
@@ -7843,7 +7843,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 
-Copyright 2010-2011, Google Inc.
+Copyright 2010-2011 Google LLC
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -7856,7 +7856,7 @@ notice, this list of conditions and the following disclaimer.
 copyright notice, this list of conditions and the following disclaimer
 in the documentation and/or other materials provided with the
 distribution.
-* Neither the name of Google Inc. nor the names of its
+* Neither the name of Google LLC nor the names of its
 contributors may be used to endorse or promote products derived from
 this software without specific prior written permission.
 
@@ -7945,7 +7945,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
    NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
    SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// Copyright (c) 2006-2009 The Chromium OS Authors. All rights reserved.
+// Copyright 2006-2009 The ChromiumOS Authors
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
@@ -7957,7 +7957,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // copyright notice, this list of conditions and the following disclaimer
 // in the documentation and/or other materials provided with the
 // distribution.
-//    * Neither the name of Google Inc. nor the names of its
+//    * Neither the name of Google LLC nor the names of its
 // contributors may be used to endorse or promote products derived from
 // this software without specific prior written permission.
 //
@@ -8194,7 +8194,7 @@ https://datatracker.ietf.org/ipr/1914/
 Broadcom Corporation:
 https://datatracker.ietf.org/ipr/1526/
 
-// Copyright (c) 2009 The Chromium Authors. All rights reserved.
+// Copyright 2009 The Chromium Authors
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
@@ -8206,7 +8206,7 @@ https://datatracker.ietf.org/ipr/1526/
 // copyright notice, this list of conditions and the following disclaimer
 // in the documentation and/or other materials provided with the
 // distribution.
-//    * Neither the name of Google Inc. nor the names of its
+//    * Neither the name of Google LLC nor the names of its
 // contributors may be used to endorse or promote products derived from
 // this software without specific prior written permission.
 //
@@ -8264,7 +8264,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // copyright notice, this list of conditions and the following disclaimer
 // in the documentation and/or other materials provided with the
 // distribution.
-//    * Neither the name of Google Inc. nor the names of its
+//    * Neither the name of Google LLC nor the names of its
 // contributors may be used to endorse or promote products derived from
 // this software without specific prior written permission.
 //
@@ -8280,7 +8280,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Copyright 2008, Google Inc.
+Copyright 2008 Google LLC
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -8293,7 +8293,7 @@ notice, this list of conditions and the following disclaimer.
 copyright notice, this list of conditions and the following disclaimer
 in the documentation and/or other materials provided with the
 distribution.
-    * Neither the name of Google Inc. nor the names of its
+    * Neither the name of Google LLC nor the names of its
 contributors may be used to endorse or promote products derived from
 this software without specific prior written permission.
 
@@ -8375,7 +8375,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 // copyright notice, this list of conditions and the following disclaimer
 // in the documentation and/or other materials provided with the
 // distribution.
-//    * Neither the name of Google Inc. nor the names of its
+//    * Neither the name of Google LLC nor the names of its
 // contributors may be used to endorse or promote products derived from
 // this software without specific prior written permission.
 //
@@ -8580,7 +8580,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       same "printed page" as the copyright notice for easier
       identification within third-party archives.
 
-   Copyright 2011 Google Inc. All Rights Reserved.
+   Copyright 2011 Google LLC
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -8615,7 +8615,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-// Copyright (c) 2011 Google Inc. All rights reserved.
+// Copyright 2011 Google LLC
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions are
@@ -8627,7 +8627,7 @@ SOFTWARE.
 // copyright notice, this list of conditions and the following disclaimer
 // in the documentation and/or other materials provided with the
 // distribution.
-//    * Neither the name of Google Inc. nor the names of its
+//    * Neither the name of Google LLC nor the names of its
 // contributors may be used to endorse or promote products derived from
 // this software without specific prior written permission.
 //
@@ -8647,7 +8647,7 @@ All MurmurHash source files are placed in the public domain.
 
 The license below applies to all other code in SMHasher:
 
-Copyright (c) 2011 Google, Inc.
+Copyright 2011 Google, Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -8770,7 +8770,7 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 
-// Copyright (c) 2005, Google Inc.
+// Copyright 2005 Google LLC
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -8783,7 +8783,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // copyright notice, this list of conditions and the following disclaimer
 // in the documentation and/or other materials provided with the
 // distribution.
-//     * Neither the name of Google Inc. nor the names of its
+//     * Neither the name of Google LLC nor the names of its
 // contributors may be used to endorse or promote products derived from
 // this software without specific prior written permission.
 //
@@ -8973,7 +8973,7 @@ GNU_LGPL-2.0 - GNU Library General Public License
 
 */
 
-Copyright 2007, Google Inc.
+Copyright 2007 Google LLC
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -8986,7 +8986,7 @@ notice, this list of conditions and the following disclaimer.
 copyright notice, this list of conditions and the following disclaimer
 in the documentation and/or other materials provided with the
 distribution.
-    * Neither the name of Google Inc. nor the names of its
+    * Neither the name of Google LLC nor the names of its
 contributors may be used to endorse or promote products derived from
 this software without specific prior written permission.
 
@@ -9039,7 +9039,7 @@ and other provisions required by the GPL or the LGPL. If you do not delete
 the provisions above, a recipient may use your version of this file under
 the terms of any one of the MPL, the GPL or the LGPL.
 
-Copyright 2007, Google Inc.
+Copyright 2007 Google LLC
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -9052,7 +9052,7 @@ notice, this list of conditions and the following disclaimer.
 copyright notice, this list of conditions and the following disclaimer
 in the documentation and/or other materials provided with the
 distribution.
-    * Neither the name of Google Inc. nor the names of its
+    * Neither the name of Google LLC nor the names of its
 contributors may be used to endorse or promote products derived from
 this software without specific prior written permission.
 
@@ -9144,7 +9144,7 @@ met:
       copyright notice, this list of conditions and the following
       disclaimer in the documentation and/or other materials provided
       with the distribution.
-    * Neither the name of Google Inc. nor the names of its
+    * Neither the name of Google LLC nor the names of its
       contributors may be used to endorse or promote products derived
       from this software without specific prior written permission.
 
@@ -11500,7 +11500,7 @@ Please see the source files for additional copyrights.
 == LICENSE.TXT for ./utils/unittest/googletest/LICENSE.TXT
 ======================================================================
 
-Copyright 2008, Google Inc.
+Copyright 2008 Google LLC
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -11513,7 +11513,7 @@ notice, this list of conditions and the following disclaimer.
 copyright notice, this list of conditions and the following disclaimer
 in the documentation and/or other materials provided with the
 distribution.
-    * Neither the name of Google Inc. nor the names of its
+    * Neither the name of Google LLC nor the names of its
 contributors may be used to endorse or promote products derived from
 this software without specific prior written permission.
 
@@ -11545,7 +11545,7 @@ Notices for file(s):
 /framework/doclava.jar
 ------------------------------------------------------------
  
- Copyright (C) 2010 Google Inc.
+ Copyright 2010 Google LLC
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -13106,7 +13106,7 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 The original source code covered by the above license above has been
-modified significantly by Google Inc.
+modified significantly by Google LLC
 Copyright 2006-2008 the V8 project authors. All rights reserved.
 
 ============================================================
@@ -14273,7 +14273,7 @@ modification, are permitted provided that the following conditions are met:
   this list of conditions and the following disclaimer in the documentation
   and/or other materials provided with the distribution.
 
-* Neither the name of Google Inc. nor the names of its
+* Neither the name of Google LLC nor the names of its
   contributors may be used to endorse or promote products derived from
   this software without specific prior written permission.
 
@@ -14700,4 +14700,3 @@ licenses, and/or restrictions:
 Program             Directory
 -------             ---------
 <none yet>
-

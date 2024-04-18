@@ -1,1 +1,0 @@
-ptzpro2-firmware-1.2.0.ebuild

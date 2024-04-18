@@ -1,0 +1,18 @@
+# virtual/tmpfiles and virtual/udev each try and use systemd-utils since it's
+# the first one listed, but we really want to use sys-apps/systemd-tmpfiles,
+# and sys-fs/udev for the SDK.
+#
+# sys-apps/systemd-utils[udev] doesn't work because we don't have all the user
+# and group accounts that the package requires.
+#
+# sys-apps/systemd-utils[tmpfiles] should in theory work fine, but we are
+# currently using sys-apps/systemd-tmpfiles.
+sys-apps/systemd-utils
+
+# Packages need to migrate to libusb-1.
+dev-libs/libusb-compat
+<virtual/libusb-1
+
+# We really don't want to use sys-apps/shadow in the SDK. See also its
+# package.provided entry.
+sys-apps/shadow

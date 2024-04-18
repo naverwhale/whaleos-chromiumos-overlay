@@ -1,7 +1,7 @@
 # Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=6
+EAPI=7
 inherit multilib-minimal
 
 DESCRIPTION="Name Service Switch module for Multicast DNS"
@@ -17,20 +17,26 @@ RDEPEND=">=net-dns/avahi-0.6.31-r2[${MULTILIB_USEDEP}]"
 DEPEND="${RDEPEND}
 	test? ( >=dev-libs/check-0.11[${MULTILIB_USEDEP}] )"
 
+PATCHES=(
+	"${FILESDIR}/nss-mdns-0.13-disable-reverse-lookups.patch"
+)
+
 src_prepare() {
 	# Remove use of /var/ path by deleting localstatedir variable.
+	# shellcheck disable=SC2016
 	sed -i '/AVAHI_SOCKET=/s:$(localstatedir)::' \
 		"${S}"/src/Makefile.in || die
 	default
 }
 
 multilib_src_configure() {
+	myconf=()
 	ECONF_SOURCE=${S} \
 	econf "${myconf[@]}"
 }
 
 multilib_src_install_all() {
-	dodoc *.md
+	dodoc ./*.md
 
 	insinto /etc
 	doins "${FILESDIR}"/mdns.allow

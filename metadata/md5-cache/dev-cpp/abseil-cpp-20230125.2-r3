@@ -1,0 +1,15 @@
+BDEPEND=|| ( dev-lang/python:3.8 dev-lang/python:3.9 dev-lang/python:3.10 dev-lang/python:3.11 ) test? ( sys-libs/timezone-data ) >=dev-util/ninja-1.8.2 >=dev-util/cmake-3.20.5
+DEFINED_PHASES=compile configure install prepare setup test
+DESCRIPTION=Abseil Common Libraries (C++), LTS Branch
+EAPI=7
+HOMEPAGE=https://abseil.io
+IUSE=test asan cfi cfi_diag cfi_recover coverage fuzzer msan thinlto tsan ubsan
+KEYWORDS=*
+LICENSE=Apache-2.0 test? ( BSD )
+RDEPEND=!<dev-cpp/absl-20230125.2
+REQUIRED_USE=cfi? ( thinlto ) cfi_diag? ( cfi ) cfi_recover? ( cfi_diag )
+RESTRICT=!test? ( test )
+SLOT=0/20230125
+SRC_URI=https://github.com/abseil/abseil-cpp/archive/20230125.2.tar.gz -> abseil-cpp-20230125.2.tar.gz test? ( https://github.com/google/googletest/archive/v1.13.0.tar.gz -> gtest-1.13.0.tar.gz )
+_eclasses_=cmake	34502c2b638b59994575d53ba3805d7b	cros-sanitizers	4504f3661db0fe02309acd3555785cf2	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	ninja-utils	578ba3585e2f3ebe63ab00c07874016e	python-any-r1	54a3178500786b0a7ede4a23b7f2a6ad	python-utils-r1	76252008070e69454f51fa80c07638c9	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	xdg-utils	ff2ff954e6b17929574eee4efc5152ba
+_md5_=311aa2aa58a8d81a711373989723df0d

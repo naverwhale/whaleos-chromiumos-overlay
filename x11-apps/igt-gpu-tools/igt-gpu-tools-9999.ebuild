@@ -3,17 +3,10 @@
 
 EAPI=7
 EGIT_REPO_URI="https://gitlab.freedesktop.org/drm/${PN}.git"
-if [[ ${PV} = *9999* ]]; then
-	GIT_ECLASS="git-r3"
-fi
-
-if [[ ${PV} != *9999* ]]; then
-	CROS_WORKON_COMMIT=04ae52f2e430a38cf87f9d42b2926fc2c0cdb052
-	CROS_WORKON_TREE=dc6cdba3378a398f7c39f87a027c75c7b8872a66
-	CROS_WORKON_EGIT_BRANCH=master
-fi
+GIT_ECLASS="git-r3"
 
 CROS_WORKON_PROJECT=chromiumos/third_party/igt-gpu-tools
+CROS_WORKON_EGIT_BRANCH="upstream/master"
 CROS_WORKON_MANUAL_UPREV=1
 
 inherit ${GIT_ECLASS} meson cros-workon
@@ -21,16 +14,11 @@ inherit ${GIT_ECLASS} meson cros-workon
 DESCRIPTION="Intel GPU userland tools"
 
 HOMEPAGE="https://01.org/linuxgraphics https://gitlab.freedesktop.org/drm/igt-gpu-tools"
-if [[ ${PV} = *9999* ]]; then
-	KEYWORDS="~*"
-	SRC_URI=""
-else
-	KEYWORDS="*"
-	SRC_URI="https://www.x.org/releases/individual/app/${P}.tar.xz"
-fi
+KEYWORDS="~*"
+SRC_URI=""
 LICENSE="MIT"
 SLOT="0"
-IUSE="chamelium doc man overlay runner tests unwind valgrind video_cards_amdgpu video_cards_intel video_cards_nouveau video_cards_mediatek video_cards_msm X xv"
+IUSE="+chamelium -doc -man overlay runner -testplan tests unwind valgrind video_cards_amdgpu video_cards_intel video_cards_nouveau video_cards_mediatek video_cards_msm X xv"
 REQUIRED_USE="
 	|| ( video_cards_amdgpu video_cards_intel video_cards_nouveau video_cards_mediatek video_cards_msm )
 	overlay? (
@@ -77,6 +65,9 @@ DEPEND="${RDEPEND}
 		>=dev-util/peg-0.1.18
 		x11-base/xorg-proto
 	)
+"
+
+BDEPEND="
 	video_cards_intel? (
 		sys-devel/bison
 		sys-devel/flex
@@ -104,11 +95,12 @@ src_configure() {
 		$(meson_feature man)
 		$(meson_feature overlay)
 		$(meson_feature runner)
+		$(meson_feature testplan)
 		$(meson_feature tests)
 		$(meson_feature valgrind)
 		$(meson_feature unwind libunwind)
-		-Doverlay_backends=${overlay_backends%?}
-		-Dlibdrm_drivers=${gpus%?}
+		-Doverlay_backends="${overlay_backends%?}"
+		-Dlibdrm_drivers="${gpus%?}"
 	)
 	meson_src_configure
 }

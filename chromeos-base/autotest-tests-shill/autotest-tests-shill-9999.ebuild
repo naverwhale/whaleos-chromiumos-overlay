@@ -1,7 +1,7 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=5
+EAPI=7
 CROS_WORKON_PROJECT="chromiumos/third_party/autotest"
 CROS_WORKON_LOCALNAME="third_party/autotest/files"
 
@@ -23,23 +23,14 @@ RDEPEND="
 "
 DEPEND="${RDEPEND}"
 
+BDEPEND="
+	dev-python/dbus-python
+	dev-python/pygobject
+"
+
 IUSE_TESTS="
-	+tests_network_DhcpClasslessStaticRoute
-	+tests_network_DhcpFailureWithStaticIP
-	+tests_network_DhcpNak
-	+tests_network_DhcpNegotiationSuccess
-	+tests_network_DhcpNegotiationTimeout
-	+tests_network_DhcpNonAsciiParameter
-	+tests_network_DhcpRenew
-	+tests_network_DhcpRenewWithOptionSubset
-	+tests_network_DhcpRequestHostName
-	+tests_network_DhcpStaticIP
-	+tests_network_DhcpVendorEncapsulatedOptions
-	+tests_network_DhcpWpadNegotiation
-	+tests_network_WiFiInvalidParameters
 	+tests_network_WiFiResume
 	+tests_network_WlanPresent
-	+tests_network_WlanHasIP
 "
 
 IUSE="${IUSE} ${IUSE_TESTS}"

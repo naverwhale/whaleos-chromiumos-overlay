@@ -1,4 +1,4 @@
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Copyright 2016 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -7,32 +7,45 @@ CROS_WORKON_INCREMENTAL_BUILD=1
 CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_OUTOFTREE_BUILD=1
-CROS_WORKON_SUBTREE="common-mk patchpanel shill/net .gn"
+CROS_WORKON_SUBTREE="common-mk metrics net-base patchpanel shill/net .gn"
 
 PLATFORM_SUBDIR="patchpanel"
+# Do not run test in parallel for patchpanel by default. There doesn't seem to
+# be too much benefit on speed now but affects the debugging experience.
+# shellcheck disable=SC2034
+PLATFORM_PARALLEL_GTEST_TEST="no"
 
-inherit cros-workon libchrome platform user
+inherit cros-workon libchrome platform tmpfiles user
 
 DESCRIPTION="Patchpanel network connectivity management daemon"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/patchpanel/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/patchpanel/"
 LICENSE="BSD-Google"
 KEYWORDS="~*"
 
 # These USE flags are used in patchpanel/BUILD.gn
-IUSE="fuzzer arcvm jetstream_routing"
+IUSE="fuzzer arcvm kvm_host"
 
 COMMON_DEPEND="
-	dev-libs/protobuf:=
-	!chromeos-base/arc-networkd
+	chromeos-base/metrics:=
+	chromeos-base/minijail:=
+	chromeos-base/net-base:=
 	chromeos-base/shill-net:=
 	chromeos-base/system_api:=[fuzzer?]
+	dev-libs/protobuf:=
+	dev-libs/re2:=
+	net-libs/libnetfilter_conntrack
 "
 
 RDEPEND="
 	${COMMON_DEPEND}
 	chromeos-base/shill
+	kvm_host? ( chromeos-base/vm_host_tools:= )
+	net-dns/dnsmasq
+	net-firewall/conntrack-tools
 	net-firewall/iptables
 	net-misc/bridge-utils
+	net-misc/radvd
+	net-proxy/tayga
 	sys-apps/iproute2
 "
 
@@ -41,6 +54,13 @@ DEPEND="
 	chromeos-base/session_manager-client:=
 	chromeos-base/shill-client:=
 	chromeos-base/system_api:=[fuzzer?]
+	chromeos-base/vboot_reference:=
+"
+
+BDEPEND="
+	chromeos-base/chromeos-dbus-bindings
+	chromeos-base/minijail
+	dev-libs/protobuf
 "
 
 patchpanel_header() {
@@ -50,11 +70,7 @@ patchpanel_header() {
 }
 
 src_install() {
-	# Main binary.
-	dobin "${OUT}"/patchpaneld
-
-	# Libraries.
-	dolib.so "${OUT}"/lib/libpatchpanel-util.so
+	platform_src_install
 
 	"${S}"/preinstall.sh "${PV}" "/usr/include/chromeos" "${OUT}"
 	insinto "/usr/$(get_libdir)/pkgconfig"
@@ -62,8 +78,9 @@ src_install() {
 
 	insinto /usr/include/chromeos/patchpanel/
 	patchpanel_header address_manager.h
-	patchpanel_header guest_type.h
 	patchpanel_header mac_address_generator.h
+	patchpanel_header message_dispatcher.h
+	patchpanel_header mock_message_dispatcher.h
 	patchpanel_header net_util.h
 	patchpanel_header socket.h
 	patchpanel_header socket_forwarder.h
@@ -76,11 +93,7 @@ src_install() {
 	patchpanel_header dns/dns_response.h
 	patchpanel_header dns/io_buffer.h
 
-	insinto /etc/init
-	doins "${S}"/init/patchpanel.conf
-
-	insinto /etc/dbus-1/system.d
-	doins dbus/*.conf
+	dotmpfiles tmpfiles.d/*.conf
 
 	local fuzzer
 	for fuzzer in "${OUT}"/*_fuzzer; do
@@ -97,5 +110,5 @@ pkg_preinst() {
 }
 
 platform_pkg_test() {
-	platform_test "run" "${OUT}/patchpanel_testrunner"
+	platform test_all
 }

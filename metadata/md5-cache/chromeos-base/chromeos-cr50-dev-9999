@@ -1,16 +1,17 @@
-BDEPEND=chromeos-base/chromeos-config-host:= dev-vcs/git
-DEFINED_PHASES=compile info install setup unpack
-DEPEND=dev-libs/openssl:0= virtual/libusb:1= fuzzer? ( dev-libs/protobuf:= ) fuzzer? ( dev-libs/libprotobuf-mutator:= ) has_chromeos_config_bsp? ( chromeos-base/chromeos-config-bsp:= ) has_chromeos_config_bsp_private? ( chromeos-base/chromeos-config-bsp-private:= ) has_chromeos_config_bsp_baseboard? ( chromeos-base/chromeos-config-bsp-baseboard:= ) has_chromeos_config_bsp_baseboard_private? ( chromeos-base/chromeos-config-bsp-baseboard-private:= ) unibuild? ( chromeos-base/chromeos-config:= ) unibuild? ( chromeos-base/chromeos-config:= )
+BDEPEND=dev-vcs/git app-misc/jq
+DEFINED_PHASES=compile configure info install setup unpack
+DEPEND=dev-libs/openssl:0= virtual/libusb:1= fuzzer? ( dev-libs/protobuf:= ) fuzzer? ( dev-libs/libprotobuf-mutator:= )
 DESCRIPTION=Google Security Chip firmware code
 EAPI=7
 HOMEPAGE=https://chromium.googlesource.com/chromiumos/platform/ec/+/refs/heads/cr50_stab
-IUSE=asan cros_host fuzzer msan quiet ubsan verbose has_chromeos_config_bsp has_chromeos_config_bsp_private has_chromeos_config_bsp_baseboard has_chromeos_config_bsp_baseboard_private unibuild ec_firmware_bds ec_firmware_cr50 ec_firmware_cyan ec_firmware_dingdong ec_firmware_elm ec_firmware_glkrvp ec_firmware_hadoken ec_firmware_hammer ec_firmware_hoho ec_firmware_jerry ec_firmware_oak ec_firmware_oak_pd ec_firmware_plankton ec_firmware_poppy ec_firmware_samus ec_firmware_samus_pd ec_firmware_strago ec_firmware_wand ec_firmware_zinger ec_firmware_extra_bds ec_firmware_extra_cr50 ec_firmware_extra_cyan ec_firmware_extra_dingdong ec_firmware_extra_elm ec_firmware_extra_glkrvp ec_firmware_extra_hadoken ec_firmware_extra_hammer ec_firmware_extra_hoho ec_firmware_extra_jerry ec_firmware_extra_oak ec_firmware_extra_oak_pd ec_firmware_extra_plankton ec_firmware_extra_poppy ec_firmware_extra_samus ec_firmware_extra_samus_pd ec_firmware_extra_strago ec_firmware_extra_wand ec_firmware_extra_zinger cros_host unibuild cros_host cros_workon_tree_
+IUSE=asan cros_host fuzzer msan quiet reef ubsan verbose cros_host cros_workon_tree_ asan cfi cfi_diag cfi_recover coverage fuzzer msan thinlto tsan ubsan
 KEYWORDS=~*
 LICENSE=BSD-Google
 PROPERTIES=live
-RDEPEND=!<chromeos-base/chromeos-ec-0.0.2 !<chromeos-base/ec-utils-0.0.2 dev-libs/openssl:0= virtual/libusb:1= fuzzer? ( dev-libs/protobuf:= ) has_chromeos_config_bsp? ( chromeos-base/chromeos-config-bsp:= ) has_chromeos_config_bsp_private? ( chromeos-base/chromeos-config-bsp-private:= ) has_chromeos_config_bsp_baseboard? ( chromeos-base/chromeos-config-bsp-baseboard:= ) has_chromeos_config_bsp_baseboard_private? ( chromeos-base/chromeos-config-bsp-baseboard-private:= ) unibuild? ( chromeos-base/chromeos-config:= )
+RDEPEND=!<chromeos-base/chromeos-ec-0.0.2 !<chromeos-base/ec-utils-0.0.2 chromeos-base/chromeos-gsc-dev dev-libs/openssl:0= virtual/libusb:1= fuzzer? ( dev-libs/protobuf:= )
+REQUIRED_USE=cfi? ( thinlto ) cfi_diag? ( cfi ) cfi_recover? ( cfi_diag )
 RESTRICT=binchecks
 SLOT=0/9999
-SRC_URI=gs://chromeos-localmirror/distfiles/cr50.prod.ro.A.0.0.11 gs://chromeos-localmirror/distfiles/cr50.prod.ro.B.0.0.11
-_eclasses_=coreboot-sdk	b3fb569501ebe9ba5b808b9766a0392f	cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-credentials	4fd98ebbff6a1534ca9a89547e13dc92	cros-ec-board	9439c4f29a6191c8d4c7daa1cf7c4f1d	cros-unibuild	1e3c054ec0012700a0ee1c421b79a600	cros-workon	ff100259492312ff6570e490bcb9a320	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
-_md5_=9dde749be52201c10fd56dae70066c90
+SRC_URI=gs://chromeos-localmirror/distfiles/cr50.prod.ro.A.0.0.12 gs://chromeos-localmirror/distfiles/cr50.prod.ro.B.0.0.12
+_eclasses_=coreboot-sdk	1efddc614766ee0bfb78bdd47a602396	cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-sanitizers	4504f3661db0fe02309acd3555785cf2	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=769de31104085819c4e3219190296653

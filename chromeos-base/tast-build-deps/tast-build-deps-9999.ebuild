@@ -1,4 +1,4 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -23,42 +23,65 @@ DEPEND="
 	chromeos-base/hardware_verifier_proto
 	chromeos-base/modemfwd-proto
 	chromeos-base/policy-go-proto
+	chromeos-base/reporting-proto
 	chromeos-base/system_api
 	chromeos-base/vm_protos
 	chromeos-base/wilco-dtc-grpc-protos
+	chromeos-base/xdr-proto
 	dev-go/boringssl-acvptool
 	dev-go/cdp
+	dev-go/certificate-transparency-go
 	dev-go/clock
 	dev-go/cmp
+	dev-go/crc8
 	dev-go/crypto
 	dev-go/dbus
 	dev-go/docker
 	dev-go/dst
+	dev-go/enterprise-certificate-proxy
 	dev-go/exif
+	dev-go/exp
 	dev-go/fscrypt
-	dev-go/gapi-drive
+	dev-go/gapi
+	dev-go/gax
 	dev-go/genproto
 	dev-go/godebug
 	dev-go/golang-evdev
 	dev-go/golint
+	dev-go/gonum
 	dev-go/gopacket
 	dev-go/gopsutil
+	dev-go/goselect
+	dev-go/go-attestation
+	dev-go/go-ini
 	dev-go/go-matroska
+	dev-go/go-serial
 	dev-go/go-sys
+	dev-go/go-tpm
+	dev-go/go-tspi
+	dev-go/go-webcam
 	dev-go/grpc
 	dev-go/mdns
 	dev-go/mock
 	dev-go/mp4
 	dev-go/oauth2
+	dev-go/opencensus
+	dev-go/go-optional
 	dev-go/perfetto-protos
 	dev-go/protobuf
+	dev-go/protobuf-legacy-api
+	dev-go/regexp2
 	dev-go/selinux
 	dev-go/subcommands
 	dev-go/sync
+	dev-go/tail
 	dev-go/tarm-serial
+	dev-go/term
+	dev-go/testify
 	dev-go/uuid
+	dev-go/vnc2video
 	dev-go/vsock
-	dev-go/yaml
+	dev-go/yaml:0
 "
 
 RDEPEND="${DEPEND}"

@@ -1,11 +1,14 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=4
+EAPI=7
+
+PYTHON_COMPAT=( python3_{8..11} )
+
 CROS_WORKON_PROJECT="chromiumos/third_party/autotest"
 CROS_WORKON_LOCALNAME="third_party/autotest/files"
 
-inherit cros-workon autotest
+inherit cros-workon autotest python-any-r1
 
 DESCRIPTION="power autotests"
 HOMEPAGE="https://chromium.googlesource.com/chromiumos/third_party/autotest/"
@@ -23,15 +26,19 @@ RDEPEND="
 "
 DEPEND="${RDEPEND}"
 
+BDEPEND="
+	dev-python/dbus-python
+	dev-python/numpy
+	dev-python/pygobject
+	dev-python/pyyaml
+"
+
 # cros/power_suspend depends on shill-test-scripts.
 IUSE_TESTS="
-	+tests_hardware_Backlight
 	+tests_power_ARMSettings
 	+tests_power_Backlight
-	+tests_power_BacklightControl
 	+tests_power_BacklightSuspend
 	+tests_power_BatteryCharge
-	+tests_power_BatteryDesignCapacity
 	+tests_power_CheckAC
 	+tests_power_CheckAfterSuspend
 	+tests_power_CPUFreq
@@ -40,21 +47,18 @@ IUSE_TESTS="
 	+tests_power_Dummy
 	+tests_power_HotCPUSuspend
 	+tests_power_KernelSuspend
-	+tests_power_MemorySuspend
-	+tests_power_NoConsoleSuspend
+	+tests_power_KeyboardBacklight
 	+tests_power_ProbeDriver
 	shill? ( +tests_power_Resume )
 	+tests_power_Standby
 	+tests_power_StatsCPUFreq
 	+tests_power_StatsCPUIdle
-	+tests_power_StatsUSB
 	+tests_power_Status
 	shill? (
 		+tests_power_SuspendStress
 		+tests_power_SuspendToIdle
 	)
 	+tests_power_WaitForCoolDown
-	+tests_power_WakeupRTC
 "
 
 IUSE="${IUSE} ${IUSE_TESTS}"

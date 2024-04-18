@@ -1,7 +1,9 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2012 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
+
+PYTHON_COMPAT=( python3_{8..11} )
 
 CROS_WORKON_PROJECT=(
 	"chromiumos/third_party/autotest"
@@ -27,7 +29,7 @@ CROS_WORKON_DESTDIR=(
 	"${S}/server/cros/faft/fw-testing-configs"
 )
 
-inherit cros-workon cros-constants
+inherit cros-workon cros-constants python-any-r1
 
 DESCRIPTION="Autotest scripts and tools"
 HOMEPAGE="https://chromium.googlesource.com/chromiumos/third_party/autotest/"
@@ -96,7 +98,6 @@ src_prepare() {
 src_install() {
 	insinto ${AUTOTEST_BASE}
 	doins -r "${AUTOTEST_WORK}"/*
-	python3 ${S}/utils/generate_metadata.py -autotest_path=${S} -output_file="${D}"${AUTOTEST_BASE}/autotest_metadata.pb
 
 	# base __init__.py
 	touch "${D}"${AUTOTEST_BASE}/__init__.py
@@ -123,15 +124,15 @@ src_install() {
 
 src_test() {
 	# Run the autotest unit tests.
-	./utils/unittest_suite.py --debug || die "Autotest unit tests failed."
-	python3 ./utils/unittest_suite.py --debug --py_version=3 || die "Autotest unit tests failed in Python 3."
-
+	"${EPYTHON}" ./utils/unittest_suite.py --debug --py_version=3 \
+		|| die "Autotest unit tests failed with ${EPYTHON}."
 }
 
 # Packages client.
 pkg_postinst() {
 	local root_autotest_dir="${ROOT}${AUTOTEST_BASE}"
+	export PYTHONDONTWRITEBYTECODE=1
 	flock "${root_autotest_dir}/packages" \
-			-c "PYTHONDONTWRITEBYTECODE=1 ${root_autotest_dir}/utils/packager.py \
-				-r ${root_autotest_dir}/packages --client -a upload"
+		"${EPYTHON}" "${root_autotest_dir}/utils/packager.py" \
+		-r "${root_autotest_dir}/packages" --client -a upload
 }

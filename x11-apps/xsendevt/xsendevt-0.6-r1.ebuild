@@ -1,1 +1,0 @@
-xsendevt-0.6.ebuild

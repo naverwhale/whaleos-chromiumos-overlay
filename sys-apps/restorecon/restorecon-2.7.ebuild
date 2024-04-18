@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Id$
 
-EAPI="5"
+EAPI="7"
 
 inherit toolchain-funcs eutils
 
@@ -33,10 +33,6 @@ RDEPEND="${DEPEND} !sys-apps/policycoreutils"
 
 S="${WORKDIR}/${MY_P}"
 
-src_prepare() {
-	epatch_user
-}
-
 src_compile() {
 	emake -C setfiles restorecon \
 		AUDITH="$(usex audit)" \
@@ -45,6 +41,6 @@ src_compile() {
 }
 
 src_install() {
-	epatch "${FILESDIR}/0020-disable-autodetection-of-pam-and-audit.patch"
+	eapply "${FILESDIR}/0020-disable-autodetection-of-pam-and-audit.patch"
 	emake -C setfiles restorecon DESTDIR="${D}" install
 }

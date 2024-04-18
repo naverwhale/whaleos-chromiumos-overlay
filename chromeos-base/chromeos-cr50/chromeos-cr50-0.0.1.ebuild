@@ -1,4 +1,4 @@
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Copyright 2016 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="7"
@@ -8,17 +8,21 @@ DESCRIPTION="Ebuild to support the Chrome OS CR50 device."
 LICENSE="BSD-Google"
 SLOT="0"
 KEYWORDS="*"
+IUSE="cros_host"
 
 RDEPEND="chromeos-base/chromeos-cr50-dev
-	chromeos-base/chromeos-cr50-scripts"
+	!cros_host? (
+		chromeos-base/chromeos-cr50-scripts
+		chromeos-base/hwsec-utils
+	)"
 
 # There are two major types of images of Cr50, prod (used on most MP devices)
 # and pre-pvt, used on devices still not fully released.
 #
 # Some boards can be using their custom Cr50 images, for those board the image
 # name is overridden in the board's overlay chromeos-cr50 ebuild.
-PROD_IMAGE="cr50.r0.0.11.w0.5.51"
-PRE_PVT_IMAGE="cr50.r0.0.11.w0.6.51_FFFF_00000000_00000010"
+PROD_IMAGE="cr50.r0.0.12.w0.5.230"
+PRE_PVT_IMAGE="cr50.r0.0.12.w0.6.230_FFFF_00000000_00000010"
 
 # Let's make sure that both are pulled in and included in the manifest.
 CR50_BASE_NAMES=( "${PROD_IMAGE}" "${PRE_PVT_IMAGE}" )

@@ -1,10 +1,10 @@
 # Copyright 1999-2013 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=6
+EAPI="7"
 CROS_WORKON_PROJECT="chromiumos/third_party/libmbim"
 
-inherit autotools cros-sanitizers cros-workon
+inherit meson cros-sanitizers cros-workon udev cros-fuzzer cros-sanitizers
 
 DESCRIPTION="MBIM modem protocol helper library"
 HOMEPAGE="http://cgit.freedesktop.org/libmbim/"
@@ -12,7 +12,7 @@ HOMEPAGE="http://cgit.freedesktop.org/libmbim/"
 LICENSE="GPL-2"
 SLOT="0"
 KEYWORDS="~*"
-IUSE="-asan doc static-libs"
+IUSE="-asan doc static-libs fuzzer"
 
 RDEPEND=">=dev-libs/glib-2.36
 	virtual/libgudev"
@@ -21,29 +21,36 @@ DEPEND="${RDEPEND}
 	doc? ( dev-util/gtk-doc )
 	virtual/pkgconfig"
 
-src_prepare() {
-	default
-	gtkdocize
-	eautoreconf
-}
-
 src_configure() {
 	sanitizers-setup-env
 
-	econf \
-		--enable-mbim-username='modem' \
-		--enable-compile-warnings=yes \
-		--enable-introspection=no \
-		$(use_enable static{-libs,}) \
-		$(use_enable {,gtk-}doc)
-}
+	append-cppflags -DMBIM_DISABLE_DEPRECATED
 
-src_test() {
-	# TODO(benchan): Run unit tests for non-x86 platforms via qemu.
-	[[ "${ARCH}" == "x86" || "${ARCH}" == "amd64" ]] && emake check
+	local emesonargs=(
+		--prefix='/usr'
+		-Dmbim_username='modem'
+		-Dlibexecdir='/usr/libexec'
+		-Dudevdir='/lib/udev'
+		-Dintrospection=false
+		-Dman=false
+		-Dbash_completion=false
+		$(meson_use fuzzer)
+	)
+	meson_src_configure
 }
 
 src_install() {
-	default
-	use static-libs || rm -f "${ED}"/usr/$(get_libdir)/libmbim-glib.la
+	meson_src_install
+
+	if use fuzzer; then
+		local fuzzer_build_path="${BUILD_DIR}/src/libmbim-glib/test"
+		cp "${fuzzer_build_path}/test-message-fuzzer" \
+			"${fuzzer_build_path}/test-mbim-message-fuzzer" || die
+
+		# ChromeOS/Platform/Connectivity/Cellular
+		local fuzzer_component_id="167157"
+		fuzzer_install "${S}/OWNERS" \
+			"${fuzzer_build_path}/test-mbim-message-fuzzer" \
+			--comp "${fuzzer_component_id}"
+	fi
 }

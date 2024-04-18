@@ -1,8 +1,8 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2012 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 #
-# Original Author: The Chromium OS Authors <chromium-os-dev@chromium.org>
+# Original Author: The ChromiumOS Authors <chromium-os-dev@chromium.org>
 # Purpose: Library for handling building of ChromiumOS packages
 #
 #
@@ -16,10 +16,9 @@
 #  This provides an easy method of identifying a change to
 #  the build which might affect inheriting packages.
 
-# Check for EAPI 4+
+# Check for EAPI 7+.
 case "${EAPI:-0}" in
-4|5|6|7) ;;
-*) die "unsupported EAPI (${EAPI}) in eclass (${ECLASS})" ;;
+[0123456]) die "unsupported EAPI (${EAPI}) in eclass (${ECLASS})" ;;
 esac
 
 # This eclass is being deprecated and should not be used in new
@@ -29,10 +28,8 @@ case "${CATEGORY}/${PN}" in
 	chromeos-base/chromeos-assets ) ;;
 	chromeos-base/chromeos-initramfs ) ;;
 	chromeos-base/gestures-conf ) ;;
-	net-misc/chrony ) ;;
-	sys-apps/systemd ) ;;
 
-	# cros-kernel2.eclass uses cros-board.eclass.  Exempt all kernel
+	# cros-kernel.eclass uses cros-board.eclass.  Exempt all kernel
 	# packages for now.
 	sys-kernel/* ) ;;
 
@@ -54,7 +51,9 @@ BOARD_USE_PREFIX="board_use_"
 # Obsolete boards' names are commented-out but retained in this list so
 # they won't be accidentally recycled in the future.
 ALL_BOARDS=(
+	whalebook
 	#acorn
+	adlnrvp
 	adlrvp
 	ambassador
 	#amd64-corei7
@@ -111,9 +110,17 @@ ALL_BOARDS=(
 	#bolt
 	borealis
 	brask
+	brox
 	#bruteus
 	brya
-	brya-manatee
+	brya-arc-t
+	brya-cbx
+	brya-hibernate
+	brya-lvm-stateful
+	#brya-manatee
+	#brya-manatee-kernelnext
+	#brya-nopkvm
+	#brya-pkvm
 	bubs
 	buddy
 	buddy-cfm
@@ -138,6 +145,7 @@ ALL_BOARDS=(
 	chell
 	#chell-cheets
 	cherry
+	cherry64
 	#cheza
 	#cheza-freedreno
 	#cheza64
@@ -148,8 +156,12 @@ ALL_BOARDS=(
 	#cmlrvp
 	#cnlrvp
 	cobblepot
+	constitution
 	coral
+	coral-arc-r
 	#coral-kernelnext
+	corsola
+	corsola-kernelnext
 	#cosmos
 	#cranky
 	cyan
@@ -218,6 +230,7 @@ ALL_BOARDS=(
 	gale
 	gandof
 	#genesis
+	geralt
 	#gizmo
 	glados
 	#glados-cheets
@@ -238,6 +251,7 @@ ALL_BOARDS=(
 	#guado-kernelnext
 	guado_labstation
 	guybrush
+	guybrush-cbx
 	hana
 	hana-arc64
 	hana-kernelnext
@@ -247,17 +261,20 @@ ALL_BOARDS=(
 	#hatch-arc-r-signed
 	hatch-arc-r-userdebug
 	hatch-arc-s
+	hatch-arc-t
 	hatch-connectivitynext
 	hatch-borealis
 	hatch-diskswap
 	hatch-kernelnext
-	hatch-manatee
+	hatch-lvm-stateful
+	#hatch-manatee
 	heli
 	herobrine
 	#hsb
 	#iclrvp
 	#ironhide
 	jacuzzi
+	jacuzzi64
 	jacuzzi-kernelnext
 	#jadeite
 	#jaguar
@@ -329,7 +346,7 @@ ALL_BOARDS=(
 	#mipsel-n64-generic
 	#mipsel-o32-generic
 	mistral
-	moblab-generic-vm
+	#moblab-generic-vm
 	#monroe
 	#moose
 	mushu
@@ -340,6 +357,8 @@ ALL_BOARDS=(
 	#nefario
 	#newbie
 	ninja
+	nissa
+	nissa-cbx
 	nocturne
 	nocturne-kernelnext
 	novato
@@ -370,6 +389,7 @@ ALL_BOARDS=(
 	#parrot64
 	#parrot_ivb
 	#parry
+	passionfruit
 	#pbody
 	#peach
 	#peach_kirby
@@ -398,6 +418,7 @@ ALL_BOARDS=(
 	rammus-arc-r-userdebug
 	#raspberrypi
 	reef
+	reef-arc-r
 	relm
 	reks
 	#reptile
@@ -427,6 +448,8 @@ ALL_BOARDS=(
 	shadowkeep
 	#shogun
 	sklrvp
+	skyrim
+	skyrim-cbx
 	#slippy
 	#smaug
 	#smaug-cheets
@@ -468,10 +491,10 @@ ALL_BOARDS=(
 	tidus
 	#tricky
 	trogdor
-	trogdor-arc-r
+	#trogdor-arc-r
 	trogdor-kernelnext
-	trogdor64
-	trogdor64-manatee
+	#trogdor64
+	#trogdor64-manatee
 	ultima
 	#umaro
 	#urara
@@ -500,7 +523,7 @@ ALL_BOARDS=(
 	volteer
 	volteer-borealis
 	volteer-kernelnext
-	volteer-manatee
+	#volteer-manatee
 	#waluigi
 	#whirlwind
 	#whlrvp
@@ -538,8 +561,6 @@ ALL_BOARDS=(
 	zork-arc-r
 	zork-borealis
 	zork-kernelnext
-	zork-minios
-  whalebook
 )
 
 # Use the CROS_BOARDS defined by ebuild, otherwise use ALL_BOARDS.
@@ -551,20 +572,20 @@ fi
 # Also add cros_host so that we can inherit this eclass in ebuilds
 # that get emerged both in the cros-sdk and for target boards.
 # See REQUIRED_USE below.
-IUSE="${CROS_BOARDS[@]/#/${BOARD_USE_PREFIX}} cros_host unibuild"
+IUSE="${CROS_BOARDS[*]/#/${BOARD_USE_PREFIX}} cros_host unibuild"
 
 # Echo the current board, with variant. The arguments are:
 #   1: default, the value to return when no board is found; default: ""
 get_current_board_with_variant()
 {
-	[[ $# -gt 1 ]] && die "Usage: ${FUNCNAME} [default]"
+	[[ $# -gt 1 ]] && die "Usage: ${FUNCNAME[0]} [default]"
 
 	local b
 	local current
 	local default_board="$1"
 
 	for b in "${CROS_BOARDS[@]}"; do
-		if use ${BOARD_USE_PREFIX}${b}; then
+		if use "${BOARD_USE_PREFIX}${b}"; then
 			if [[ -n "${current}" ]]; then
 				die "More than one board is set: ${current} and ${b}"
 			fi
@@ -573,7 +594,7 @@ get_current_board_with_variant()
 	done
 
 	if [[ -n "${current}" ]]; then
-		echo ${current}
+		echo "${current}"
 		return
 	fi
 

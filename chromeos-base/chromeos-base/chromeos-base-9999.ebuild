@@ -1,4 +1,4 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2012 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="7"
@@ -8,7 +8,7 @@ EAPI="7"
 CROS_WORKON_PROJECT="chromiumos/infra/build/empty-project"
 CROS_WORKON_LOCALNAME="platform/empty-project"
 
-inherit cros-workon user udev
+inherit cros-workon user udev tmpfiles
 
 DESCRIPTION="ChromeOS specific system setup"
 HOMEPAGE="https://dev.chromium.org/"
@@ -16,7 +16,7 @@ HOMEPAGE="https://dev.chromium.org/"
 LICENSE="BSD-Google"
 SLOT="0"
 KEYWORDS="~*"
-IUSE="ac_only chromeless_tty cros_embedded cros_host pam vtconsole"
+IUSE="chromeless_tty cros_embedded cros_host kdump pam uefi vtconsole"
 
 # We need to make sure timezone-data is merged before us.
 # See pkg_setup below as well as http://crosbug.com/27413
@@ -44,7 +44,9 @@ DEPEND=">=sys-apps/baselayout-2
 			app-shells/dash
 		)
 		sys-libs/timezone-data
-	)"
+	)
+	acct-user/chronos
+	acct-group/chronos"
 RDEPEND="${DEPEND}"
 
 # The user that all user-facing processes will run as.
@@ -108,18 +110,12 @@ pkg_preinst() {
 	enewgroup "serial"           # For owning access to serial devices.
 	enewgroup "tun"              # For access to /dev/net/tun.
 
-	# The user that all user-facing processes will run as.
-	local system_user="${SHARED_USER_NAME}"
-	local system_id="1000"
-	local system_home="/home/${system_user}/user"
 	# Add a chronos-access group to provide non-chronos users,
 	# mostly system daemons running as a non-chronos user, group permissions
 	# to access files/directories owned by chronos.
 	local system_access_user="chronos-access"
 	local system_access_id="1001"
 
-	enewgroup "${system_user}" "${system_id}"
-	add_daemon_user "${system_user}"
 	add_daemon_user "${system_access_user}" "${system_access_id}"
 
 	# Some default directories. These are created here rather than at
@@ -130,6 +126,11 @@ pkg_preinst() {
 		[[ -d "${ROOT}/${x}" ]] && continue
 		install -d --mode=0755 --owner=root --group=root "${ROOT}/${x}"
 	done
+
+	# Create mount point for the EFI System Partition.
+	if ! use cros_host && use uefi; then
+		install -d --mode=0755 --owner=root --group=root "${ROOT}/efi"
+	fi
 }
 
 src_install() {
@@ -137,17 +138,16 @@ src_install() {
 	doins "${FILESDIR}"/issue
 
 	insinto /etc/sysctl.d
-	doins "${FILESDIR}"/00-sysctl.conf
-
-	if use ac_only ; then
-		doins "${FILESDIR}"/10-ac-only.conf
-	fi
+	doins "${FILESDIR}"/00-sysctl.conf "${FILESDIR}"/10-fs-flush.conf.ac_only
 
 	insinto /etc/profile.d
 	doins "${FILESDIR}"/xauthority.sh
 
 	insinto /etc/avahi
 	doins "${FILESDIR}"/avahi-daemon.conf
+
+	insinto /etc/modprobe.d
+	doins "${FILESDIR}"/modprobe.d/*.conf
 
 	# 01editor is currently using /usr/bin/vi, which is available on both
 	# cros_host and DUT. Please update this when default editor is changed.
@@ -161,6 +161,9 @@ src_install() {
 		# Install all the udev rules.
 		udev_dorules "${FILESDIR}"/udev-rules/*.rules
 		use vtconsole && udev_dorules "${FILESDIR}"/60-X-tty1-tty2-group-rw.rules
+
+		# Install all the tmpfiles.d configs.
+		dotmpfiles "${FILESDIR}/tmpfiles.d"/*.conf
 
 		# Symlink /etc/localtime to something on the stateful
 		# partition. At runtime, the system will take care of
@@ -190,6 +193,15 @@ src_install() {
 		# Custom login shell snippets.
 		insinto /etc/profile.d
 		doins "${FILESDIR}"/cursor.sh
+
+		insinto /etc/bash/bashrc.d
+		doins "${FILESDIR}"/01-prompt.sh
+
+		# Disable kexec syscalls if kdump is not enabled.
+		if ! use kdump; then
+			insinto /etc/sysctl.d
+			doins "${FILESDIR}"/20-kexec-disable.conf
+		fi
 	fi
 
 	# Some daemons and utilities access the mounts through /etc/mtab.

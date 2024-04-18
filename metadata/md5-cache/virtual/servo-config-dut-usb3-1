@@ -6,4 +6,4 @@ KEYWORDS=*
 LICENSE=metapackage
 RDEPEND=dev-util/servo-config-dut-usb3-public:= internal? ( dev-util/servo-config-dut-usb3-private:= )
 SLOT=0/1
-_md5_=0b39a1897f65d365f2a9f6a18894a4d4
+_md5_=9f59faea08253b4c0e7532c3caac9c97

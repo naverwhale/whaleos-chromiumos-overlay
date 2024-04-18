@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -7,18 +7,16 @@ CROS_WORKON_INCREMENTAL_BUILD=1
 CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_OUTOFTREE_BUILD=1
-# TODO(crbug/1184685): "libhwsec" is not necessary; remove it after solving
-# the bug.
-CROS_WORKON_SUBTREE="common-mk libhwsec libhwsec-foundation metrics trunks .gn"
+CROS_WORKON_SUBTREE="common-mk libhwsec-foundation metrics trunks .gn"
 
 PLATFORM_SUBDIR="trunks"
 
 inherit cros-workon platform user
 
 DESCRIPTION="Trunks service for Chromium OS"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/trunks/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/trunks/"
 
-LICENSE="Apache-2.0"
+LICENSE="BSD-Google"
 KEYWORDS="~*"
 IUSE="
 	cr50_onboard
@@ -27,11 +25,15 @@ IUSE="
 	ftdi_tpm
 	generic_tpm2
 	pinweaver_csme
+	profiling
 	test
 	ti50_onboard
 	tpm_dynamic
 	tpm2_simulator
-	vtpm_proxy
+"
+
+REQUIRED_USE="
+	?? ( cr50_onboard pinweaver_csme )
 "
 
 # This depends on protobuf because it uses protoc and needs to be rebuilt
@@ -42,14 +44,15 @@ COMMON_DEPEND="
 	chromeos-base/minijail:=
 	chromeos-base/power_manager-client:=
 	ftdi_tpm? ( dev-embedded/libftdi:= )
-	tpm2_simulator? (
-		chromeos-base/tpm2:=
-		vtpm_proxy? ( chromeos-base/tpm2-simulator:= )
-	)
+	test? ( chromeos-base/tpm2:=[test] )
+	tpm2_simulator? ( chromeos-base/tpm2-simulator:= )
+	dev-cpp/abseil-cpp:=
+	dev-libs/openssl:=
 	dev-libs/protobuf:=
 	fuzzer? (
 		dev-cpp/gtest:=
 	)
+	chromeos-base/pinweaver:=
 	"
 
 RDEPEND="
@@ -66,18 +69,16 @@ DEPEND="
 	chromeos-base/chromeos-ec-headers:=
 	"
 
+BDEPEND="
+	chromeos-base/minijail
+	dev-libs/protobuf
+"
+
 src_install() {
+	platform_src_install
+
 	insinto /etc/dbus-1/system.d
 	doins org.chromium.Trunks.conf
-
-	insinto /etc/init
-	if use tpm2_simulator && ! use vtpm_proxy; then
-		newins trunksd.conf.tpm2_simulator trunksd.conf
-	elif use cr50_onboard || use ti50_onboard; then
-		newins trunksd.conf.cr50 trunksd.conf
-	else
-		doins trunksd.conf
-	fi
 
 	if use tpm_dynamic; then
 		sed -i '/env TPM_DYNAMIC=/s:=.*:=true:' \
@@ -103,6 +104,7 @@ src_install() {
 	# are used by unittest and fuzzer.
 	if use test || use fuzzer; then
 		dolib.a "${OUT}"/libtrunks_test.a
+		dolib.a "${OUT}"/libtrunksd_lib.a
 	fi
 
 	if use pinweaver_csme && use generic_tpm2; then
@@ -118,8 +120,12 @@ src_install() {
 	fi
 
 	insinto /usr/include/trunks
-	doins *.h
+	doins ./*.h
 	doins "${OUT}"/gen/include/trunks/*.h
+
+	insinto /usr/include/trunks/csme
+	doins csme/pinweaver_provision.h
+	doins csme/pinweaver_provision_impl.h
 
 	insinto /usr/include/proto
 	doins "${S}"/pinweaver.proto
@@ -129,7 +135,7 @@ src_install() {
 
 	insinto "/usr/$(get_libdir)/pkgconfig"
 	doins "${OUT}"/obj/trunks/libtrunks.pc
-	local fuzzer_component_id="886041"
+	local fuzzer_component_id="1281105"
 	platform_fuzzer_install "${S}"/OWNERS "${OUT}"/trunks_creation_blob_fuzzer \
 		--comp "${fuzzer_component_id}"
 	platform_fuzzer_install "${S}"/OWNERS \
@@ -144,6 +150,13 @@ src_install() {
 		--comp "${fuzzer_component_id}"
 	platform_fuzzer_install "${S}"/OWNERS "${OUT}"/trunks_tpm_pinweaver_fuzzer \
 		--comp "${fuzzer_component_id}"
+	# Allow specific syscalls for profiling.
+	# TODO (b/242806964): Need a better approach for fixing up the seccomp policy
+	# related issues (i.e. fix with a single function call)
+	if use profiling; then
+		echo -e "\n# Syscalls added for profiling case only.\nmkdir: 1\nftruncate: 1\nuname: 1\n" >> \
+		"${D}/usr/share/policy/trunksd-seccomp.policy"
+	fi
 }
 
 platform_pkg_test() {

@@ -1,4 +1,4 @@
-# Copyright 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2012 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="7"
@@ -41,24 +41,15 @@ fixup_make_defaults() {
 }
 
 platform_pkg_test() {
-	platform_test "run" "${OUT}/dev_install_test"
+	platform test_all
 }
 
 src_install() {
-	dobin "${OUT}/dev_install"
-
-	cd "${S}/share" || die
-	insinto /usr/share/${PN}/portage/make.profile
-	doins make.defaults
+	platform_src_install
 
 	fixup_make_defaults "${ED}"/usr/share/${PN}/portage/make.profile/make.defaults
 
-	insinto /etc/bash/bashrc.d/
-	newins bashrc ${PN}.sh
-
-	insinto /etc/env.d
-	doins 99devinstall
-	sed -i "s:@LIBDIR@:$(get_libdir):g" "${ED}"/etc/env.d/99devinstall
+	sed -i "s:@LIBDIR@:$(get_libdir):g" "${ED}"/etc/env.d/99devinstall || die
 }
 
 pkg_preinst() {

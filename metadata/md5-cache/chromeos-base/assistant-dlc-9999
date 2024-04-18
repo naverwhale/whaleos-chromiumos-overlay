@@ -1,0 +1,11 @@
+BDEPEND=app-misc/jq
+DEFINED_PHASES=info install setup unpack
+DEPEND=chromeos-base/chromeos-chrome:=[chrome_internal]
+DESCRIPTION=Assistant DLC
+EAPI=7
+IUSE=cros_host cros_workon_tree_
+KEYWORDS=~*
+LICENSE=BSD-Google
+SLOT=0
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-workon	247d4700539e27bc12026f785ec53757	dlc	0e249e19536561abe6eb72bd84e06026	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=0ed2ff6d6b0741554fc8627c921d96df

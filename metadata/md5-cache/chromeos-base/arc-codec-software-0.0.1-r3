@@ -1,8 +1,0 @@
-DEFINED_PHASES=install
-DESCRIPTION=Install software codec configurations on ARC++
-EAPI=4
-KEYWORDS=*
-LICENSE=BSD-Google
-SLOT=0
-_eclasses_=cros-constants	bf71cd1168b6441b64a8cdbc06c36eda
-_md5_=a19df0510a5c5a552483f44658215c44

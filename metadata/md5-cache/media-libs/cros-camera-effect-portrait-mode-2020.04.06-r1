@@ -1,8 +1,0 @@
-DEFINED_PHASES=install
-DESCRIPTION=Chrome OS camera portrait processor library
-EAPI=7
-KEYWORDS=*
-LICENSE=BSD-Google
-SLOT=0
-SRC_URI=amd64? ( gs://chromeos-localmirror/distfiles/portrait-processor-lib-x86_64-2020.04.06.tbz2 ) arm? ( gs://chromeos-localmirror/distfiles/portrait-processor-lib-armv7-2020.04.06.tbz2 )
-_md5_=935a61a071b9840f4ab4aeca07eaa553

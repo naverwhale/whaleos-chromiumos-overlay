@@ -1,0 +1,14 @@
+BDEPEND=>=app-portage/elt-patches-20170815 || ( >=sys-devel/automake-1.16.5-r1:1.16 >=sys-devel/automake-1.15.1-r2:1.15 ) >=sys-devel/autoconf-2.69 >=sys-devel/libtool-2.4
+DEFINED_PHASES=install
+DEPEND=sys-libs/zlib:=
+DESCRIPTION=This command-line tool lets clients execute mimtproxy
+EAPI=7
+HOMEPAGE=https://github.com/mitmproxy/mitmproxy
+KEYWORDS=*
+LICENSE=MIT
+RDEPEND=sys-libs/zlib:=
+RESTRICT=binchecks strip
+SLOT=0
+SRC_URI=gs://chromeos-localmirror/distfiles/mitmproxy-10.0.0-linux.tar.gz
+_eclasses_=autotools	9adb87822e85056674b476e1090a72ae	flag-o-matic	ad475baa777c9978fa035216c8264a10	libtool	f143db5a74ccd9ca28c1234deffede96	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=e37463130642f81c23f74f5388f8ec4e

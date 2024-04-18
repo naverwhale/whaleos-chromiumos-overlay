@@ -1,1 +1,1 @@
-include chromiumos/third_party/virtual-usb-printer:/OWNERS
+include chromiumos/owners:v1:/printscan/OWNERS.printscan

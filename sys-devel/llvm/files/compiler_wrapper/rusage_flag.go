@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium OS Authors. All rights reserved.
+// Copyright 2019 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -62,7 +62,7 @@ func removeRusageFromCommand(compilerCmd *command) *command {
 }
 
 // maybeCaptureRusage captures rusage for execution of action()
-// 	unless action returns an error or logFileName is ""
+// unless action returns an error or logFileName is ""
 // a function is returned which saves the rusage log data at logFileName unless logFileName is ""
 // an error is returned if action returns an error, or rusage commands in syscall fails
 func maybeCaptureRusage(env env, compilerCmd *command, action func(willLogRusage bool) error) (maybeCommitToFile func(exitCode int) error, err error) {

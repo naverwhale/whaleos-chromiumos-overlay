@@ -19,20 +19,22 @@
 # Gather output of the bootchart collector into a tarball that bootchart
 # can process itself.
 TARBALL="$1"
-if [ -z "$TARBALL" ]; then
+if [ -z "${TARBALL}" ]; then
     echo "Usage: $0 TARBALL [DIR]" 1>&2
     exit 1
 fi
 
-if [ "${TARBALL#/}" = "$TARBALL" ]; then
-    TARBALL="$(pwd)/$TARBALL"
+if [ "${TARBALL#/}" = "${TARBALL}" ]; then
+    TARBALL="$(pwd)/${TARBALL}"
 fi
 
 DIR="$2"
-[ -n "$DIR" ] || DIR="."
+[ -n "${DIR}" ] || DIR="."
 
+cd "${DIR}"
 
-cd $DIR
+# shellcheck disable=SC2094 # false positive about "same file."
+dmesg > dmesg
 
 # Output the header file with information about the system
 {
@@ -40,10 +42,10 @@ cd $DIR
     echo "title = Boot chart for $(hostname) ($(date))"
     echo "system.uname = $(uname -srvm)"
     echo "system.release = $(lsb_release -sd)"
-    case `uname -m` in
-    arm*)
-        echo -n "system.cpu = $(grep '^Processor' /proc/cpuinfo)"
-        if [ `grep -c '^processor' /proc/cpuinfo` -gt 0 ]; then
+    case $(uname -m) in
+    arm*|aarch64)
+        printf "system.cpu = %s" "$(grep '^Processor' /proc/cpuinfo)"
+        if [ "$(grep -c '^processor' /proc/cpuinfo)" -gt 0 ]; then
             echo " ($(grep -c '^processor' /proc/cpuinfo))"
         else
             echo " (1)"
@@ -58,6 +60,6 @@ cd $DIR
 } > header
 
 # Create a tarball of the logs and header which can be parsed into the chart
-tar czf $TARBALL header proc_stat.log proc_diskstats.log proc_ps.log
+tar czf "${TARBALL}" header proc_stat.log proc_diskstats.log proc_ps.log dmesg
 
 exit 0

@@ -1,0 +1,8 @@
+DEFINED_PHASES=install
+DESCRIPTION=Ebuild which pulls in binaries of aapt
+EAPI=7
+KEYWORDS=*
+LICENSE=BSD-Google
+SLOT=0
+SRC_URI=gs://chromeos-localmirror/distfiles/aapt-0.0.1.tbz2
+_md5_=c7fe43a8a5dc44fe5e7d3b644f2f83da

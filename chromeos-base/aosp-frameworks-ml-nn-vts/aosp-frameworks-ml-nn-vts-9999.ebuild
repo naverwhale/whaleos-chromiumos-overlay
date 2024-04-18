@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -35,6 +35,7 @@ CROS_WORKON_SUBTREE=(
 	""
 	""
 )
+CROS_WORKON_INCREMENTAL_BUILD=1
 
 PLATFORM_SUBDIR="aosp/frameworks/ml/chromeos/tests"
 
@@ -48,25 +49,38 @@ KEYWORDS="~*"
 
 RDEPEND="
 	chromeos-base/aosp-frameworks-ml-nn:=
+	chromeos-base/chromeos-config-tools:=
+	chromeos-base/minijail:=
+	chromeos-base/nnapi:=
+	dev-cpp/abseil-cpp:=
+	dev-cpp/gtest:=
+	dev-libs/openssl:0=
+	dev-libs/re2:=
+	net-dns/c-ares:=
+	net-libs/grpc:=
+	sys-libs/zlib:=
 "
 
 DEPEND="
 	${RDEPEND}
+	dev-libs/libtextclassifier:=
 "
 
 src_configure() {
-	if use x86 || use amd64; then
-		append-cppflags "-D_Float16=__fp16"
-		append-cxxflags "-Xclang -fnative-half-type"
-		append-cxxflags "-Xclang -fallow-half-arguments-and-returns"
-	fi
+	# This warning is triggered in tensorflow.
+	# See this Tensorflow PR for a fix:
+	# https://github.com/tensorflow/tensorflow/pull/59040
+	append-flags "-Wno-unused-but-set-variable"
 	platform_src_configure
 }
 
 src_install() {
+	platform_src_install
+
 	dobin "${OUT}/cros_nnapi_vts_1_0"
 	dobin "${OUT}/cros_nnapi_vts_1_1"
 	dobin "${OUT}/cros_nnapi_vts_1_2"
 	dobin "${OUT}/cros_nnapi_vts_1_3"
+	dobin "${OUT}/cros_nnapi_vts_aidl"
 	dobin "${OUT}/cros_nnapi_cts"
 }

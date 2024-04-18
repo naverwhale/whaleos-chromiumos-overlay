@@ -1,0 +1,76 @@
+From 87eba2f0deedd2beec0d26a8694e5f7e5cfe0654 Mon Sep 17 00:00:00 2001
+From: Michal Kubecek <mkubecek@suse.cz>
+Date: Wed, 11 Dec 2019 10:58:14 +0100
+Subject: [PATCH] BACKPORT: UPSTREAM: rtnetlink: provide permanent hardware
+ address in RTM_NEWLINK
+
+Permanent hardware address of a network device was traditionally provided
+via ethtool ioctl interface but as Jiri Pirko pointed out in a review of
+ethtool netlink interface, rtnetlink is much more suitable for it so let's
+add it to the RTM_NEWLINK message.
+
+Add IFLA_PERM_ADDRESS attribute to RTM_NEWLINK messages unless the
+permanent address is all zeros (i.e. device driver did not fill it). As
+permanent address is not modifiable, reject userspace requests containing
+IFLA_PERM_ADDRESS attribute.
+
+Note: we already provide permanent hardware address for bond slaves;
+unfortunately we cannot drop that attribute for backward compatibility
+reasons.
+
+v5 -> v6: only add the attribute if permanent address is not zero
+
+Signed-off-by: Michal Kubecek <mkubecek@suse.cz>
+Acked-by: Jiri Pirko <jiri@mellanox.com>
+Acked-by: Stephen Hemminger <stephen@networkplumber.org>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+(cherry picked from commit f74877a5457d34d604dba6dbbb13c4c05bac8b93
+ git://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git master)
+
+Conflicts:
+   include/uapi/linux/if_link.h
+   net/core/rtnetlink.c
+
+Conflict resolution:
+  - +10 in the enum value accounts for the following values that are
+    dropped from the upstream
+        IFLA_NEW_NETNSID,
+        IFLA_IF_NETNSID,
+        IFLA_TARGET_NETNSID = IFLA_IF_NETNSID, /* new alias */
+        IFLA_CARRIER_UP_COUNT,
+        IFLA_CARRIER_DOWN_COUNT,
+        IFLA_NEW_IFINDEX,
+        IFLA_MIN_MTU,
+        IFLA_MAX_MTU,
+        IFLA_PROP_LIST,
+        IFLA_ALT_IFNAME, /* Alternative ifname */
+  - moved filling of the IFLA_PERM_ADDRESS after IFLA_ADDRESS since in
+    the cherry-pick it ended up in the middle of the af_ops loop at the
+    end
+  - adapted the message size calculation for missing attributes
+
+BUG=b:258208400
+TEST=compile
+
+Change-Id: Iab981eee1f2b0dc7a61f44fd66eede2d0388618a
+Signed-off-by: Andrzej Ostruszka <andrzejo@google.com>
+---
+ include/uapi/linux/if_link.h | 1 +
+ net/core/rtnetlink.c         | 6 ++++++
+ 2 files changed, 7 insertions(+)
+
+diff --git a/include/uapi/linux/if_link.h b/include/uapi/linux/if_link.h
+index 1f00f0cd6790..311cc3bf97ec 100644
+--- a/include/uapi/linux/if_link.h
++++ b/include/uapi/linux/if_link.h
+@@ -159,6 +159,7 @@ enum {
+ 	IFLA_PAD,
+ 	IFLA_XDP,
+ 	IFLA_EVENT,
++	IFLA_PERM_ADDRESS = IFLA_EVENT + 10,
+ 	__IFLA_MAX
+ };
+ 
+-- 
+2.42.0.rc1.204.g551eb34607-goog
+

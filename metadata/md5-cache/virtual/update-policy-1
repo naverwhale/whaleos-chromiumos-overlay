@@ -8,4 +8,4 @@ KEYWORDS=*
 LICENSE=metapackage
 RDEPEND=|| ( !cros_embedded? ( chromeos-base/update-policy-chromeos ) chromeos-base/update-policy-embedded )
 SLOT=0
-_md5_=07f625aa090370472744d8b62b879907
+_md5_=0acf47e23e5e94acd1af6f228f1f566f

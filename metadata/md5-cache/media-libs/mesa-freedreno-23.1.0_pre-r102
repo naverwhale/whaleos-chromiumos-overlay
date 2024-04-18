@@ -1,0 +1,14 @@
+BDEPEND=sys-devel/bison sys-devel/flex virtual/pkgconfig !cros_host? ( chromeos-base/chromite-sdk dev-python/psutil sys-apps/iproute2 sys-apps/proot sys-libs/libcap-ng !amd64? ( !x86? ( app-emulation/qemu ) ) ) >=dev-util/meson-0.58.2-r1 >=dev-util/ninja-1.8.2 dev-util/meson-format-array dev-vcs/git app-misc/jq
+DEFINED_PHASES=compile configure info install setup test unpack
+DEPEND=dev-libs/expat:= >=x11-libs/libdrm-2.4.94:= perfetto? ( >=chromeos-base/perfetto-29.0 )
+DESCRIPTION=The Mesa 3D Graphics Library
+EAPI=7
+HOMEPAGE=http://mesa3d.org/
+IUSE=debug vulkan libglvnd perfetto zstd cros_host test cros_host cros_workon_tree_2c7747863f511d867a24f67d9f3637ebd82b4cd1
+KEYWORDS=*
+LICENSE=MIT SGI-B-2.0
+PROPERTIES=live
+RDEPEND=dev-libs/expat:= >=x11-libs/libdrm-2.4.94:= libglvnd? ( media-libs/libglvnd ) !libglvnd? ( !media-libs/libglvnd ) zstd? ( app-arch/zstd )
+SLOT=0/23.1.0_pre-r102
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	meson	e68978cf8efc3aa7dd92a23c9df4bcf3	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	ninja-utils	578ba3585e2f3ebe63ab00c07874016e	platform2-test	f3f33a621ab5e271926bf478d21d32f8	python-utils-r1	76252008070e69454f51fa80c07638c9	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=d9fe7f0cdbb933a61f1a2015e9fb5cf2

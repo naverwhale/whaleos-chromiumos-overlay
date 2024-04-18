@@ -1,9 +1,9 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # @ECLASS: cros-fwupd.eclass
 # @MAINTAINER:
-# The Chromium OS Authors
+# The ChromiumOS Authors
 # @BLURB: Unifies logic for installing fwupd firmware files.
 
 if [[ -z ${_CROS_FWUPD_ECLASS} ]]; then
@@ -20,6 +20,8 @@ case "${EAPI:-0}" in
 *) die "unsupported EAPI (${EAPI}) in eclass (${ECLASS})" ;;
 esac
 
+BDEPEND="app-arch/cabextract"
+
 # @ECLASS-VARIABLE: CROS_FWUPD_URL
 # @DESCRIPTION:
 # Complete URL for package data on our LVFS mirror.
@@ -29,10 +31,11 @@ esac
 # By default, emerge will only fetch archives from our mirrors regardless of SRC_URI settings.
 RESTRICT+=" mirror"
 
-# @FUNCTION: _generate_remote_conf
+# @FUNCTION: _cros-fwupd_generate_remote_conf
+# @INTERNAL
 # @DESCRIPTION:
 # Unpack fwupd firmware files to create metainfo.xml and remote.conf.
-_generate_remote_conf() {
+_cros-fwupd_generate_remote_conf() {
 	local file sha1sum sha256sum size
 
 	printf "<?xml version='1.0' encoding='utf-8'?>\n \
@@ -44,21 +47,28 @@ _generate_remote_conf() {
 			size=$(du -sbL "${DISTDIR}/${file}" | awk '{print $1}')
 
 			cat << EOF > script.sed
+/<artifacts>/,/<\/artifacts>/d;
 s#</release>#\t<location>https://fwupd.org/downloads/${file}</location>\n\
-\t<checksum type="sha1" filename="${file}"target="container">${sha1sum}</checksum>\n\
-\t<checksum type="sha256" filename="${file}"target="container">${sha256sum}</checksum>\n\
+\t<checksum type="sha1" filename="${file}" target="container">${sha1sum}</checksum>\n\
+\t<checksum type="sha256" filename="${file}" target="container">${sha256sum}</checksum>\n\
 \t<size type="download">${size}</size>\n\
-\t</release>#g;/<?xml.*/d;s/^/  /g
+\t<artifacts><artifact type="binary">\n\
+\t  <testing><test_result>\n\
+\t    <vendor_name id="16">Google</vendor_name>\n\
+\t    <device>Google Voxel</device>\n\
+\t    <os>chromeos</os>\n\
+\t  </test_result></testing>\n\
+\t</artifact></artifacts>\n\
+\t</release>#g;/<?xml.*/d;s/^/  /g;
 EOF
 			cabextract -p -F "*.metainfo.xml" "${DISTDIR}"/"${file}" | \
 				sed -f script.sed >> ${PN}.metainfo.xml || die
 		fi
 	done
 	printf "</components>\n" >> ${PN}.metainfo.xml
-	gzip ${PN}.metainfo.xml
 
 	cat << EOF > ${PN}.conf
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -73,11 +83,35 @@ ApprovalRequired=false
 EOF
 }
 
+# @FUNCTION: _cros-fwupd_generate_bkc_conf
+# @INTERNAL
+# @DESCRIPTION:
+# Unpack fwupd firmware files to create bkc.xml.
+_cros-fwupd_generate_bkc_conf() {
+python << EOF | sed '/^\s*$/d' > ${PN}-bkc.xml || die
+from xml.dom.minidom import parse
+dom = parse("${PN}.metainfo.xml")
+names = {"components", "component", "provides", "firmware", "releases", "release"}
+for elem in dom.getElementsByTagName('*'):
+	if not elem.nodeName in names and elem.parentNode:
+		elem.parentNode.removeChild(elem)
+		elem.unlink()
+for elem in dom.getElementsByTagName('component'):
+	elem.removeAttribute("type")
+	elem.setAttribute("merge", "append")
+	tags = elem.appendChild(dom.createElement("tags"))
+	tag = tags.appendChild(dom.createElement("tag"))
+	tag.appendChild(dom.createTextNode("chromium"))
+print(dom.toprettyxml(indent="  "))
+EOF
+}
+
 # @FUNCTION: cros-fwupd_src_unpack
 # @DESCRIPTION:
 # Unpack fwupd firmware files.
 cros-fwupd_src_unpack() {
-	use remote && _generate_remote_conf
+	_cros-fwupd_generate_remote_conf
+	use remote || _cros-fwupd_generate_bkc_conf
 }
 
 # @FUNCTION: cros-fwupd_src_install
@@ -87,6 +121,8 @@ cros-fwupd_src_install() {
 	local file
 
 	if use remote; then
+		# Compress to .xml.gz expected by fwupd.
+		gzip ${PN}.metainfo.xml || die
 		insinto /usr/share/fwupd/remotes.d/vendor/
 		doins ${PN}.metainfo.xml.gz
 		insinto /etc/fwupd/remotes.d/
@@ -97,6 +133,8 @@ cros-fwupd_src_install() {
 			einfo "Installing firmware ${file}"
 			doins "${DISTDIR}"/"${file}"
 		done
+		insinto /usr/share/fwupd/local.d
+		doins ${PN}-bkc.xml
 	fi
 
 	# Install udev rules for automatic firmware update.

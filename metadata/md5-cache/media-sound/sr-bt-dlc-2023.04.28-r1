@@ -1,0 +1,11 @@
+DEFINED_PHASES=install
+DESCRIPTION=Super resolution for Bluetooth microphone model dlc.
+EAPI=7
+IUSE=dlc
+KEYWORDS=*
+LICENSE=BSD-Google
+REQUIRED_USE=dlc
+SLOT=0
+SRC_URI=gs://chromeos-localmirror/distfiles/chromeos-audio-sr-bt-2023.04.28.tar.xz
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	dlc	0e249e19536561abe6eb72bd84e06026
+_md5_=b8357bc7d6478c754b2596c3285ce6d9

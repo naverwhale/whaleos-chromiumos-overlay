@@ -1,0 +1,23 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+py_binary(
+    name = "system_protoc",
+    srcs = ["protoc_wrapper.py"],
+    main = "protoc_wrapper.py",
+)
+
+proto_lang_toolchain(
+    name = "system_cc_toolchain",
+    command_line = "--cpp_out=$(OUT)",
+    runtime = ":protobuf",
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "protobuf",
+    copts = [%COPTS%],
+    linkopts = [%LINK_OPTS%],
+    visibility = ["//visibility:public"],
+)

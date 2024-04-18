@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 """Builds the Rust toolchain used to compile and run TockOS."""
@@ -26,8 +26,8 @@ from typing import Iterable, List, NamedTuple, Optional
 # these, given that said toolchain is locked to the stable channel, and is
 # likely to be a very different version of Rust than Ti50's toolchain.
 TARGET_TRIPLES_TO_SHIP = (
-    'riscv32imc-unknown-none-elf',
     'x86_64-unknown-linux-gnu',
+    'riscv32imc-unknown-none-elf',
 )
 
 
@@ -64,14 +64,14 @@ COMPONENTS_TO_SHIP = (
     ),
     # src, which is required when cross-compiling in some contexts.
     RustComponent(
-        dist_build_name='src',
+        dist_build_name='rust-src',
         dist_tarball_pattern=r'^rust-src-',
         dist_tarballs_are_per_triple=False,
     ),
     # src/librustc, which is the actual |rustc| compiler.
     RustComponent(
-        dist_build_name='src/librustc',
-        dist_tarball_pattern=r'^rustc-[^-]+-dev-(?!src)',
+        dist_build_name='rustc',
+        dist_tarball_pattern=r'^rustc-nightly-',
         dist_tarballs_are_per_triple=False,
     ),
     # rustfmt, the standard formatter for rust code.
@@ -82,7 +82,7 @@ COMPONENTS_TO_SHIP = (
     ),
     # library/std, which consists of stdlib |rlib|s.
     RustComponent(
-        dist_build_name='library/std',
+        dist_build_name='rust-std',
         dist_tarball_pattern=r'^rust-std-',
         dist_tarballs_are_per_triple=True,
     ),
@@ -114,19 +114,27 @@ def write_config_toml(rust_src: Path, rv_clang_bin: Path, install_prefix: Path,
   optional_bootstrap_configuration = '\n'.join(
       f'{key} = "{exe}"' for key, exe in component_locations if exe is not None)
 
+  cbuild = must_getenv('CBUILD')
   toml_contents = f"""
 [build]
 target = [{target_triples_str}]
 extended = true
 vendor = true
+docs = false
 python = "{must_getenv('EPYTHON')}"
 submodules = false
 profiler = true
+optimized-compiler-builtins = true
 {optional_bootstrap_configuration}
 
 [llvm]
+ccache = true
 use-libcxx = true
 ninja = true
+# Fix for "error: could not find native static library `c++`"
+static-libstdcpp = false
+# Build only what we use
+targets = "X86;RISCV"
 
 [install]
 prefix = "{install_prefix}"
@@ -136,10 +144,12 @@ prefix = "{install_prefix}"
 llvm-tools = true
 codegen-units = 0
 codegen-tests = false
-
+# Build with nightly features
+channel = "nightly"
+# https://rust-lang.github.io/rfcs/2603-rust-symbol-name-mangling-v0.html
+new-symbol-mangling = true
 lld = true
-default-linker = "{must_getenv('CBUILD')}-clang"
-use-lld = false
+default-linker = "{cbuild}-clang++"
 
 [target.riscv32imc-unknown-none-elf]
 cc = "{rv_clang_bin}/clang"
@@ -154,11 +164,32 @@ linker = "x86_64-pc-linux-gnu-clang++"
 
   (rust_src / 'config.toml').write_text(toml_contents, encoding='utf-8')
 
+  # Create .cargo/config.toml to configure vendored sources
+  cargo_toml_contents = f"""
+[source]
+[source.crates-io]
+replace-with = "vendored-sources"
+
+[source.vendored-sources]
+directory = "vendor"
+
+[target.x86_64-unknown-linux-gnu]
+linker = "{cbuild}-clang++"
+rustflags = ["-L", "/usr/x86_64-cros-linux-gnu/usr/lib64"]
+
+[target.{cbuild}]
+rustflags = ["-L", "/usr/x86_64-cros-linux-gnu/usr/lib64"]
+linker = "{cbuild}-clang++"
+"""
+  cargo_config = rust_src / '.cargo'
+  cargo_config.mkdir(exist_ok=True)
+  (cargo_config / 'config.toml').write_text(cargo_toml_contents, encoding='utf-8')
+
 
 def compile_rust_src(rust_src: Path) -> None:
   """Compiles all targets specified by COMPONENTS_TO_SHIP."""
   targets = [x.dist_build_name for x in COMPONENTS_TO_SHIP]
-  subprocess.check_call(['./x.py', 'dist'] + targets, cwd=rust_src)
+  subprocess.check_call(['./x.py', 'dist', '--verbose', '--color=never'] + targets, cwd=rust_src)
 
 
 def copy_tree(input_path: Path, output_path: Path,
@@ -190,6 +221,7 @@ def package_rust_src(rust_src: Path, install_dir: Path):
   dist_path = rust_src / 'build' / 'dist'
   all_tarballs = [x for x in dist_path.iterdir() if x.name.endswith('.tar.gz')]
   temp_dir = Path(tempfile.mkdtemp(prefix='build_rust_package'))
+  logging.info(f'Packaging tarballs {all_tarballs}')
 
   def install_component(tarball: Path) -> None:
     logging.info('Untarring %s into %s', tarball, temp_dir)
@@ -236,8 +268,10 @@ def package_rust_src(rust_src: Path, install_dir: Path):
     install_dir.mkdir(parents=True, exist_ok=True)
 
     for component in COMPONENTS_TO_SHIP:
+      logging.info(f'Installing component {component}')
       regex = re.compile(component.dist_tarball_pattern)
       targets = [x for x in all_tarballs if regex.search(x.name)]
+      logging.info(f'Targets to ship: {targets}')
       if component.dist_tarballs_are_per_triple:
         for target_triple in TARGET_TRIPLES_TO_SHIP:
           ts = [x for x in targets if target_triple in x.name]
@@ -248,7 +282,7 @@ def package_rust_src(rust_src: Path, install_dir: Path):
       else:
         if len(targets) != 1:
           raise ValueError(f'Expected exactly one match for {component}; '
-                           f'got {targets}')
+                           f'got {targets} all tarballs {all_tarballs}')
         install_component(targets[0])
   except:
     logging.error('Packaging failed; leaving tempdir around at %s', temp_dir)

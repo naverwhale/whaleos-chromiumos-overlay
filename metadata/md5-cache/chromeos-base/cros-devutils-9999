@@ -1,5 +1,5 @@
-BDEPEND=dev-vcs/git
-DEFINED_PHASES=compile info install setup unpack
+BDEPEND=dev-vcs/git app-misc/jq
+DEFINED_PHASES=info setup unpack
 DESCRIPTION=Development utilities for ChromiumOS
 EAPI=7
 HOMEPAGE=https://chromium.googlesource.com/chromiumos/platform/dev-util/+/HEAD/host/
@@ -9,5 +9,5 @@ LICENSE=BSD-Google
 PROPERTIES=live
 RDEPEND=app-portage/gentoolkit >=chromeos-base/devserver-0.0.2 dev-util/shflags dev-util/toolchain-utils
 SLOT=0/9999
-_eclasses_=cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-credentials	4fd98ebbff6a1534ca9a89547e13dc92	cros-workon	ff100259492312ff6570e490bcb9a320	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
-_md5_=49e4a9ac89ef5cac267a127541a97169
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=9a959f2878509e37608c32f77c2c1adb

@@ -1,7 +1,7 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2.
 
-EAPI=6
+EAPI=7
 
 CROS_GO_SOURCE="github.com/mdlayher/vsock 9de589a8c10bfadb0e94fe67caa79a05a1a45a52"
 
@@ -22,5 +22,9 @@ IUSE=""
 
 RESTRICT="binchecks strip"
 
-DEPEND="dev-go/go-sys"
+DEPEND="
+	dev-go/cmp
+	dev-go/go-sys
+	dev-go/net
+"
 RDEPEND=""

@@ -1,0 +1,15 @@
+BDEPEND=sys-devel/gcc sys-apps/texinfo >=app-portage/elt-patches-20170815 sys-devel/gnuconfig
+DEFINED_PHASES=compile configure install postinst postrm prepare test unpack
+DEPEND=>=sys-devel/binutils-config-3 test? ( dev-util/dejagnu ) nls? ( sys-devel/gettext ) sys-devel/flex
+DESCRIPTION=Tools necessary to build programs
+EAPI=7
+HOMEPAGE=http://sources.redhat.com/binutils/
+IUSE=cet cros_host hardened gprofng multitarget nls test vanilla
+KEYWORDS=*
+LICENSE=|| ( GPL-3 LGPL-3 )
+RDEPEND=>=sys-devel/binutils-config-3
+RESTRICT=!test? ( test )
+SLOT=0
+SRC_URI=mirror://gnu/binutils/binutils-2.40.tar.xz https://dev.gentoo.org/~dilfridge/distfiles/binutils-2.40-patches-5.tar.xz
+_eclasses_=eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	ad475baa777c9978fa035216c8264a10	gnuconfig	24782b842d9d9de6c82fa360b97d8914	libtool	f143db5a74ccd9ca28c1234deffede96	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=e46d9585e190df830f54022bdc115bd1

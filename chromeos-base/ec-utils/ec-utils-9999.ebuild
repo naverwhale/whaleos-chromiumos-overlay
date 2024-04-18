@@ -1,11 +1,19 @@
-# Copyright 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2012 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
 CROS_WORKON_PROJECT="chromiumos/platform/ec"
 CROS_WORKON_LOCALNAME="platform/ec"
 
-inherit cros-workon user
+# This ebuild is upreved via PuPR, so disable the normal uprev process for
+# cros-workon ebuilds.
+#
+# To uprev manually, run:
+#    cros_mark_as_stable --force --overlay-type private --packages \
+#     chromeos-base/ec-utils commit
+CROS_WORKON_MANUAL_UPREV="1"
+
+inherit cros-workon libchrome user
 
 DESCRIPTION="Chrome OS EC Utility"
 
@@ -17,11 +25,18 @@ KEYWORDS="~*"
 IUSE="static -updater_utils"
 IUSE="${IUSE} cros_host +cros_ec_utils"
 
-COMMON_DEPEND="dev-embedded/libftdi:=
+COMMON_DEPEND="
+	chromeos-base/libec:=
+	dev-embedded/libftdi:=
 	dev-libs/openssl:0=
 	sys-libs/zlib:=
 	virtual/libusb:1="
-DEPEND="${COMMON_DEPEND}"
+
+# b/274791539: gtest is required because libec includes a libchrome header that
+# requires gtest to be installed when building.
+DEPEND="${COMMON_DEPEND}
+	dev-cpp/gtest
+"
 RDEPEND="${COMMON_DEPEND}"
 
 pkg_preinst() {
@@ -43,6 +58,18 @@ src_compile() {
 	# host (BUILDCC, amd64). So we need to override HOSTCC by target "CC".
 	export HOSTCC="${CC} $(usex static '-static' '')"
 
+	# b/247791129: EC expects HOST_PKG_CONFIG to be the pkg-config targeting the
+	# platform that the EC is running on top of (e.g., the Chromebook's AP).
+	# That platform corresponds to the ChromeOS "$BOARD" and the pkg-config for
+	# the "$BOARD" being built is specified by tc-getPKG_CONFIG.
+	export HOST_PKG_CONFIG
+	HOST_PKG_CONFIG=$(tc-getPKG_CONFIG)
+
+	# EC expects BUILD_PKG_CONFIG to be the pkg-config targeting the build
+	# machine (the machine doing the compilation).
+	export BUILD_PKG_CONFIG
+	BUILD_PKG_CONFIG=$(tc-getBUILD_PKG_CONFIG)
+
 	# Build Chromium EC utilities.
 	use cros_ec_utils && src_compile_cros_ec_utils
 }
@@ -52,20 +79,10 @@ src_install_cros_ec_utils() {
 		dobin "build/host/util/cbi-util"
 	else
 		dosbin "build/host/util/ectool"
-		dosbin "build/host/util/ec_parse_panicinfo"
-		dosbin "build/host/util/ec_sb_firmware_update"
 	fi
 }
 
 src_install() {
 	# Install Chromium EC utilities.
 	use cros_ec_utils && src_install_cros_ec_utils
-}
-
-pkg_postinst() {
-	if ! $(id -Gn "$(logname)" | grep -qw "dialout") ; then
-		usermod -a -G "dialout" "$(logname)"
-		einfo "A new group, dialout is added." \
-			"Please re-login to apply this change."
-	fi
 }

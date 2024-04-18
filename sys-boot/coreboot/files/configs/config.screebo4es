@@ -1,0 +1,16 @@
+CONFIG_VENDOR_GOOGLE=y
+CONFIG_BOARD_GOOGLE_SCREEBO4ES=y
+
+# SPI Descriptor
+CONFIG_IFD_BIN_PATH="3rdparty/blobs/mainboard/google/rex/descriptor-screebo4es.bin"
+
+# CSE data
+# CONFIG_CSE_DATA_FILE="cse_data/cse_data-screebo4es.bin"
+CONFIG_ME_BIN_PATH="3rdparty/blobs/mainboard/google/rex/csme-screebo4es.bin"
+CONFIG_SOC_INTEL_CSE_RW_FILE="3rdparty/blobs/mainboard/google/rex/me_rw-screebo4es.bin"
+
+# Video Blob
+CONFIG_INTEL_GMA_VBT_FILE="3rdparty/blobs/mainboard/google/rex/vbt-screebo.bin"
+
+# Microcode
+CONFIG_CPU_INTEL_UCODE_SPLIT_BINARIES="3rdparty/blobs/mainboard/google/rex/microcode_inputs/screebo4es"

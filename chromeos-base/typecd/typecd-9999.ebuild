@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="7"
@@ -21,7 +21,11 @@ SLOT=0
 KEYWORDS="~*"
 IUSE="+seccomp"
 
-RDEPEND=">=chromeos-base/metrics-0.0.1-r3152:="
+RDEPEND="
+	dev-libs/re2:=
+	chromeos-base/chromeos-config-tools:=
+	>=chromeos-base/metrics-0.0.1-r3152:=
+	"
 
 DEPEND="
 	${RDEPEND}
@@ -31,7 +35,10 @@ DEPEND="
 "
 
 src_install() {
+	platform_src_install
+
 	dobin "${OUT}"/typecd
+	dobin "${OUT}"/typecd_tool
 
 	insinto /usr/share/dbus-1/system-services
 	doins dbus/org.chromium.typecd.service
@@ -53,6 +60,23 @@ src_install() {
 	# Install D-Bus permission config.
 	insinto /etc/dbus-1/system.d
 	doins dbus/typecd.conf
+
+	# Install fuzzers.
+	local fuzzer_component_id="958036"
+	local fuzz_targets=(
+		"typecd_cable_fuzzer"
+		"typecd_cros_ec_util_fuzzer"
+		"typecd_partner_fuzzer"
+		"typecd_port_fuzzer"
+		"typecd_port_manager_fuzzer"
+		"typecd_session_manager_proxy_fuzzer"
+		"typecd_udev_monitor_fuzzer"
+	)
+	local fuzz_target
+	for fuzz_target in "${fuzz_targets[@]}"; do
+		platform_fuzzer_install "${S}"/OWNERS "${OUT}"/"${fuzz_target}" \
+			--comp "${fuzzer_component_id}"
+	done
 }
 
 pkg_preinst() {

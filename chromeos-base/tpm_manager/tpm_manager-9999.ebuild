@@ -1,43 +1,51 @@
-# Copyright 2015 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
+EAPI="7"
 
 CROS_WORKON_INCREMENTAL_BUILD=1
 CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_OUTOFTREE_BUILD=1
 # TODO(crbug.com/809389): Avoid directly including headers from other packages.
-CROS_WORKON_SUBTREE="common-mk libhwsec libhwsec-foundation libtpmcrypto metrics tpm_manager trunks .gn"
+CROS_WORKON_SUBTREE="common-mk libhwsec libhwsec-foundation metrics tpm_manager trunks .gn"
 
 PLATFORM_SUBDIR="tpm_manager"
 
 inherit cros-workon platform user
 
 DESCRIPTION="Daemon to manage TPM ownership."
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/tpm_manager/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/tpm_manager/"
 
-LICENSE="Apache-2.0"
-SLOT="0"
+LICENSE="BSD-Google"
 KEYWORDS="~*"
-IUSE="pinweaver_csme test tpm tpm_dynamic tpm2 fuzzer tpm_fallback"
+IUSE="cr50_onboard double_extend_pcr_issue pinweaver_csme profiling test ti50_onboard
+	tpm tpm_dynamic tpm_insecure_fallback tpm2 tpm2_simulator fuzzer os_install_service
+"
+
+IUSE="${IUSE} tpm_fallback"
 
 REQUIRED_USE="
+	?? ( cr50_onboard pinweaver_csme )
 	tpm_dynamic? ( tpm tpm2 )
 	!tpm_dynamic? ( ?? ( tpm tpm2 ) )
 "
 
 RDEPEND="
-	tpm? ( app-crypt/trousers )
+	tpm? ( app-crypt/trousers:= )
 	tpm2? (
-		chromeos-base/trunks
+		chromeos-base/trunks:=
 	)
+	tpm2_simulator? ( chromeos-base/tpm2-simulator:= )
 	>=chromeos-base/metrics-0.0.1-r3152
-	chromeos-base/minijail
-	chromeos-base/libhwsec
-	chromeos-base/libtpmcrypto
+	chromeos-base/minijail:=
+	chromeos-base/libhwsec:=[test?]
+	chromeos-base/libhwsec-foundation:=
 	chromeos-base/system_api:=[fuzzer?]
-	chromeos-base/tpm_manager-client
+	chromeos-base/tpm_manager-client:=
+	dev-libs/openssl:0=
+	dev-libs/protobuf:=
+	sys-apps/rootdev:=
 	"
 
 DEPEND="${RDEPEND}
@@ -45,12 +53,21 @@ DEPEND="${RDEPEND}
 	fuzzer? ( dev-libs/libprotobuf-mutator )
 	"
 
+BDEPEND="
+	dev-libs/protobuf
+	chromeos-base/chromeos-dbus-bindings
+	chromeos-base/minijail
+"
+
 pkg_preinst() {
 	enewuser tpm_manager
 	enewgroup tpm_manager
 }
 
 src_install() {
+	# TODO: move installation & test configs from ebuild to GN
+	platform_src_install
+
 	# Install D-Bus configuration file.
 	insinto /etc/dbus-1/system.d
 	doins server/org.chromium.TpmManager.conf
@@ -87,10 +104,18 @@ src_install() {
 
 	# Install seccomp policy files.
 	insinto /usr/share/policy
-	newins server/tpm_managerd-seccomp-${ARCH}.policy tpm_managerd-seccomp.policy
+	newins "server/tpm_managerd-seccomp-${ARCH}.policy" tpm_managerd-seccomp.policy
 
 	# Install fuzzer.
 	platform_fuzzer_install "${S}"/OWNERS "${OUT}"/tpm_manager_service_fuzzer
+
+	# Allow specific syscalls for profiling.
+	# TODO (b/242806964): Need a better approach for fixing up the seccomp policy
+	# related issues (i.e. fix with a single function call)
+	if use profiling; then
+		echo -e "\n# Syscalls added for profiling case only.\nmkdir: 1\nftruncate: 1\n" >> \
+		"${D}/usr/share/policy/tpm_managerd-seccomp.policy"
+	fi
 }
 
 platform_pkg_test() {

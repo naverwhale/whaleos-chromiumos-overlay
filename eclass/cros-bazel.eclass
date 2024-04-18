@@ -1,4 +1,4 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # @ECLASS: cros-bazel.eclass
@@ -9,6 +9,14 @@
 # particular, functions supporting cross-compilation are provided.
 
 if [[ ! ${_CROS_BAZEL_ECLASS} ]]; then
+
+# Check for EAPI 7+.
+case "${EAPI:-0}" in
+[0123456]) die "Unsupported EAPI=${EAPI:-0} (too old) for ${ECLASS}";;
+esac
+
+# Don't depend on the system VM since it could be pointing to Java 8.
+export GENTOO_VM=openjdk-bin-11
 
 inherit bazel toolchain-funcs
 
@@ -49,25 +57,21 @@ BAZEL_CC_BUILD='package(default_visibility = ["//visibility:public"])
 
 filegroup(name = "empty")
 
-# We should really be using @platforms//cpu:x86_64 and friends, but
-# to keep this compatible with Bazel 0.24.1, we need to use the legacy
-# definitions.
-# TODO(crbug/1102798): Once Bazel is uprevved, change these to the @platforms defs.
 amd64_constraints = [
-	"@bazel_tools//platforms:x86_64",
-	"@bazel_tools//platforms:linux",
+	"@platforms//cpu:x86_64",
+	"@platforms//os:linux",
 ]
 
 k8_constraints = amd64_constraints
 
 arm_constraints = [
-	"@bazel_tools//platforms:arm",
-	"@bazel_tools//platforms:linux",
+	"@platforms//cpu:arm",
+	"@platforms//os:linux",
 ]
 
 aarch64_constraints = [
-	"@bazel_tools//platforms:aarch64",
-	"@bazel_tools//platforms:linux",
+	"@platforms//cpu:aarch64",
+	"@platforms//os:linux",
 ]
 
 arm64_constraints = aarch64_constraints
@@ -229,11 +233,13 @@ features = [
     flag_sets = [
       flag_set(
         actions = [
+          ACTION_NAMES.assemble,
           ACTION_NAMES.c_compile,
           ACTION_NAMES.cpp_compile,
           ACTION_NAMES.cpp_link_dynamic_library,
           ACTION_NAMES.cpp_link_nodeps_dynamic_library,
           ACTION_NAMES.cpp_link_executable,
+          ACTION_NAMES.preprocess_assemble,
         ],
         flag_groups = [flag_group(flags = ["-no-canonical-prefixes"])]
       ),
@@ -273,7 +279,7 @@ features = [
   ),
   feature(
     name="opt",
-    implies=["common", "disable-assertions"],
+    implies=["common"],
     flag_sets = [
       flag_set(
         actions = [ACTION_NAMES.c_compile, ACTION_NAMES.cpp_compile],
@@ -324,7 +330,6 @@ def _impl(ctx):
     tool_path(name = "compat-ld", path = "${env_ld}"),
     tool_path(name = "cpp", path = "${env_cpp}"),
     tool_path(name = "dwp", path = "${env_dwp}"),
-    tool_path(name = "gcov", path = "${env_gcov}"),
     tool_path(name = "ld", path = "${env_ld}"),
     tool_path(name = "nm", path = "${env_nm}"),
     tool_path(name = "objcopy", path = "${env_objcopy}"),
@@ -426,6 +431,9 @@ bazel_populate_crosstool_target() {
 	# We call tc-getPROG directly for cpp, since we require a program that directly
 	# performs preprocessing (i.e. takes no flags), whereas tc-getCPP returns an
 	# invocation of the compiler for preprocessing (which uses flags).
+	#
+	# DWP is defined elsewhere; silence the shellcheck warning.
+	# shellcheck disable=SC2154
 	cpu_str="${cpu_str}" \
 	builtin_include_dirs="$(bazel_get_builtin_include_dirs "${comp}" || die)" \
 	env_sysroot="${env_sysroot}" \
@@ -433,8 +441,7 @@ bazel_populate_crosstool_target() {
 	env_ar="$(command -v "$("tc-get${env_prefix}AR")" || die)" \
 	env_ld="$(command -v "$("tc-get${env_prefix}LD")" || die)" \
 	env_cpp="$(command -v "$("tc-get${env_prefix}PROG" CPP cpp)" || die)" \
-	env_dwp="$(command -v "$("tc-get${env_prefix}DWP")" || die)" \
-	env_gcov="$(command -v "$("tc-get${env_prefix}GCOV")" || die)" \
+	env_dwp="${DWP}" \
 	env_nm="$(command -v "$("tc-get${env_prefix}NM")" || die)" \
 	env_objcopy="$(command -v "$("tc-get${env_prefix}OBJCOPY")" || die)" \
 	env_objdump="$(command -v "$("tc-get${env_prefix}OBJDUMP")" || die)" \
@@ -532,6 +539,82 @@ bazel_setup_crosstool() {
 
 }
 
+# @FUNCTION: cros-bazel-add-rc
+# @DESCRIPTION:
+# Add lines to the bazelrc configuration preferring the cross-compiler config
+# if it is available.
+cros-bazel-add-rc() {
+	local dest="${BAZEL_CC_BAZELRC}"
+	if [[ ! -f "${dest}" ]]; then
+		dest="${BAZEL_BAZELRC}"
+	fi
+	if [[ ! -f "${dest}" ]]; then
+		dest=".bazelrc"
+	fi
+	printf '%s\n' "$@" >> "${dest}" || die
+}
+
+# @FUNCTION: cros-bazel-add-copt
+# @DESCRIPTION:
+# Add --copt config options to the bazelrc preferring the cross-compiler config
+# if it is available.
+cros-bazel-add-copt() {
+	cros-bazel-add-rc "${@/#/build --copt=}"
+}
+
+# @FUNCTION: cros-bazel-add-cxxopt
+# @DESCRIPTION:
+# Add --cxxopt config options to the bazelrc preferring the cross-compiler
+# config if it is available.
+cros-bazel-add-cxxopt() {
+	cros-bazel-add-rc "${@/#/build --cxxopt=}"
+}
+
+# @FUNCTION: cros-bazel-add-linkopt
+# @DESCRIPTION:
+# Add --linkopt config options to the bazelrc preferring the cross-compiler
+# config if it is available.
+cros-bazel-add-linkopt() {
+	cros-bazel-add-rc "${@/#/build --linkopt=}"
+}
+
+# If an overlay has eclass overrides, but doesn't actually override this
+# eclass, we'll have ECLASSDIR pointing to the active overlay's
+# eclass/ dir, but this eclass is still in the main chromiumos tree.  So
+# add a check to locate the cros-bazel/ regardless of what's going on.
+CROS_BAZEL_ECLASSDIR_LOCAL=${BASH_SOURCE[0]%/*}
+cros-bazel_eclass_dir() {
+	# shellcheck disable=SC2154
+	local d="${ECLASSDIR}/cros-bazel"
+	if [[ ! -d ${d} ]] ; then
+		d="${CROS_BAZEL_ECLASSDIR_LOCAL}/cros-bazel"
+	fi
+	echo "${d}"
+}
+
+# @FUNCTION: bazel_setup_system_protobuf
+# @DESCRIPTION:
+# Sets up the cc_toolchain rule for protobuf using PKG_CONFIG so the
+# cflags and libs are correct. This should be called after the .bazelrc
+# file is created.
+bazel_setup_system_protobuf() {
+	tc-export PKG_CONFIG
+
+	local copts
+	local link_opts
+	copts="$("$(cros-bazel_eclass_dir)/pkg-config-to-bazel.py" "${PKG_CONFIG}" protobuf --cflags)"
+	link_opts="$("$(cros-bazel_eclass_dir)/pkg-config-to-bazel.py" "${PKG_CONFIG}" protobuf --libs)"
+	[[ -z "${link_opts}" ]] && die "system protobuf bazel build template failed (${PKG_CONFIG})"
+	mkdir -p "${S}/cros-bazel/protobuf/" || die
+	sed -e "s;\%COPTS\%;${copts};g" \
+		-e "s;\%LINK_OPTS\%;${link_opts};g" \
+		"$(cros-bazel_eclass_dir)/protobuf/BUILD.bazel.in" \
+		> "${S}/cros-bazel/protobuf/BUILD.bazel" || die
+
+	cros-bazel-add-rc ''
+	cros-bazel-add-rc '# Use system protobuf.'
+	cros-bazel-add-rc 'build --proto_toolchain_for_cc=//cros-bazel/protobuf:system_cc_toolchain'
+}
 
 _CROS_BAZEL_ECLASS=1
 fi

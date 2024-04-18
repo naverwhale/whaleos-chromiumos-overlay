@@ -1,4 +1,4 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -14,11 +14,11 @@ PLATFORM_SUBDIR="secure-wipe"
 inherit cros-workon platform
 
 DESCRIPTION="Secure wipe"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/secure-wipe/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/secure-wipe/"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
-IUSE="mmc nvme sata test"
+IUSE="mmc nvme sata test ufs"
 
 DEPEND=""
 
@@ -27,6 +27,7 @@ RDEPEND="
 	sata? ( sys-apps/hdparm )
 	mmc? ( sys-apps/mmc-utils )
 	nvme? ( sys-apps/nvme-cli )
+	ufs? ( chromeos-base/factory_ufs )
 	sys-apps/util-linux
 	sys-block/fio"
 
@@ -35,6 +36,8 @@ src_test() {
 }
 
 src_install() {
+	platform_src_install
+
 	dosbin secure-wipe.sh
 	dosbin wipe_disk
 }

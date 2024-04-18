@@ -1,17 +1,20 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=6
+EAPI="7"
 
 inherit cros-constants libchrome
 
 DESCRIPTION="Packages tools for termina VM containers"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/vm_tools"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/vm_tools"
 
 LICENSE="BSD-Google"
 SLOT="0"
 KEYWORDS="*"
-IUSE="vm_borealis"
+IUSE="vm_borealis lib_resourced"
+# This ebuild doesn't build _new_ binaries. The binaries it installs should
+# already be stripped. This avoids causing broken debug files to be generated.
+RESTRICT="strip"
 
 S="${WORKDIR}"
 
@@ -28,6 +31,7 @@ DEPEND="
 	!vm_borealis? ( media-libs/mesa )
 	!vm_borealis? ( x11-apps/xkbcomp )
 	!vm_borealis? ( x11-base/xwayland )
+	!vm_borealis? ( chromeos-base/crostini-metric-reporter )
 "
 
 src_install() {
@@ -35,13 +39,13 @@ src_install() {
 		"/usr/bin/chunnel"
 		"/usr/bin/garcon"
 		"/usr/bin/guest_service_failure_notifier"
+		"/usr/bin/maitred"
 		"/usr/bin/notificationd"
 		"/usr/sbin/vshd"
 	)
 	if use vm_borealis; then
 		tools+=(
 			"/sbin/crash_reporter"
-			"/sbin/init"
 			"/usr/bin/core2md"
 			"/usr/bin/vm_syslog"
 		)
@@ -53,6 +57,7 @@ src_install() {
 			"/usr/bin/Xwayland"
 			"/usr/bin/x11_demo"
 			"/usr/bin/xkbcomp"
+			"/usr/bin/crostini_metric_reporter"
 		)
 	fi
 	"${CHROMITE_BIN_DIR}"/lddtree --root="${SYSROOT}" --bindir=/bin \
@@ -76,6 +81,11 @@ src_install() {
 			"/usr/$(get_libdir)/libwayland-egl.so.1" \
 			"/usr/$(get_libdir)/libEGL.so.1" \
 			"/usr/$(get_libdir)/libGLESv2.so.2" \
+		)
+	fi
+	if use lib_resourced; then
+		dlopen_libs+=(
+			"/usr/$(get_libdir)/libresourceD.so" \
 		)
 	fi
 

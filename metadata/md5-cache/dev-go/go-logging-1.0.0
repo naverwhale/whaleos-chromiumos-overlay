@@ -1,0 +1,12 @@
+BDEPEND=dev-lang/go
+DEFINED_PHASES=compile install nofetch postinst test unpack
+DESCRIPTION=Golang logging library
+EAPI=7
+HOMEPAGE=https://github.com/op/go-logging
+KEYWORDS=*
+LICENSE=BSD
+RDEPEND=!<=dev-go/luci-go-common-0.0.1-r12
+SLOT=0
+SRC_URI=https://github.com/op/go-logging/archive/v1.tar.gz -> github.com-op-go-logging-v1.tar.gz
+_eclasses_=cros-go	77ba1c1ddf5c20dab7e47e19efeffef7	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=a1ca23d7b972eacec7e65ec3cb1a6994

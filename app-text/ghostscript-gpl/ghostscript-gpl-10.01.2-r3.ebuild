@@ -1,0 +1,1 @@
+ghostscript-gpl-10.01.2.ebuild

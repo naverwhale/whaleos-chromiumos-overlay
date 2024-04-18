@@ -1,0 +1,138 @@
+respect NO_PORTMAPPER everywhere
+
+--- a/src/bench.h
++++ b/src/bench.h
+@@ -4,6 +4,8 @@
+ #ifndef _BENCH_H
+ #define _BENCH_H
+ 
++#define NO_PORTMAPPER
++
+ #ifdef WIN32
+ #include <windows.h>
+ typedef unsigned char bool_t;
+@@ -35,9 +37,10 @@ typedef unsigned char bool_t;
+ #include        <sys/socket.h>
+ #include        <sys/un.h>
+ #include        <sys/resource.h>
++#endif
++#ifndef NO_PORTMAPPER
+ #define PORTMAP
+ #include	<rpc/rpc.h>
+-#endif
+ #ifdef HAVE_pmap_clnt_h
+ #include	<rpc/pmap_clnt.h>
+ #endif
+@@ -45,6 +48,7 @@ typedef unsigned char bool_t;
+ #ifdef HAVE_pmap_clnt_h
+ #include	<rpc/pmap_clnt.h>
+ #endif
++#endif
+ 
+ #include 	<stdarg.h>
+ #ifndef HAVE_uint
+@@ -85,8 +89,6 @@ typedef int socklen_t;
+ typedef int64 off64_t;
+ #endif
+ 
+-#define NO_PORTMAPPER
+-
+ #include	"stats.h"
+ #include	"timing.h"
+ #include	"lib_debug.h"
+--- a/src/lat_rpc.c
++++ b/src/lat_rpc.c
+@@ -18,6 +18,8 @@
+ char	*id = "$Id$\n";
+ #include "bench.h"
+ 
++#ifndef NO_PORTMAPPER
++
+ void	client_main(int ac, char **av);
+ void	server_main();
+ void	benchmark(iter_t iterations, void* _state);
+@@ -279,3 +281,11 @@ xact_prog_1(rqstp, transp)
+ 	}
+ 	return;
+ }
++
++#else
++int main()
++{
++	fprintf(stderr, "lat_rpc: not supported\n");
++	return 1;
++}
++#endif
+--- a/src/lat_usleep.c
++++ b/src/lat_usleep.c
+@@ -155,9 +155,9 @@ set_realtime()
+     struct sched_param sp;
+ 
+     sp.sched_priority = sched_get_priority_max(SCHED_RR);
+-    if (sched_setscheduler(0, SCHED_RR, &sp) >= 0) return TRUE;
++    if (sched_setscheduler(0, SCHED_RR, &sp) >= 0) return 1;
+     perror("sched_setscheduler");
+-    return FALSE;
++    return 0;
+ }
+ 
+ int
+--- a/src/lib_tcp.c
++++ b/src/lib_tcp.c
+@@ -45,12 +45,14 @@ tcp_server(int prog, int rdwr)
+ #ifdef	LIBTCP_VERBOSE
+ 		fprintf(stderr, "Server port %d\n", sockport(sock));
+ #endif
++#ifndef	NO_PORTMAPPER
+ 		(void)pmap_unset((u_long)prog, (u_long)1);
+ 		if (!pmap_set((u_long)prog, (u_long)1, (u_long)IPPROTO_TCP,
+ 		    (unsigned short)sockport(sock))) {
+ 			perror("pmap_set");
+ 			exit(5);
+ 		}
++#endif
+ 	}
+ 	return (sock);
+ }
+@@ -61,9 +63,11 @@ tcp_server(int prog, int rdwr)
+ int
+ tcp_done(int prog)
+ {
++#ifndef	NO_PORTMAPPER
+ 	if (prog > 0) {
+ 		pmap_unset((u_long)prog, (u_long)1);
+ 	}
++#endif
+ 	return (0);
+ }
+ 
+@@ -161,6 +165,7 @@ tcp_connect(char *host, int prog, int rdwr)
+ 		s.sin_family = AF_INET;
+ 		bcopy((void*)h->h_addr, (void *)&s.sin_addr, h->h_length);
+ 		if (prog > 0) {
++#ifndef NO_PORTMAPPER
+ 			save_port = pmap_getport(&s, prog,
+ 			    (u_long)1, IPPROTO_TCP);
+ 			if (!save_port) {
+@@ -171,6 +176,9 @@ tcp_connect(char *host, int prog, int rdwr)
+ 			fprintf(stderr, "Server port %d\n", save_port);
+ #endif
+ 			s.sin_port = htons(save_port);
++#else
++			s.sin_port = htons(prog);
++#endif
+ 		} else {
+ 			s.sin_port = htons(-prog);
+ 		}
+--- a/src/lib_udp.c
++++ b/src/lib_udp.c
+@@ -51,7 +51,9 @@ udp_server(u_long prog, int rdwr)
+ void
+ udp_done(u_long prog)
+ {
++#ifndef	NO_PORTMAPPER
+ 	(void)pmap_unset(prog, (u_long)1);
++#endif
+ }
+ 
+ /*

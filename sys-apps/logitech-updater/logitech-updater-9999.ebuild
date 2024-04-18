@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -12,9 +12,11 @@ HOMEPAGE="https://chromium.googlesource.com/chromiumos/third_party/logitech-upda
 LICENSE="BSD-Google"
 KEYWORDS="~*"
 
-COMMON_DEPEND="chromeos-base/libbrillo:=
-	virtual/libusb:1=
+COMMON_DEPEND="
 	chromeos-base/cfm-dfu-notification:=
+	chromeos-base/libbrillo:=
+	dev-libs/openssl:0=
+	virtual/libusb:1=
 "
 
 RDEPEND="${COMMON_DEPEND}"

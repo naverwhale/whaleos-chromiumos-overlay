@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -34,7 +34,18 @@ COMMON_DEPEND="chromeos-base/libbrillo:=[asan?,fuzzer?]
 RDEPEND="${COMMON_DEPEND}"
 DEPEND="${COMMON_DEPEND}"
 
+BDEPEND="
+	dev-libs/protobuf
+"
+
+src_prepare() {
+	eapply "${FILESDIR}"/puffin-include-unistd.h-explicitly.patch
+	eapply_user
+}
+
 src_install() {
+	platform_src_install
+
 	if use cros_host; then
 		dobin "${OUT}"/puffin
 	fi
@@ -56,9 +67,4 @@ src_install() {
 
 platform_pkg_test() {
 	platform_test "run" "${OUT}/puffin_test"
-
-	# Run fuzzers.
-	for f in "huff" "puff" "puffpatch"; do
-		platform_fuzzer_test "${OUT}/puffin_${f}_fuzzer"
-	done
 }

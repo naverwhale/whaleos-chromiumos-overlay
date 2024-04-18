@@ -1,0 +1,82 @@
+From e40be0e5c01c19cbacd0bfe91380ebb60e45aecd Mon Sep 17 00:00:00 2001
+From: Jaewon Jung <jw.jung@navercorp.com>
+Date: Mon, 11 Dec 2023 11:50:06 +0900
+Subject: [PATCH] [WhaleOS] build with python3.8
+
+Change-Id: Ie381e0c06ee0f01bd0cc2b3ca2eeb7c695a754c7
+Signed-off-by: Jaewon Jung <jw.jung@navercorp.com>
+---
+ src/nouveau/nvidia-headers/class_parser.py | 25 ++++++++++++++++------
+ 1 file changed, 18 insertions(+), 7 deletions(-)
+
+diff --git a/src/nouveau/nvidia-headers/class_parser.py b/src/nouveau/nvidia-headers/class_parser.py
+index 6620df689f6..4cb4603f74d 100644
+--- a/src/nouveau/nvidia-headers/class_parser.py
++++ b/src/nouveau/nvidia-headers/class_parser.py
+@@ -214,6 +214,17 @@ P_DUMP_${nvcl}_MTHD_DATA(FILE *fp, uint16_t idx, uint32_t data,
+ }
+ """)
+ 
++def removeprefix(text, prefix):
++    if text.startswith(prefix):
++        return text[len(prefix):]
++    return text
++
++def removesuffix(text, suffix):
++    if text.endswith(suffix):
++        return text[:-len(suffix)]
++    return text
++
++
+ def glob_match(glob, name):
+     if glob.endswith('*'):
+         return name.startswith(glob[:-1])
+@@ -273,7 +284,7 @@ def parse_header(nvcl, f):
+                 if ":" in list[2]:
+                     state = 1
+                 elif teststr in list[1]:
+-                    curmthd.field_defs[curfield][list[1].removeprefix(teststr)] = list[2]
++                    curmthd.field_defs[curfield][removeprefix(list[1], teststr)] = list[2]
+                 else:
+                     state = 1
+ 
+@@ -283,7 +294,7 @@ def parse_header(nvcl, f):
+                     if ("0x" in list[2]):
+                         state = 1
+                     else:
+-                        field = list[1].removeprefix(teststr)
++                        field = removeprefix(list[1], teststr)
+                         bitfield = list[2].split(":")
+                         curmthd.field_name_start[field] = bitfield[1]
+                         curmthd.field_name_end[field] = bitfield[0]
+@@ -304,13 +315,13 @@ def parse_header(nvcl, f):
+                 is_array = 0
+                 if (':' in list[2]):
+                     continue
+-                name = list[1].removeprefix(teststr)
++                name = removeprefix(list[1], teststr)
+                 if name.endswith("(i)"):
+                     is_array = 1
+-                    name = name.removesuffix("(i)")
++                    name = removesuffix(name, "(i)")
+                 if name.endswith("(j)"):
+                     is_array = 1
+-                    name = name.removesuffix("(j)")
++                    name = removesuffix(name, "(j)")
+                 x = method()
+                 x.name = name
+                 x.addr = list[2]
+@@ -336,8 +347,8 @@ def main():
+ 
+     clheader = os.path.basename(args.in_h)
+     nvcl = clheader
+-    nvcl = nvcl.removeprefix("cl")
+-    nvcl = nvcl.removesuffix(".h")
++    nvcl = removeprefix(nvcl, "cl")
++    nvcl = removesuffix(nvcl, ".h")
+     nvcl = nvcl.upper()
+     nvcl = "NV" + nvcl
+ 
+-- 
+2.25.1
+

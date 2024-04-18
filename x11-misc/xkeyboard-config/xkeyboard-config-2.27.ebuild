@@ -1,7 +1,7 @@
 # Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=6
+EAPI="7"
 
 DESCRIPTION="X keyboard configuration database"
 HOMEPAGE="https://www.freedesktop.org/wiki/Software/XKeyboardConfig https://gitlab.freedesktop.org/xkeyboard-config/xkeyboard-config"
@@ -48,6 +48,7 @@ PATCHES=(
 	"${FILESDIR}"/${P}-ee.patch
 	"${FILESDIR}"/${P}-latam.patch
 	"${FILESDIR}"/${P}-ch.patch
+	"${FILESDIR}"/${P}-si.patch
 )
 
 src_prepare() {

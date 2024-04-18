@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE.makefile file.
 
@@ -7,14 +7,14 @@
 # Chromium OS Firmware Team
 # @BUGREPORTS:
 # Please report bugs via http://crbug.com/new (with label Build)
-# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/master/eclass/@ECLASS@
+# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/eclass/@ECLASS@
 # @BLURB: helper eclass for building ISH firmware based on Chromium OS EC
 # @DESCRIPTION:
 # Builds the ISH firmware and installs into /lib/firmware/intel/<board>.bin
 #
 # NOTE: When making changes to this class, make sure to modify all the -9999
 # ebuilds that inherit it (e.g., chromeos-ish) to work around
-# http://crbug.com/220902.
+# https://issuetracker.google.com/201299127.
 
 # @ECLASS-VARIABLE: ISH_TARGETS
 # @DESCRIPTION:
@@ -70,11 +70,27 @@ cros-ish_set_build_env() {
 	tc-export CC BUILD_CC
 	export BUILDCC="${BUILD_CC}"
 
+	# b/247791129: EC expects HOST_PKG_CONFIG to be the pkg-config targeting the
+	# platform that the EC is running on top of (e.g., the Chromebook's AP).
+	# That platform corresponds to the ChromeOS "$BOARD" and the pkg-config for
+	# the "$BOARD" being built is specified by tc-getPKG_CONFIG.
+	export HOST_PKG_CONFIG
+	HOST_PKG_CONFIG=$(tc-getPKG_CONFIG)
+
+	# EC expects BUILD_PKG_CONFIG to be the pkg-config targeting the build
+	# machine (the machine doing the compilation).
+	export BUILD_PKG_CONFIG
+	BUILD_PKG_CONFIG=$(tc-getBUILD_PKG_CONFIG)
+
 	ISH_TARGETS=($(cros_config_host get-firmware-build-targets ish))
 
 	EC_OPTS=()
 	use quiet && EC_OPTS+=( -s V=0 )
 	use verbose && EC_OPTS+=( V=1 )
+
+	# Disable the kconfig checker, as the platform/ec commit queue
+	# does not use this code path.
+	EC_OPTS+=( "ALLOW_CONFIG=1" )
 }
 
 # @FUNCTION: cros-ish_src_compile

@@ -1,9 +1,12 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2012 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
 
-inherit cros-constants
+# shellcheck disable=SC2034
+PLATFORM2_TEST_DEPS="build+test"
+
+inherit cros-constants platform2-test
 
 DESCRIPTION="Chrome OS Fonts (meta package)"
 HOMEPAGE="http://src.chromium.org"
@@ -11,7 +14,7 @@ HOMEPAGE="http://src.chromium.org"
 LICENSE="GPL-2"
 SLOT="0"
 KEYWORDS="*"
-IUSE="cros_host internal"
+IUSE="cros_host extra_japanese_fonts internal"
 
 # List of font packages used in Chromium OS.  This list is separate
 # so that it can be shared between the host in
@@ -30,7 +33,7 @@ IUSE="cros_host internal"
 DEPEND="
 	internal? (
 		chromeos-base/monotype-fonts:=
-		chromeos-base/google-sans-fonts:=
+		>=chromeos-base/google-sans-fonts-3.0.0:=
 	)
 	media-fonts/croscorefonts:=
 	media-fonts/crosextrafonts:=
@@ -44,89 +47,82 @@ DEPEND="
 	media-libs/fontconfig:=
 	!cros_host? ( sys-libs/gcc-libs:= )
 	cros_host? ( sys-libs/glibc:= )
+	extra_japanese_fonts? (
+		media-fonts/ipaex
+		media-fonts/morisawa-ud-fonts
+	)
 	"
 RDEPEND="${DEPEND}"
 
-BDEPEND="chromeos-base/minijail"
+BDEPEND="
+	amd64? ( media-libs/fontconfig:= )
+"
 
 S=${WORKDIR}
 
-# The following code uses sudo to generate the font-cache.  It is almost
-# always not a good idea to use sudo in your ebuild.  This ebuild is an
-# exception for the following reasons:
-#
-# - fc-cache was designed with the generic linux distribution use case
-#   in mind where package maintainers have no idea what fonts are actually
-#   installed on the system.  As a result fc-cache operates directly on
-#   the target file system and needs permission to modify its cache
-#   directory (/usr/share/cache/fontconfig).
-# - /usr/share/cache/fontconfig normally is owned by root, but for various
-#   reasons, we bind mount our own work directory on top of it. The bind
-#   mounting requires root privileges.
-# - When cross-compiling, the generated font caches need to be compatible
-#   with the architecture on which they will be used.  To properly do
-#   this, we need to run the architecture appropriate copy of fc-cache,
-#   which may link against other arch-specific libraries, which means
-#   we need to chroot it in the board sysroot and chrooting requires
-#   root permissions.
-#
-# By themselves the above reasons are not sufficient to justify using sudo in
-# the ebuild.  What makes this OK is that fc-cache takes a really long time
-# when run under qemu for ARM (4 - 7 minutes), which is a very large percentage
-# of the overall time spent in build_image. It doesn't make sense to force each
-# developer to spend a bunch of time generating the exact same font cache on
-# their machine every time they want to build an image.  And even then, we can
-# only do this because chromeos-fonts is a specialized ebuild for Chrome OS
-# only.
-#
-# All of which is to say: don't use sudo in your ebuild.  You have been
-# warned.  -- chirantan
-generate_font_cache() {
-	mkdir -p "${WORKDIR}/out" || die
+emptydir() {
+	[[ -z "$(find "$1" -mindepth 1 -maxdepth 1)" ]]
+}
 
-	# Run fc-cache in a mount namespace, to handle isolation and graceful
-	# cleanup.
-	#
-	# platform2_test: helpful because it's a pain to open-code QEMU usage
-	#   (needed for ARCHes that don't match the build system).
-	# minijail0: helpful because platform2_test does not provide custom
-	#   bind-mounting facilities.
-	#   -v: mount namespace
-	#   -K: don't change root mount propagation (not possible in a chroot,
-	#     where chroot isn't a mount)
-	#   -k ... 0x5000: MS_BIND|MS_PRIVATE
-	local jail_args=(
-		-vK
-		-k "${WORKDIR}/out,${SYSROOT}/usr/share/cache/fontconfig,none,0x5000"
-	)
+# When cross-compiling, the generated font caches need to be compatible with
+# the architecture on which they will be used, so we run the target fc-cache
+# through platform2_test.py (and QEMU).
+generate_font_cache() {
+	local fonts_path="${WORKDIR}/usr/share/fonts"
+
+	# Because this can be a lot of data, we link instead of copying. Hard
+	# links may run into /proc/sys/fs/protected_hardlinks limitations on
+	# some systems, so we use symbolic links. Symlinks need to be relative,
+	# to work in and out of a sysroot-relative view of the filesystem.
+	local sysroot_fonts="${SYSROOT}/usr/share/fonts"
+	# Mirror the directory structure.
+	find "${sysroot_fonts}" -mindepth 1 -type d -printf "${fonts_path}/%P\0" | \
+		xargs -0 mkdir -p || die
+	# Create relative symlinks to all the fonts.
+	find "${sysroot_fonts}" -type f -not -name .uuid -printf '%P\0' | \
+		xargs -0 -I'{}' ln -sr "${sysroot_fonts}"/{} "${fonts_path}"/{} \
+		|| die
+
+	# Copy the fontconfig configurations over too.
+	mkdir -p "${WORKDIR}/etc/fonts" || die
+	rsync -a "${SYSROOT}/etc/fonts/" "${WORKDIR}/etc/fonts/" || die
+
+	# .uuid files need to exist when fc-cache is run, otherwise fc-cache
+	# will try to generate them itself.
+	local fontname
+	while read -r -d $'\0' fontname; do
+		# Old builds could leave empty (except for .uuid) directories.
+		if emptydir "${fonts_path}/${fontname}"; then
+			rmdir -v "${fonts_path}/${fontname}" || die
+			continue
+		fi
+		uuidgen --sha1 -n @dns -N "$(usev cros_host)${fontname}" > \
+			"${fonts_path}/${fontname}"/.uuid || die
+	done < <(find "${fonts_path}" -depth -mindepth 1 -type d -printf '%P\0')
+
+	# Per https://reproducible-builds.org/specs/source-date-epoch/, this
+	# should be the last modification time of the source (date +%s). In
+	# practice, we just need it to be older than the timestamp of anyone
+	# building this package, and greater than 0 (fontconfig ignores 0
+	# values).
+	local TIMESTAMP=1
 	if [[ "${ARCH}" == "amd64" ]]; then
 		# Special-case for amd64: the target ISA may not match our
 		# build host (so we can't run natively;
 		# https://crbug.com/856686), and we may not have QEMU support
 		# for the full ISA either. Just run the SDK binary instead.
-		sudo minijail0 "${jail_args[@]}" \
-			/usr/bin/fc-cache -f -v --sysroot "${SYSROOT:-/}" || die
-
+		SOURCE_DATE_EPOCH="${TIMESTAMP}" \
+			/usr/bin/fc-cache -f -v --sysroot "${WORKDIR}" || die
 	else
-		sudo minijail0 "${jail_args[@]}" \
-			"${CHROOT_SOURCE_ROOT}"/src/platform2/common-mk/platform2_test.py \
-			--sysroot "${SYSROOT}" -- /usr/bin/fc-cache -f -v || die
+		"${CHROOT_SOURCE_ROOT}"/src/platform2/common-mk/platform2_test.py \
+			--strategy=unprivileged \
+			--user=root \
+			--bind-mount-dev \
+			--env SOURCE_DATE_EPOCH="${TIMESTAMP}" \
+			--sysroot "${SYSROOT}" \
+			-- /usr/bin/fc-cache -f -v \
+			--sysroot "${WORKDIR/#${SYSROOT}/}" || die
 	fi
-}
-
-# TODO(cjmcdonald): crbug/913317 These .uuid files need to exist when fc-cache
-#                   is run otherwise fontconfig tries to write them to the font
-#                   directories and generates portage sandbox violations.
-#                   Additionally, the .uuid files need to be installed as part
-#                   of this package so that they exist when this package is
-#                   installed as a binpkg. Remove this section once fontconfig
-#                   no longer uses these .uuid files.
-pkg_setup() {
-	local fontdir fontdirs=( $(cd "${SYSROOT}"/usr/share/fonts; echo */) )
-	for fontdir in "${fontdirs[@]}"; do
-		uuidgen --sha1 -n @dns -N "$(usev cros_host)${fontdir}" > \
-			"${SYSROOT}"/usr/share/fonts/"${fontdir}"/.uuid
-	done
 }
 
 src_compile() {
@@ -135,11 +131,12 @@ src_compile() {
 
 src_install() {
 	insinto /usr/share/cache/fontconfig
-	doins "${WORKDIR}"/out/*
+	doins "${WORKDIR}"/usr/share/cache/fontconfig/*
 
-	local fontdir fontdirs=( $(cd "${SYSROOT}"/usr/share/fonts; echo */) )
-	for fontdir in "${fontdirs[@]}"; do
-		insinto "/usr/share/fonts/${fontdir}"
-		uuidgen --sha1 -n @dns -N "$(usev cros_host)${fontdir}" | newins - .uuid
-	done
+	# .uuid files are also needed for the target package.
+	local fontname
+	while read -r -d $'\0' fontname; do
+		insinto "/usr/share/fonts/${fontname}"
+		doins "${WORKDIR}/usr/share/fonts/${fontname}/.uuid"
+	done < <(find "${WORKDIR}"/usr/share/fonts/ -mindepth 1 -type d -printf '%P\0')
 }

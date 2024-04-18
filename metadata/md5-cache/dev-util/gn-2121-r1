@@ -1,0 +1,11 @@
+BDEPEND=app-arch/unzip
+DEFINED_PHASES=install
+DESCRIPTION=GN (generate ninja) meta-build system
+EAPI=7
+HOMEPAGE=https://gn.googlesource.com/gn/
+KEYWORDS=-* amd64
+LICENSE=BSD-Google
+RESTRICT=mirror
+SLOT=0
+SRC_URI=cipd://gn/gn/linux-amd64:Y7sOI_DS9ZM0NfSXuRFQiS6zDdWUXmhR4KtJP_LG2-EC -> gn-2121-amd64.zip
+_md5_=d42dac3b12e8452b03911fd6c602b935

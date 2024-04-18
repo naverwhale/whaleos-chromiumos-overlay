@@ -1,0 +1,13 @@
+BDEPEND=virtual/pkgconfig
+DEFINED_PHASES=compile install prepare
+DEPEND=dev-libs/libnl:=
+DESCRIPTION=nl80211 configuration utility for wireless devices using the mac80211 stack
+EAPI=7
+HOMEPAGE=https://wireless.wiki.kernel.org/en/users/Documentation/iw
+KEYWORDS=*
+LICENSE=ISC
+RDEPEND=dev-libs/libnl:=
+SLOT=0
+SRC_URI=https://www.kernel.org/pub/software/network/iw/iw-5.19.tar.xz
+_eclasses_=flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=f864e0bb02cb55952040cc8c609ec9ef

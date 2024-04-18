@@ -1,4 +1,4 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright 2010 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="7"
@@ -13,7 +13,7 @@ PLATFORM_SUBDIR="image-burner"
 inherit cros-workon platform user
 
 DESCRIPTION="Image-burning service for Chromium OS"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/image-burner/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/image-burner/"
 SRC_URI=""
 
 LICENSE="BSD-Google"
@@ -28,6 +28,10 @@ DEPEND="${RDEPEND}
 	chromeos-base/system_api
 "
 
+BDEPEND="
+	chromeos-base/chromeos-dbus-bindings
+"
+
 pkg_preinst() {
 	# Create user and group for image-burner.
 	enewuser "image-burner"
@@ -35,16 +39,7 @@ pkg_preinst() {
 }
 
 src_install() {
-	dosbin "${OUT}"/image_burner
-
-	insinto /etc/dbus-1/system.d
-	doins ImageBurner.conf
-
-	insinto /usr/share/dbus-1/system-services
-	doins org.chromium.ImageBurner.service
-
-	insinto /etc/init
-	doins init/image-burner.conf
+	platform_src_install
 
 	# TODO(crbug/766130): Remove the following sed block when non-root mount
 	# namespace is by default enabled.
@@ -57,5 +52,5 @@ src_install() {
 }
 
 platform_pkg_test() {
-	platform_test "run" "${OUT}/unittest_runner"
+	platform test_all
 }

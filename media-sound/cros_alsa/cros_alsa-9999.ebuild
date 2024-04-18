@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -20,56 +20,10 @@ KEYWORDS="~*"
 IUSE="test"
 
 DEPEND="
-	>=dev-rust/alsa-sys-0.2.0:= <dev-rust/alsa-sys-0.3.0
-	>=dev-rust/libc-0.2.65:=
-	<dev-rust/libc-0.3
-	=dev-rust/proc-macro2-1*:=
-	=dev-rust/quote-1*:=
-	=dev-rust/syn-1*:=
-	dev-rust/remain:=
+	dev-rust/third-party-crates-src:=
+	media-sound/cros_alsa_derive:=
+	>=media-libs/alsa-lib-1.1.8-r3:= <media-libs/alsa-lib-2.0.0
 "
 # (crbug.com/1182669): build-time only deps need to be in RDEPEND so they are pulled in when
 # installing binpkgs since the full source tree is required to use the crate.
 RDEPEND="${DEPEND}"
-
-pkg_setup() {
-	cros-rust_pkg_setup cros_alsa_derive
-	cros-rust_pkg_setup cros_alsa
-}
-
-src_compile() {
-	(
-		cd cros_alsa_derive || die
-		cros-rust_src_compile
-	)
-
-	cros-rust_src_compile
-}
-
-src_test() {
-	(
-		cd cros_alsa_derive || die
-		cros-rust_src_test
-	)
-
-	cros-rust_src_test
-}
-
-src_install() {
-	(
-		cd cros_alsa_derive || die
-		cros-rust_publish cros_alsa_derive "$(cros-rust_get_crate_version .)"
-	)
-
-	cros-rust_publish "${PN}" "$(cros-rust_get_crate_version)"
-}
-
-pkg_postinst() {
-	cros-rust_pkg_postinst cros_alsa_derive
-	cros-rust_pkg_postinst cros_alsa
-}
-
-pkg_prerm() {
-	cros-rust_pkg_prerm cros_alsa_derive
-	cros-rust_pkg_prerm cros_alsa
-}

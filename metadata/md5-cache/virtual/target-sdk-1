@@ -7,4 +7,4 @@ KEYWORDS=*
 LICENSE=metapackage
 RDEPEND=virtual/target-chromium-os-sdk
 SLOT=0
-_md5_=ea9b74dcb15c9fc05a54d1889bd9a34b
+_md5_=7761b89951fe02bcab58b775f9f943ea

@@ -1,4 +1,4 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -18,7 +18,6 @@ RDEPEND="
 	dev-lang/python
 	dev-python/protobuf-python
 	dev-python/cherrypy
-	net-misc/gsutil
 	!<chromeos-base/cros-devutils-1
 "
 DEPEND="

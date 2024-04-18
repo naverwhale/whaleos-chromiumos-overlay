@@ -1,0 +1,53 @@
+commit a8fbc16ebebedce98d06782680fcafae0cf06e7d
+Author: Owen Pan <owenpiano@gmail.com>
+Date:   Thu Sep 7 15:05:46 2023 -0700
+
+    Revert "[git-clang-format] Fix typo in help message"
+    
+    This reverts commit d099dbb221a4c3474a15117b1658dedc5dcd6ebf as
+    'git clang-format' is the idiomatic way of running git-clang-format.
+
+diff --git a/clang/tools/clang-format/git-clang-format b/clang/tools/clang-format/git-clang-format
+index 3e49c49af2ba..c0b99b822032 100755
+--- a/clang/tools/clang-format/git-clang-format
++++ b/clang/tools/clang-format/git-clang-format
+@@ -13,11 +13,11 @@ clang-format git integration
+ ============================
+ 
+ This file provides a clang-format integration for git. Put it somewhere in your
+-path and ensure that it is executable. Then, "git-clang-format" will invoke
++path and ensure that it is executable. Then, "git clang-format" will invoke
+ clang-format on the changes in current files or a specific commit.
+ 
+ For further details, run:
+-git-clang-format -h
++git clang-format -h
+ 
+ Requires Python 2.7 or Python 3
+ """
+@@ -32,7 +32,7 @@ import re
+ import subprocess
+ import sys
+ 
+-usage = ('git-clang-format [OPTIONS] [<commit>] [<commit>|--staged] '
++usage = ('git clang-format [OPTIONS] [<commit>] [<commit>|--staged] '
+          '[--] [<file>...]')
+ 
+ desc = '''
+@@ -42,13 +42,13 @@ only applied to the working directory, or in the stage/index.
+ 
+ Examples:
+   To format staged changes, i.e everything that's been `git add`ed:
+-    git-clang-format
++    git clang-format
+ 
+   To also format everything touched in the most recent commit:
+-    git-clang-format HEAD~1
++    git clang-format HEAD~1
+ 
+   If you're on a branch off main, to format everything touched on your branch:
+-    git-clang-format main
++    git clang-format main
+ 
+ If two commits are given (requires --diff), run clang-format on all lines in the
+ second <commit> that differ from the first <commit>.

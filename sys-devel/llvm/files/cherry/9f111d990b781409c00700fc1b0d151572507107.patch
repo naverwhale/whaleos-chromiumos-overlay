@@ -1,0 +1,564 @@
+commit 9f111d990b781409c00700fc1b0d151572507107
+Author: Joel E. Denny <jdenny.ornl@gmail.com>
+Date:   Thu Sep 7 12:35:13 2023 -0400
+
+    Revert "[lit] Drop "Script:", make -v and -a imply -vv"
+    
+    This reverts commit 09b6e457d91ce84088e6e21783913e5f1e5bd227.
+    
+    The reason for the revert is discussed at:
+    https://discourse.llvm.org/t/rfc-improving-lits-debug-output/72839/52
+
+diff --git a/llvm/docs/CommandGuide/lit.rst b/llvm/docs/CommandGuide/lit.rst
+index b494c74889aa..28319660d69c 100644
+--- a/llvm/docs/CommandGuide/lit.rst
++++ b/llvm/docs/CommandGuide/lit.rst
+@@ -94,20 +94,21 @@ OUTPUT OPTIONS
+  Show more information on test failures, for example the entire test output
+  instead of just the test result.
+ 
+- Each command is printed before it is executed. This can be valuable for
+- debugging test failures, as the last printed command is the one that failed.
+- Moreover, :program:`lit` inserts a no-op command (``:`` in the case of bash)
+- with argument ``'RUN: at line N'`` before each command pipeline, and those
+- no-op commands are also printed to help you locate the source line of the
+- failed command.
+-
+ .. option:: -vv, --echo-all-commands
+ 
+- Deprecated alias for -v.
++ On test failure, echo all commands to stdout as they are being executed.
++ This can be valuable for debugging test failures, as the last echoed command
++ will be the one which has failed.
++ :program:`lit` normally inserts a no-op command (``:`` in the case of bash)
++ with argument ``'RUN: at line N'`` before each command pipeline, and this
++ option also causes those no-op commands to be echoed to stdout to help you
++ locate the source line of the failed command.
++ This option implies ``--verbose``.
+ 
+ .. option:: -a, --show-all
+ 
+- Enable -v, but for all tests not just failed tests.
++ Show more information about all tests, for example the entire test
++ commandline and output.
+ 
+ .. option:: --no-progress-bar
+ 
+diff --git a/llvm/utils/lit/lit/LitConfig.py b/llvm/utils/lit/lit/LitConfig.py
+index d7e79b60f385..331c21d7b9df 100644
+--- a/llvm/utils/lit/lit/LitConfig.py
++++ b/llvm/utils/lit/lit/LitConfig.py
+@@ -36,6 +36,7 @@ class LitConfig(object):
+         config_prefix=None,
+         maxIndividualTestTime=0,
+         parallelism_groups={},
++        echo_all_commands=False,
+         per_test_coverage=False,
+     ):
+         # The name of the test runner.
+@@ -86,6 +87,7 @@ class LitConfig(object):
+ 
+         self.maxIndividualTestTime = maxIndividualTestTime
+         self.parallelism_groups = parallelism_groups
++        self.echo_all_commands = echo_all_commands
+         self.per_test_coverage = per_test_coverage
+ 
+     @property
+diff --git a/llvm/utils/lit/lit/TestRunner.py b/llvm/utils/lit/lit/TestRunner.py
+index 0629eca42049..88755297c8e7 100644
+--- a/llvm/utils/lit/lit/TestRunner.py
++++ b/llvm/utils/lit/lit/TestRunner.py
+@@ -1102,7 +1102,10 @@ def executeScript(test, litConfig, tmpBase, commands, cwd):
+                 commands[i] = match.expand(
+                     "echo '\\1' > nul && " if command else "echo '\\1' > nul"
+                 )
+-        f.write("@echo on\n")
++        if litConfig.echo_all_commands:
++            f.write("@echo on\n")
++        else:
++            f.write("@echo off\n")
+         f.write("\n@if %ERRORLEVEL% NEQ 0 EXIT\n".join(commands))
+     else:
+         for i, ln in enumerate(commands):
+@@ -1112,7 +1115,8 @@ def executeScript(test, litConfig, tmpBase, commands, cwd):
+                 commands[i] = match.expand(": '\\1'; \\2" if command else ": '\\1'")
+         if test.config.pipefail:
+             f.write(b"set -o pipefail;" if mode == "wb" else "set -o pipefail;")
+-        f.write(b"set -x;" if mode == "wb" else "set -x;")
++        if litConfig.echo_all_commands:
++            f.write(b"set -x;" if mode == "wb" else "set -x;")
+         if sys.version_info > (3, 0) and mode == "wb":
+             f.write(bytes("{ " + "; } &&\n{ ".join(commands) + "; }", "utf-8"))
+         else:
+@@ -2082,7 +2086,7 @@ def _runShTest(test, litConfig, useExternalSh, script, tmpBase):
+         status = Test.FLAKYPASS
+ 
+     # Form the output log.
+-    output = f"Exit Code: {exitCode}\n"
++    output = """Script:\n--\n%s\n--\nExit Code: %d\n""" % ("\n".join(script), exitCode)
+ 
+     if timeoutInfo is not None:
+         output += """Timeout: %s\n""" % (timeoutInfo,)
+diff --git a/llvm/utils/lit/lit/cl_arguments.py b/llvm/utils/lit/lit/cl_arguments.py
+index 132476fb2a36..747824574dd6 100644
+--- a/llvm/utils/lit/lit/cl_arguments.py
++++ b/llvm/utils/lit/lit/cl_arguments.py
+@@ -72,23 +72,22 @@ def parse_args():
+         "-v",
+         "--verbose",
+         dest="showOutput",
+-        help="For failed tests, show all output. For example, each command is"
+-        " printed before it is executed, so the last printed command is the one"
+-        " that failed.",
++        help="Show test output for failures",
+         action="store_true",
+     )
+     format_group.add_argument(
+         "-vv",
+         "--echo-all-commands",
+-        dest="showOutput",
+-        help="Deprecated alias for -v.",
++        dest="echoAllCommands",
+         action="store_true",
++        help="Echo all commands as they are executed to stdout. In case of "
++        "failure, last command shown will be the failing one.",
+     )
+     format_group.add_argument(
+         "-a",
+         "--show-all",
+         dest="showAllOutput",
+-        help="Enable -v, but for all tests not just failed tests.",
++        help="Display all commandlines and output",
+         action="store_true",
+     )
+     format_group.add_argument(
+@@ -300,6 +299,9 @@ def parse_args():
+     opts = parser.parse_args(args)
+ 
+     # Validate command line options
++    if opts.echoAllCommands:
++        opts.showOutput = True
++
+     if opts.incremental:
+         print(
+             "WARNING: --incremental is deprecated. Failing tests now always run first."
+diff --git a/llvm/utils/lit/lit/main.py b/llvm/utils/lit/lit/main.py
+index 3cb47c605ad5..6858961752a6 100755
+--- a/llvm/utils/lit/lit/main.py
++++ b/llvm/utils/lit/lit/main.py
+@@ -40,6 +40,7 @@ def main(builtin_params={}):
+         order=opts.order,
+         params=params,
+         config_prefix=opts.configPrefix,
++        echo_all_commands=opts.echoAllCommands,
+         per_test_coverage=opts.per_test_coverage,
+     )
+ 
+diff --git a/llvm/utils/lit/tests/Inputs/shtest-if-else/test.txt b/llvm/utils/lit/tests/Inputs/shtest-if-else/test.txt
+index b0a7cfd97941..805a74de3a7e 100644
+--- a/llvm/utils/lit/tests/Inputs/shtest-if-else/test.txt
++++ b/llvm/utils/lit/tests/Inputs/shtest-if-else/test.txt
+@@ -1,46 +1,29 @@
+-#       CHECK: -- Testing:{{.*}}
+-#  CHECK-NEXT: PASS: shtest-if-else :: test.txt (1 of 1)
+-#  CHECK-NEXT: Exit Code: 0
+-# CHECK-EMPTY:
+-#  CHECK-NEXT: Command Output (stdout):
+-#  CHECK-NEXT: --
++# CHECK: -- Testing:{{.*}}
++# CHECK-NEXT: PASS: shtest-if-else :: test.txt (1 of 1)
++# CHECK-NEXT: Script:
++# CHECK-NEXT: --
+ 
+ # RUN: %if feature %{ echo "test-1" %}
+-#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-1]]"
+-#       CHECK: # command output:
+-#  CHECK-NEXT: test-1
+-# CHECK-EMPTY:
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-1]]'; echo "test-1"
+ 
+ # If %else is not present it is treated like %else %{%}. Empty commands
+ # are ignored.
+ #
+ # RUN: %if nofeature %{ echo "fail" %}
+-#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-1]]"
+-#   CHECK-NOT: fail
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-1]]'
++# CHECK-NOT: fail
+ 
+ # RUN: %if nofeature %{ echo "fail" %} %else %{ echo "test-2" %}
+-#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-1]]"
+-#       CHECK: # command output:
+-#  CHECK-NEXT: test-2
+-# CHECK-EMPTY:
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-1]]'; echo "test-2"
+ 
+ # Spaces inside curly braces are not ignored
+ #
+ # RUN: echo test-%if feature %{ 3 %} %else %{ fail %}-test
+ # RUN: echo test-%if feature %{ 4 4 %} %else %{ fail %}-test
+ # RUN: echo test-%if nofeature %{ fail %} %else %{ 5 5 %}-test
+-#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-3]]"
+-#       CHECK: # command output:
+-#  CHECK-NEXT: test- 3 -test
+-# CHECK-EMPTY:
+-#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-6]]"
+-#       CHECK: # command output:
+-#  CHECK-NEXT: test- 4 4 -test
+-# CHECK-EMPTY:
+-#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-9]]"
+-#       CHECK: # command output:
+-#  CHECK-NEXT: test- 5 5 -test
+-# CHECK-EMPTY:
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-3]]'; echo test- 3 -test
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-3]]'; echo test- 4 4 -test
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-3]]'; echo test- 5 5 -test
+ 
+ # Escape line breaks for multi-line expressions
+ #
+@@ -48,42 +31,27 @@
+ # RUN:   %{ echo     \
+ # RUN:     "test-5" \
+ # RUN:   %}
+-#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-4]]"
+-#       CHECK: # command output:
+-#  CHECK-NEXT: test-5
+-# CHECK-EMPTY:
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-4]]'; echo "test-5"
+ 
+ # RUN: %if nofeature       \
+ # RUN:   %{ echo "fail" %}   \
+ # RUN: %else               \
+ # RUN:   %{ echo "test-6" %}
+-#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-4]]"
+-#       CHECK: # command output:
+-#  CHECK-NEXT: test-6
+-# CHECK-EMPTY:
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-4]]'; echo "test-6"
+ 
+ # RUN: echo "test%if feature %{%} %else %{%}-7"
+-#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-1]]"
+-#       CHECK: # command output:
+-#  CHECK-NEXT: test-7
+-# CHECK-EMPTY:
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-1]]'; echo "test-7"
+ 
+ # Escape %if. Without %if..%else context '%{' and '%}' are treated
+ # literally.
+ #
+ # RUN: echo %%if feature %{ echo "test-8" %}
+-#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-1]]"
+-#       CHECK: # command output:
+-#  CHECK-NEXT: %if feature %{ echo test-8 %}
+-# CHECK-EMPTY:
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-1]]'; echo %if feature %{ echo "test-8" %}
+ 
+ # Nested expressions are supported:
+ #
+ # RUN: echo %if feature %{ %if feature %{ %if nofeature %{"fail"%} %else %{"test-9"%} %} %}
+-#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-1]]"
+-#       CHECK: # command output:
+-#  CHECK-NEXT: test-9
+-# CHECK-EMPTY:
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-1]]'; echo "test-9"
+ 
+ # Binary expression evaluation and regex match can be used as
+ # conditions.
+@@ -91,18 +59,9 @@
+ # RUN: echo %if feature && !nofeature %{ "test-10" %}
+ # RUN: echo %if feature && nofeature %{ "fail" %} %else %{ "test-11" %}
+ # RUN: echo %if {{fea.+}} %{ "test-12" %} %else %{ "fail" %}
+-#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-3]]"
+-#       CHECK: # command output:
+-#  CHECK-NEXT: test-10
+-# CHECK-EMPTY:
+-#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-6]]"
+-#       CHECK: # command output:
+-#  CHECK-NEXT: test-11
+-# CHECK-EMPTY:
+-#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-9]]"
+-#       CHECK: # command output:
+-#  CHECK-NEXT: test-12
+-# CHECK-EMPTY:
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-3]]'; echo "test-10"
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-3]]'; echo "test-11"
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-3]]'; echo "test-12"
+ 
+ # Spaces between %if and %else are ignored. If there is no %else -
+ # space after %if %{...%} is not ignored.
+@@ -110,39 +69,24 @@
+ # RUN: echo XX %if feature %{YY%} ZZ
+ # RUN: echo AA %if feature %{BB%} %else %{CC%} DD
+ # RUN: echo AA %if nofeature %{BB%} %else %{CC%} DD
+-#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-3]]"
+-#       CHECK: # command output:
+-#  CHECK-NEXT: XX YY ZZ
+-# CHECK-EMPTY:
+-#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-6]]"
+-#       CHECK: # command output:
+-#  CHECK-NEXT: AA BB DD
+-# CHECK-EMPTY:
+-#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-9]]"
+-#       CHECK: # command output:
+-#  CHECK-NEXT: AA CC DD
+-# CHECK-EMPTY:
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-3]]'; echo XX YY ZZ
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-3]]'; echo AA BB DD
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-3]]'; echo AA CC DD
+ 
+ # '{' and '}' can be used without escaping
+ #
+ # RUN: %if feature %{echo {}%}
+-#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-1]]"
+-#       CHECK: # command output:
+-#  CHECK-NEXT: {}
+-# CHECK-EMPTY:
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-1]]'; echo {}
+ 
+ # Spaces are not required
+ #
+ # RUN: echo %if feature%{"ok"%}%else%{"fail"%}
+-#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-1]]"
+-#       CHECK: # command output:
+-#  CHECK-NEXT: ok
+-# CHECK-EMPTY:
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-1]]'; echo "ok"
+ 
+ # Substitutions with braces are handled correctly
+ #
+ # RUN: echo %{sub} %if feature%{test-%{sub}%}%else%{"fail"%}
+-#  CHECK-NEXT: {{^.*"RUN}}: at line [[#@LINE-1]]"
+-#       CHECK: # command output:
+-#  CHECK-NEXT: ok test-ok
+-# CHECK-EMPTY:
++# CHECK-NEXT: {{^.*'RUN}}: at line [[#@LINE-1]]'; echo ok test-ok
++
++# CHECK-NEXT: --
++# CHECK-NEXT: Exit Code: 0
+diff --git a/llvm/utils/lit/tests/shtest-format.py b/llvm/utils/lit/tests/shtest-format.py
+index 621776ab7bc2..b41a3f763f38 100644
+--- a/llvm/utils/lit/tests/shtest-format.py
++++ b/llvm/utils/lit/tests/shtest-format.py
+@@ -37,19 +37,22 @@
+ 
+ # CHECK: PASS: shtest-format :: external_shell/pass.txt
+ 
+-#       CHECK: FAIL: shtest-format :: fail.txt
+-#  CHECK-NEXT: *** TEST 'shtest-format :: fail.txt' FAILED ***
+-#  CHECK-NEXT: Exit Code: 1
+-# CHECK-EMPTY:
+-#  CHECK-NEXT: Command Output (stdout):
+-#  CHECK-NEXT: --
+-#  CHECK-NEXT: $ ":" "RUN: at line 1"
+-#  CHECK-NEXT: $ "printf"
+-#  CHECK-NEXT: # command output:
+-#  CHECK-NEXT: line 1: failed test output on stdout
+-#  CHECK-NEXT: line 2: failed test output on stdout
+-#  CHECK-NEXT: $ ":" "RUN: at line 2"
+-#  CHECK-NEXT: $ "false"
++# CHECK: FAIL: shtest-format :: fail.txt
++# CHECK-NEXT: *** TEST 'shtest-format :: fail.txt' FAILED ***
++# CHECK-NEXT: Script:
++# CHECK-NEXT: --
++# CHECK-NEXT: printf "line 1
++# CHECK-NEXT: false
++# CHECK-NEXT: --
++# CHECK-NEXT: Exit Code: 1
++#
++# CHECK: Command Output (stdout):
++# CHECK-NEXT: --
++# CHECK-NEXT: $ ":" "RUN: at line 1"
++# CHECK-NEXT: $ "printf"
++# CHECK-NEXT: # command output:
++# CHECK-NEXT: line 1: failed test output on stdout
++# CHECK-NEXT: line 2: failed test output on stdout
+ 
+ # CHECK: UNRESOLVED: shtest-format :: no-test-line.txt
+ # CHECK: PASS: shtest-format :: pass.txt
+@@ -66,15 +69,12 @@
+ # CHECK: XFAIL: shtest-format :: xfail-feature.txt
+ # CHECK: XFAIL: shtest-format :: xfail-target.txt
+ # CHECK: XFAIL: shtest-format :: xfail.txt
+-
+-#       CHECK: XPASS: shtest-format :: xpass.txt
+-#  CHECK-NEXT: *** TEST 'shtest-format :: xpass.txt' FAILED ***
+-#  CHECK-NEXT: Exit Code: 0
+-# CHECK-EMPTY:
+-#  CHECK-NEXT: Command Output (stdout):
+-#  CHECK-NEXT: --
+-#  CHECK-NEXT: $ ":" "RUN: at line 1"
+-#  CHECK-NEXT: $ "true"
++# CHECK: XPASS: shtest-format :: xpass.txt
++# CHECK-NEXT: *** TEST 'shtest-format :: xpass.txt' FAILED ***
++# CHECK-NEXT: Script
++# CHECK-NEXT: --
++# CHECK-NEXT: true
++# CHECK-NEXT: --
+ 
+ # CHECK: Failed Tests (4)
+ # CHECK: shtest-format :: external_shell/fail.txt
+@@ -109,16 +109,13 @@
+ # XUNIT: </failure>
+ # XUNIT-NEXT: </testcase>
+ 
+-#       XUNIT: <testcase classname="shtest-format.external_shell" name="fail_with_control_chars.txt" time="{{[0-9]+\.[0-9]+}}">
+-#  XUNIT-NEXT: <failure><![CDATA[Exit Code: 1
+-# XUNIT-EMPTY:
+-#  XUNIT-NEXT: Command Output (stdout):
+-#  XUNIT-NEXT: --
+-#  XUNIT-NEXT: a line with [2;30;41mcontrol characters[0m.
+-# XUNIT-EMPTY:
+-#  XUNIT-NEXT: --
+-#       XUNIT: ]]></failure>
+-#  XUNIT-NEXT: </testcase>
++# XUNIT: <testcase classname="shtest-format.external_shell" name="fail_with_control_chars.txt" time="{{[0-9]+\.[0-9]+}}">
++# XUNIT-NEXT: <failure><![CDATA[Script:
++# XUNIT: Command Output (stdout):
++# XUNIT-NEXT: --
++# XUNIT-NEXT: a line with [2;30;41mcontrol characters[0m.
++# XUNIT: </failure>
++# XUNIT-NEXT: </testcase>
+ 
+ # XUNIT: <testcase classname="shtest-format.external_shell" name="pass.txt" time="{{[0-9]+\.[0-9]+}}"/>
+ 
+diff --git a/llvm/utils/lit/tests/shtest-inject.py b/llvm/utils/lit/tests/shtest-inject.py
+index 17e293ea1a12..c6fa799ac3bd 100644
+--- a/llvm/utils/lit/tests/shtest-inject.py
++++ b/llvm/utils/lit/tests/shtest-inject.py
+@@ -2,6 +2,12 @@
+ 
+ # RUN: %{lit} %{inputs}/shtest-inject/test-empty.txt --show-all | FileCheck --check-prefix=CHECK-TEST1 %s
+ #
++# CHECK-TEST1: Script:
++# CHECK-TEST1: --
++# CHECK-TEST1: echo "THIS WAS"
++# CHECK-TEST1: echo "INJECTED"
++# CHECK-TEST1: --
++#
+ # CHECK-TEST1: THIS WAS
+ # CHECK-TEST1: INJECTED
+ #
+@@ -9,6 +15,13 @@
+ 
+ # RUN: %{lit} %{inputs}/shtest-inject/test-one.txt --show-all | FileCheck --check-prefix=CHECK-TEST2 %s
+ #
++# CHECK-TEST2: Script:
++# CHECK-TEST2: --
++# CHECK-TEST2: echo "THIS WAS"
++# CHECK-TEST2: echo "INJECTED"
++# CHECK-TEST2: echo "IN THE FILE"
++# CHECK-TEST2: --
++#
+ # CHECK-TEST2: THIS WAS
+ # CHECK-TEST2: INJECTED
+ # CHECK-TEST2: IN THE FILE
+@@ -17,6 +30,15 @@
+ 
+ # RUN: %{lit} %{inputs}/shtest-inject/test-many.txt --show-all | FileCheck --check-prefix=CHECK-TEST3 %s
+ #
++# CHECK-TEST3: Script:
++# CHECK-TEST3: --
++# CHECK-TEST3: echo "THIS WAS"
++# CHECK-TEST3: echo "INJECTED"
++# CHECK-TEST3: echo "IN THE FILE"
++# CHECK-TEST3: echo "IF IT WORKS"
++# CHECK-TEST3: echo "AS EXPECTED"
++# CHECK-TEST3: --
++#
+ # CHECK-TEST3: THIS WAS
+ # CHECK-TEST3: INJECTED
+ # CHECK-TEST3: IN THE FILE
+diff --git a/llvm/utils/lit/tests/shtest-not.py b/llvm/utils/lit/tests/shtest-not.py
+index d23c9d0cffaf..53bd6356ad93 100644
+--- a/llvm/utils/lit/tests/shtest-not.py
++++ b/llvm/utils/lit/tests/shtest-not.py
+@@ -120,6 +120,9 @@
+ 
+ # CHECK: FAIL: shtest-not :: not-calls-fail2.txt {{.*}}
+ # CHECK-NEXT: {{.*}} TEST 'shtest-not :: not-calls-fail2.txt' FAILED {{.*}}
++# CHECK-NEXT: Script:
++# CHECK-NEXT: --
++# CHECK:      --
+ # CHECK-NEXT: Exit Code: 1
+ 
+ # CHECK: FAIL: shtest-not :: not-calls-mkdir.txt {{.*}}
+diff --git a/llvm/utils/lit/tests/shtest-output-printing.py b/llvm/utils/lit/tests/shtest-output-printing.py
+index 7cd975ba8d3c..d5ec413fa04b 100644
+--- a/llvm/utils/lit/tests/shtest-output-printing.py
++++ b/llvm/utils/lit/tests/shtest-output-printing.py
+@@ -9,6 +9,9 @@
+ 
+ # CHECK: FAIL: shtest-output-printing :: basic.txt
+ # CHECK-NEXT: *** TEST 'shtest-output-printing :: basic.txt' FAILED ***
++# CHECK-NEXT: Script:
++# CHECK-NEXT: --
++# CHECK:      --
+ # CHECK-NEXT: Exit Code: 1
+ #
+ # CHECK:      Command Output
+diff --git a/llvm/utils/lit/tests/shtest-run-at-line.py b/llvm/utils/lit/tests/shtest-run-at-line.py
+index 879cd64ebf6e..ccd85b505b7e 100644
+--- a/llvm/utils/lit/tests/shtest-run-at-line.py
++++ b/llvm/utils/lit/tests/shtest-run-at-line.py
+@@ -1,8 +1,9 @@
+-# Check that -a/-v/-vv makes the line number of the failing RUN command clear.
++# Check that -vv makes the line number of the failing RUN command clear.
++# (-v is actually sufficient in the case of the internal shell.)
+ 
+-# RUN: not %{lit} -a %{inputs}/shtest-run-at-line | FileCheck %s
+-# RUN: not %{lit} -v %{inputs}/shtest-run-at-line | FileCheck %s
+-# RUN: not %{lit} -vv %{inputs}/shtest-run-at-line | FileCheck %s
++# RUN: not %{lit} -vv %{inputs}/shtest-run-at-line > %t.out
++# RUN: FileCheck --input-file %t.out %s
++#
+ # END.
+ 
+ 
+@@ -14,12 +15,22 @@
+ 
+ # CHECK-LABEL: FAIL: shtest-run-at-line :: external-shell/basic.txt
+ 
++# CHECK:      Script:
++# CHECK:      RUN: at line 4{{.*}}  true
++# CHECK-NEXT: RUN: at line 5{{.*}}  false
++# CHECK-NEXT: RUN: at line 6{{.*}}  true
++
+ # CHECK:     RUN: at line 4
+ # CHECK:     RUN: at line 5
+ # CHECK-NOT: RUN
+ 
+ # CHECK-LABEL: FAIL: shtest-run-at-line :: external-shell/line-continuation.txt
+ 
++# CHECK:      Script:
++# CHECK:      RUN: at line 4{{.*}}  echo 'foo bar'  | FileCheck
++# CHECK-NEXT: RUN: at line 6{{.*}}  echo 'foo baz'  | FileCheck
++# CHECK-NEXT: RUN: at line 9{{.*}}  echo 'foo bar'  | FileCheck
++
+ # CHECK:     RUN: at line 4
+ # CHECK:     RUN: at line 6
+ # CHECK-NOT: RUN
+@@ -27,6 +38,11 @@
+ 
+ # CHECK-LABEL: FAIL: shtest-run-at-line :: internal-shell/basic.txt
+ 
++# CHECK:      Script:
++# CHECK:      : 'RUN: at line 1';  true
++# CHECK-NEXT: : 'RUN: at line 2';  false
++# CHECK-NEXT: : 'RUN: at line 3';  true
++
+ # CHECK:      Command Output (stdout)
+ # CHECK:      $ ":" "RUN: at line 1"
+ # CHECK-NEXT: $ "true"
+@@ -36,6 +52,12 @@
+ 
+ # CHECK-LABEL: FAIL: shtest-run-at-line :: internal-shell/line-continuation.txt
+ 
++# CHECK:      Script:
++# CHECK:      : 'RUN: at line 1';  : first line continued to second line
++# CHECK-NEXT: : 'RUN: at line 3';  echo 'foo bar'  | FileCheck
++# CHECK-NEXT: : 'RUN: at line 5';  echo  'foo baz'  | FileCheck
++# CHECK-NEXT: : 'RUN: at line 8';  echo 'foo bar'  | FileCheck
++
+ # CHECK:      Command Output (stdout)
+ # CHECK:      $ ":" "RUN: at line 1"
+ # CHECK-NEXT: $ ":" "first" "line" "continued" "to" "second" "line"

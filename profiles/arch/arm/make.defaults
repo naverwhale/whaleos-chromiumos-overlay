@@ -26,3 +26,5 @@ VIDEO_CARDS="exynos fbdev omap"
 # Michał Górny <mgorny@gentoo.org> (14 Mar 2017)
 # Unhide the ARM-specific USE_EXPANDs.
 USE_EXPAND_HIDDEN="-CPU_FLAGS_ARM"
+
+CPU_FLAGS_ARM="v6 v7 vfp vfpv3 neon thumb thumb2"

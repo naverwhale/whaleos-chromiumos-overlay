@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -17,7 +17,7 @@ CROS_WORKON_REPO=(
 )
 CROS_WORKON_EGIT_BRANCH=(
 	"main"
-	"master"
+	"main"
 	"master"
 )
 CROS_WORKON_LOCALNAME=(
@@ -35,8 +35,12 @@ CROS_WORKON_SUBTREE=(
 	""
 	""
 )
+CROS_WORKON_INCREMENTAL_BUILD=1
 
 PLATFORM_SUBDIR="aosp/frameworks/ml"
+# Do not run test parallelly until unit tests are fixed.
+# shellcheck disable=SC2034
+PLATFORM_PARALLEL_GTEST_TEST="no"
 
 inherit cros-workon platform flag-o-matic
 
@@ -45,31 +49,44 @@ HOMEPAGE="https://developer.android.com/ndk/guides/neuralnetworks"
 
 LICENSE="BSD-Google Apache-2.0"
 KEYWORDS="~*"
-IUSE="cpu_flags_x86_avx2 vendor-nnhal minimal-driver xnnpack-driver"
+IUSE="cpu_flags_x86_avx2 vendor-nnhal minimal-driver xnnpack fuzzer strace_ipc_driver"
 
 RDEPEND="
+	chromeos-base/chromeos-config-tools:=
+	chromeos-base/chromeos-login:=
 	chromeos-base/nnapi:=
+	chromeos-base/session_manager-client:=
+	dev-cpp/abseil-cpp:=
 	dev-libs/openssl:=
-	sci-libs/tensorflow:=
+	dev-libs/re2:=
+	net-dns/c-ares:=
+	net-libs/grpc:=
+	sci-libs/tensorflow[xnnpack?]
+	sys-libs/zlib:=
 "
 
 DEPEND="
 	${RDEPEND}
 	dev-libs/libtextclassifier
 	>=dev-cpp/eigen-3
+	fuzzer? ( dev-libs/libprotobuf-mutator:= )
+"
+
+BDEPEND="
+	chromeos-base/minijail
 "
 
 src_configure() {
-	if use x86 || use amd64; then
-		append-cppflags "-D_Float16=__fp16"
-		append-cxxflags "-Xclang -fnative-half-type"
-		append-cxxflags "-Xclang -fallow-half-arguments-and-returns"
-	fi
-	if use xnnpack-driver; then
+	# This warning is triggered in tensorflow.
+	append-flags "-Wno-unused-but-set-variable"
+	if use xnnpack; then
 		append-cppflags "-DNNAPI_USE_XNNPACK_DRIVER"
 	fi
 	if use minimal-driver; then
 		append-cppflags "-DNNAPI_USE_MINIMAL_DRIVER"
+	fi
+	if use strace_ipc_driver; then
+		append-cppflags "-DSTRACE_NNAPI_HAL_IPC_DRIVER"
 	fi
 	platform_src_configure
 }
@@ -92,7 +109,7 @@ platform_pkg_test() {
 	# EventFlag::wake from libfmq. The error printed is:
 	# Error in event flag wake attempt: Function not implemented
 	# This is a known issue, see:
-	# https://chromium.googlesource.com/chromiumos/docs/+/master/testing/running_unit_tests.md#caveats
+	# https://chromium.googlesource.com/chromiumos/docs/+/HEAD/testing/running_unit_tests.md#caveats
 	# TODO(http://crbug.com/1117470): tracking bug for qemu fix
 	qemu_gtest_excl_filter+="Flavor/ExecutionTest10.Wait*:"
 	qemu_gtest_excl_filter+="Flavor/ExecutionTest11.Wait*:"
@@ -116,6 +133,19 @@ platform_pkg_test() {
 	qemu_gtest_excl_filter+="ValidationTestCompilationForDevices_1.ExecutionTiming:"
 	qemu_gtest_excl_filter+="ValidationTestCompilationForDevices_1.ExecutionSetTimeout:"
 	qemu_gtest_excl_filter+="ValidationTestCompilationForDevices_1.ExecutionSetTimeoutMaximum:"
+
+	# TODO(b/244629422): Following tests are failing after _Float16 support
+	# changes in Clang (655ba9c8a1d). The tests likely need to be regolded.
+	gtest_excl_filter+="*f16*:"
+	gtest_excl_filter+="*fp16*:"
+	gtest_excl_filter+="*float16*:"
+	gtest_excl_filter+="*Float16*:"
+	gtest_excl_filter+="TestGenerated/*v1*_2*:"
+	gtest_excl_filter+="TestGenerated/*dequantize*_2*:"
+	gtest_excl_filter+="TestGenerated/*quantize*_5*:"
+	gtest_excl_filter+="TestGenerated/*quantize*_6*:"
+	gtest_excl_filter+="TestGenerated/*quantize*_7*:"
+	gtest_excl_filter+="TestGenerated/*quantize*_8*:"
 
 	if use asan; then
 		# Some tests do not correctly clean up the Execution object and it is
@@ -160,7 +190,7 @@ platform_pkg_test() {
 		# https://github.com/google/sanitizers/wiki/AddressSanitizerContainerOverflow#false-positives
 		export ASAN_OPTIONS+=":detect_container_overflow=0:detect_odr_violation=0:"
 	fi
-	if use xnnpack-driver; then
+	if use xnnpack; then
 		# These tests don't currently work with the XNNPACK driver
 		gtest_excl_filter+="ValidationTestExecutionDeviceMemory.SetInputFromMemory*:"
 		gtest_excl_filter+="ValidationTestExecutionDeviceMemory.SetOutputFromMemory*:"
@@ -179,28 +209,36 @@ platform_pkg_test() {
 		platform_test "run" "${OUT}/${test_target}_testrunner" "0" "${gtest_excl_filter}" "${qemu_gtest_excl_filter}"
 	done
 
-	if use xnnpack-driver; then
+	if use xnnpack; then
 		platform_test "run" "${OUT}/runtime_xnn_testrunner"
 	fi
 }
 
 src_compile() {
 	platform_src_compile
-	if use xnnpack-driver; then
+	if use xnnpack; then
 		platform "compile" "xnn-driver"
-		platform "compile" "runtime_xnn_testrunner"
+		if use test; then
+			platform "compile" "runtime_xnn_testrunner"
+		fi
 	fi
 }
 
 src_install() {
+	platform_src_install
+
 	einfo "Installing runtime & common Headers."
 	insinto /usr/include/aosp/frameworks/ml/nn/common
 	doins -r "${S}"/common/include
+	insinto /usr/include/aosp/frameworks/ml/nn/common
+	doins -r "${S}"/common/types
 	insinto /usr/include/aosp/frameworks/ml/nn/runtime
 	doins -r "${S}"/runtime/include
 	insinto /usr/include/aosp/frameworks/ml/nn/driver/cache
 	doins "${S}"/driver/cache/nnCache/nnCache.h
 	doins "${S}"/driver/cache/BlobCache/BlobCache.h
+	insinto /usr/include/aosp/hardware/interfaces
+	doins -r "${S}"/../../hardware/interfaces/neuralnetworks
 
 	einfo "Installing libs."
 	dolib.so "${OUT}/lib/libneuralnetworks.so"
@@ -217,8 +255,26 @@ src_install() {
 		einfo "Installing minimal drivers"
 		dolib.so "${OUT}/lib/libminimal-driver.so"
 	fi
-	if use xnnpack-driver; then
+	if use xnnpack; then
 		einfo "Installing xnnpack drivers"
 		dolib.so "${OUT}/lib/libxnn-driver.so"
 	fi
+
+	einfo "Installing seccomp policy files for ${ARCH}."
+	insinto /usr/share/policy
+	newins "seccomp/nnapi-hal-driver-seccomp-${ARCH}.policy" nnapi-hal-driver-seccomp.policy
+
+	einfo "Installing IPC HAL driver & worker"
+	dolib.so "${OUT}/lib/libipc-nn-hal.so"
+	dolib.so "${OUT}/lib/libmojo-driver-canonical.so"
+	dobin "${OUT}/nnapi_worker_canonical"
+
+	# Install fuzz targets.
+	local fuzzer
+	for fuzzer in "${OUT}"/*_fuzzer; do
+		# ChromeOS - Platform - Technologies - Machine Learning
+		local fuzzer_component_id="831886"
+		platform_fuzzer_install "${S}"/OWNERS "${fuzzer}" \
+			--comp "${fuzzer_component_id}"
+	done
 }

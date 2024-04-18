@@ -1,7 +1,7 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2.
 
-EAPI=6
+EAPI=7
 
 CROS_GO_SOURCE="github.com/mdlayher/netlink 336c8d74f4a037ab2e19a7b95dc2189673095121"
 

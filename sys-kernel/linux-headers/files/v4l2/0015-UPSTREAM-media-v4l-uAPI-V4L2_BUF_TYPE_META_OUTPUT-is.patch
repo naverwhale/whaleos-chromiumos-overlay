@@ -1,0 +1,45 @@
+From 6fd61065d92086ac5ff8573d60b672a8c8e6b544 Mon Sep 17 00:00:00 2001
+From: Sakari Ailus <sakari.ailus@linux.intel.com>
+Date: Mon, 14 Jan 2019 09:01:54 -0500
+Subject: [PATCH] UPSTREAM: media: v4l: uAPI: V4L2_BUF_TYPE_META_OUTPUT is an
+ output buffer type
+
+V4L2_BUF_TYPE_META_OUTPUT was added by commit 72148d1a57e7
+("media: v4l: Add support for V4L2_BUF_TYPE_META_OUTPUT") but the patch
+missed adding the type to the macro telling whether a given type is an
+output type or not. Do that now. Getting this wrong leads to handling the
+buffer as a capture buffer in a lot of places.
+
+Fixes: 72148d1a57e7 ("media: v4l: Add support for V4L2_BUF_TYPE_META_OUTPUT")
+
+Signed-off-by: Sakari Ailus <sakari.ailus@linux.intel.com>
+Signed-off-by: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Signed-off-by: Mauro Carvalho Chehab <mchehab+samsung@kernel.org>
+(cherry picked from commit 4b837c6d7ee771f68a30f362c9f68171a95be222)
+
+BUG=b:278157861
+TEST=Check header
+
+Change-Id: Id4b40c38c3c1c0b632132305ff59ce41609b114e
+Signed-off-by: Chen-Yu Tsai <wenst@chromium.org>
+---
+ include/uapi/linux/videodev2.h | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index 57bd3ca6aa7d..7591a0f2bfe8 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -161,7 +161,8 @@ enum v4l2_buf_type {
+ 	 || (type) == V4L2_BUF_TYPE_VIDEO_OUTPUT_OVERLAY	\
+ 	 || (type) == V4L2_BUF_TYPE_VBI_OUTPUT			\
+ 	 || (type) == V4L2_BUF_TYPE_SLICED_VBI_OUTPUT		\
+-	 || (type) == V4L2_BUF_TYPE_SDR_OUTPUT)
++	 || (type) == V4L2_BUF_TYPE_SDR_OUTPUT			\
++	 || (type) == V4L2_BUF_TYPE_META_OUTPUT)
+ 
+ enum v4l2_tuner_type {
+ 	V4L2_TUNER_RADIO	     = 1,
+-- 
+2.40.1.606.ga4b1b128d6-goog
+

@@ -1,1 +1,0 @@
-protobuf-1.25.0.ebuild

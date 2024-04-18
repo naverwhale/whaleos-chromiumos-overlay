@@ -1,15 +1,14 @@
-# Copyright (c) 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # @ECLASS: coreboot-private-files.eclass
 # @MAINTAINER:
-# The Chromium OS Authors
+# The ChromiumOS Authors
 # @BLURB: Unifies logic for installing private coreboot files.
 
-# Check for EAPI 4+
+# Check for EAPI 7+.
 case "${EAPI:-0}" in
-4|5|6|7) ;;
-*) die "unsupported EAPI (${EAPI}) in eclass (${ECLASS})" ;;
+[0123456]) die "unsupported EAPI (${EAPI}) in eclass (${ECLASS})" ;;
 esac
 
 coreboot-private-files_src_install() {

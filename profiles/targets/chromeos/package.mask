@@ -1,4 +1,4 @@
-# Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+# Copyright 2009 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # The following are here because we override the ebuilds from the
@@ -22,3 +22,17 @@
 =sys-devel/llvm-15.0_pre*
 =sys-devel/llvm-16.0_pre*
 =sys-devel/llvm-17.0_pre*
+
+# Prevent compilers from ending up on the OS image. They should be listed
+# as a BDEPEND in your ebuilds.
+dev-lang/go
+sys-devel/gcc
+
+# These are packages listed in package.provided. These are generally supposed
+# to be BDEPENDs, but the packages that haven't updated to EAPI7 have them
+# listed as DEPEND. We list the packages here in addition to the
+# package.provided because package.provided only matches using the full version
+# number vs package.mask which doesn't need a version number. By listing the
+# package here, we can cause analysis failures if a package is upreved and
+# the package.provided wasn't updated.
+sys-devel/automake

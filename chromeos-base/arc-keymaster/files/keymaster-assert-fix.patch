@@ -1,0 +1,85 @@
+commit 1d0b369d8131d8a7151188e3364a89cef2a5b93e
+Author: Yao Li <yaohuali@google.com>
+Date:   Mon Aug 28 13:53:10 2023
+
+    [PATCH] keymaster: return error rather than assert
+    
+    There has been crash report caused by the assert under case KM_BOOL, in build_auth_list().
+    
+    The later version of Android has ASSERT_OR_RETURN_ERROR to avoid doing
+    assert in release build.
+    
+    Bug: 291450576
+    Test: atest CtsKeystoreTestCases
+    Change-Id: Ic7b11672c12f4c96a204d3ac42ff220c3fded73e
+
+diff --git a/km_openssl/attestation_record.cpp b/km_openssl/attestation_record.cpp
+index f59a9f3..58d9a94 100644
+--- a/km_openssl/attestation_record.cpp
++++ b/km_openssl/attestation_record.cpp
+@@ -24,6 +24,14 @@
+ #include <keymaster/km_openssl/openssl_err.h>
+ #include <keymaster/km_openssl/openssl_utils.h>
+ 
++#define ASSERT_OR_RETURN_ERROR(stmt, error)                                                        \
++    do {                                                                                           \
++        assert(stmt);                                                                              \
++        if (!(stmt)) {                                                                             \
++            return error;                                                                          \
++        }                                                                                          \
++    } while (0)
++
+ namespace keymaster {
+ 
+ constexpr uint kCurrentKeymasterVersion = 3;
+@@ -96,7 +104,7 @@ static keymaster_error_t insert_integer(ASN1_INTEGER* value, ASN1_INTEGER** dest
+ // Put the contents of the keymaster AuthorizationSet auth_list in to the ASN.1 record structure,
+ // record.
+ keymaster_error_t build_auth_list(const AuthorizationSet& auth_list, KM_AUTH_LIST* record) {
+-    assert(record);
++    ASSERT_OR_RETURN_ERROR(record, KM_ERROR_UNEXPECTED_NULL_POINTER);
+ 
+     if (auth_list.empty())
+         return KM_ERROR_OK;
+@@ -269,8 +277,9 @@ keymaster_error_t build_auth_list(const AuthorizationSet& auth_list, KM_AUTH_LIS
+         case KM_ENUM_REP:
+         case KM_UINT:
+         case KM_UINT_REP: {
+-            assert((keymaster_tag_repeatable(entry.tag) && integer_set) ||
+-                   (!keymaster_tag_repeatable(entry.tag) && integer_ptr));
++            ASSERT_OR_RETURN_ERROR((keymaster_tag_repeatable(entry.tag) && integer_set) ||
++                                       (!keymaster_tag_repeatable(entry.tag) && integer_ptr),
++                                   KM_ERROR_INVALID_TAG);
+ 
+             UniquePtr<ASN1_INTEGER, ASN1_INTEGER_Delete> value(ASN1_INTEGER_new());
+             if (!value.get())
+@@ -285,8 +294,9 @@ keymaster_error_t build_auth_list(const AuthorizationSet& auth_list, KM_AUTH_LIS
+         case KM_ULONG:
+         case KM_ULONG_REP:
+         case KM_DATE: {
+-            assert((keymaster_tag_repeatable(entry.tag) && integer_set) ||
+-                   (!keymaster_tag_repeatable(entry.tag) && integer_ptr));
++            ASSERT_OR_RETURN_ERROR((keymaster_tag_repeatable(entry.tag) && integer_set) ||
++                                       (!keymaster_tag_repeatable(entry.tag) && integer_ptr),
++                                   KM_ERROR_INVALID_TAG);
+ 
+             UniquePtr<BIGNUM, BIGNUM_Delete> bn_value(BN_new());
+             if (!bn_value.get())
+@@ -312,7 +322,7 @@ keymaster_error_t build_auth_list(const AuthorizationSet& auth_list, KM_AUTH_LIS
+         }
+ 
+         case KM_BOOL:
+-            assert(bool_ptr);
++            ASSERT_OR_RETURN_ERROR(bool_ptr, KM_ERROR_INVALID_TAG);
+             if (!*bool_ptr)
+                 *bool_ptr = ASN1_NULL_new();
+             if (!*bool_ptr)
+@@ -321,7 +331,7 @@ keymaster_error_t build_auth_list(const AuthorizationSet& auth_list, KM_AUTH_LIS
+ 
+         /* Byte arrays*/
+         case KM_BYTES:
+-            assert(string_ptr);
++            ASSERT_OR_RETURN_ERROR(string_ptr, KM_ERROR_INVALID_TAG);
+             if (!*string_ptr)
+                 *string_ptr = ASN1_OCTET_STRING_new();
+             if (!*string_ptr)

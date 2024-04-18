@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # @ECLASS: cros-ec-utils.eclass
@@ -6,14 +6,14 @@
 # Chromium OS Firmware Team
 # @BUGREPORTS:
 # Please report bugs via http://crbug.com/new (with label Build)
-# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/master/eclass/@ECLASS@
+# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/eclass/@ECLASS@
 # @BLURB: helper eclass for building Chromium OS firmware
 # @DESCRIPTION:
 # Common helper functions for working with Chromium OS EC firmware.
 #
 # NOTE: When making changes to this class, make sure to modify all the -9999
 # ebuilds that inherit it (e.g., chromeos-fpmcu-release*) to work around
-# http://crbug.com/220902.
+# https://issuetracker.google.com/201299127.
 
 if [[ -z "${_ECLASS_CROS_EC_UTILS}" ]]; then
 _ECLASS_CROS_EC_UTILS="1"

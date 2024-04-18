@@ -1,0 +1,97 @@
+commit ef3e27385b165dea20e3383a2c2fa39baeb28290
+Author: David Tenty <daltenty@ibm.com>
+Date:   Thu Aug 24 11:41:03 2023 -0400
+
+    Revert "[libc++] Comment out the AIX jobs that are failing"
+    
+    This reverts commit 014830193b21ff87639762cbb89dad79ae5831ec.
+    and ce12d6563e84c209c7200de3bfbf84c5d349824c.
+    
+    Differential Revision: https://reviews.llvm.org/D158754
+
+diff --git a/libcxx/utils/ci/buildkite-pipeline.yml b/libcxx/utils/ci/buildkite-pipeline.yml
+index dcdf30b8690f..723ae4386197 100644
+--- a/libcxx/utils/ci/buildkite-pipeline.yml
++++ b/libcxx/utils/ci/buildkite-pipeline.yml
+@@ -1063,44 +1063,43 @@ steps:
+             limit: 2
+       timeout_in_minutes: 120
+ 
+-  # TODO: Uncomment these jobs once the AIX builders have been fixed.
+-  # - group: "AIX"
+-  #   steps:
+-  #   - label: "AIX (32-bit)"
+-  #     command: "libcxx/utils/ci/run-buildbot aix"
+-  #     artifact_paths:
+-  #       - "**/test-results.xml"
+-  #       - "**/*.abilist"
+-  #     env:
+-  #         CC: "clang"
+-  #         CXX: "clang++"
+-  #         OBJECT_MODE: "32"
+-  #     agents:
+-  #         queue: libcxx-builders
+-  #         os: aix
+-  #     retry:
+-  #       automatic:
+-  #         - exit_status: -1  # Agent was lost
+-  #           limit: 2
+-  #     timeout_in_minutes: 120
+-
+-  #   - label: "AIX (64-bit)"
+-  #     command: "libcxx/utils/ci/run-buildbot aix"
+-  #     artifact_paths:
+-  #       - "**/test-results.xml"
+-  #       - "**/*.abilist"
+-  #     env:
+-  #         CC: "clang"
+-  #         CXX: "clang++"
+-  #         OBJECT_MODE: "64"
+-  #     agents:
+-  #         queue: libcxx-builders
+-  #         os: aix
+-  #     retry:
+-  #       automatic:
+-  #         - exit_status: -1  # Agent was lost
+-  #           limit: 2
+-  #     timeout_in_minutes: 120
++  - group: "AIX"
++    steps:
++    - label: "AIX (32-bit)"
++      command: "libcxx/utils/ci/run-buildbot aix"
++      artifact_paths:
++        - "**/test-results.xml"
++        - "**/*.abilist"
++      env:
++          CC: "clang"
++          CXX: "clang++"
++          OBJECT_MODE: "32"
++      agents:
++          queue: libcxx-builders
++          os: aix
++      retry:
++        automatic:
++          - exit_status: -1  # Agent was lost
++            limit: 2
++      timeout_in_minutes: 120
++
++    - label: "AIX (64-bit)"
++      command: "libcxx/utils/ci/run-buildbot aix"
++      artifact_paths:
++        - "**/test-results.xml"
++        - "**/*.abilist"
++      env:
++          CC: "clang"
++          CXX: "clang++"
++          OBJECT_MODE: "64"
++      agents:
++          queue: libcxx-builders
++          os: aix
++      retry:
++        automatic:
++          - exit_status: -1  # Agent was lost
++            limit: 2
++      timeout_in_minutes: 120
+ 
+   - group: ":freebsd: FreeBSD"
+     steps:

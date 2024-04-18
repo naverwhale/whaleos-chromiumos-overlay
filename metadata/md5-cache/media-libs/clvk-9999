@@ -1,0 +1,16 @@
+BDEPEND=app-arch/unzip >=dev-util/ninja-1.8.2 >=dev-util/cmake-3.20.5 dev-vcs/git app-misc/jq
+DEFINED_PHASES=compile configure info install prepare setup test unpack
+DEPEND=>=dev-util/vulkan-headers-1.3.261 >=dev-util/spirv-headers-1.3.261-r1 >=dev-util/opencl-headers-2023.02.06 >=dev-util/spirv-tools-1.3.261 >=media-libs/vulkan-loader-1.3.261 virtual/vulkan-icd app-arch/zstd chromeos-base/perfetto:= sys-libs/ncurses sys-libs/zlib
+DESCRIPTION=Experimental implementation of OpenCL 3.0 on Vulkan
+EAPI=7
+HOMEPAGE=https://github.com/kpet/clvk
+IUSE=debug +perfetto asan cfi cfi_diag cfi_recover coverage fuzzer msan thinlto tsan ubsan cros_host cros_workon_tree_
+KEYWORDS=~*
+LICENSE=Apache-2.0
+PROPERTIES=live
+RDEPEND=>=dev-util/spirv-tools-1.3.261 >=media-libs/vulkan-loader-1.3.261 virtual/vulkan-icd app-arch/zstd chromeos-base/perfetto:= sys-libs/ncurses sys-libs/zlib
+REQUIRED_USE=cfi? ( thinlto ) cfi_diag? ( cfi ) cfi_recover? ( cfi_diag )
+SLOT=0
+SRC_URI=gs://chromeos-localmirror/distfiles/llvm-project-9bcf9dc98a6829ae3b0b18aa82368def394af7f4.zip
+_eclasses_=cmake	34502c2b638b59994575d53ba3805d7b	cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-sanitizers	4504f3661db0fe02309acd3555785cf2	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	ninja-utils	578ba3585e2f3ebe63ab00c07874016e	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	xdg-utils	ff2ff954e6b17929574eee4efc5152ba
+_md5_=0fc449611652f2c86f6c470445bb8600

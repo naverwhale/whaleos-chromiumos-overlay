@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -9,16 +9,33 @@
 
 LDFLAGS="-Wl,-O2 -Wl,--as-needed ${LDFLAGS}"
 
-PORTDIR="/usr/local/portage/stable"
+PORTDIR="/mnt/host/source/src/third_party/portage-stable"
 
 # Adding packages to the @world set causes people more trouble than it's
 # worth in our setup -- we rarely have people add custom packages outside
 # of the ChromiumOS set.  You can use "--select" to override this.
 EMERGE_DEFAULT_OPTS="--oneshot --autounmask-backtrack=y --autounmask=n"
 
-# Use parallel bzip2 for portage if available
-PORTAGE_BZIP2_COMMAND="pbzip2"
-PORTAGE_BUNZIP2_COMMAND="pbunzip2 --ignore-trailing-garbage=1"
+# Compression settings for creating binpkgs.
+# NB: BINPKG_COMPRESS selects an algorithm, not a command.
+BINPKG_COMPRESS="zstd"
+BINPKG_COMPRESS_FLAGS="-3"
+
+# Command for compressing installed documentation, including man pages.
+# That means compression algorithm selection is restricted by whatever man-db
+# supports, and currently that is gzip/bzip2/xz/lzip.
+# We don't need high compression levels here as the amount of documentation
+# in total is not huge (<500 MB uncompressed), so a smallish & fast approach
+# works well enough.
+PORTAGE_COMPRESS="pigz"
+# --no-name will prevent a timestamp from being written into the file.
+# This results in hermetic output.
+PORTAGE_COMPRESS_FLAGS="-3 --no-name"
+
+# Use parallel bzip2 for portage whenever bzip2 is needed.
+# This is usually for decompressing source archives.
+PORTAGE_BZIP2_COMMAND="lbzip2 -z"
+PORTAGE_BUNZIP2_COMMAND="lbzip2 -d"
 
 FETCHCOMMAND_GS='/mnt/host/source/chromite/bin/gs_fetch_binpkg --boto "/home/${PORTAGE_USERNAME}/.boto" "\${URI}" "\${DISTDIR}/\${FILE}"'
 RESUMECOMMAND_GS="${FETCHCOMMAND_GS}"
@@ -32,10 +49,8 @@ RESUMECOMMAND='curl -y 30 -f -C - --retry 9 -L --output \${DISTDIR}/\${FILE} \${
 FETCHCOMMAND_CIPD='/mnt/host/source/chromite/bin/fetch_cipd "\${URI}" "\${DISTDIR}/\${FILE}"'
 RESUMECOMMAND_CIPD="${FETCHCOMMAND_CIPD}"
 
-# Native language support is handled inside Chrome itself.
-# This needs to be in make.conf and not make.defaults to override IUSE defaults.
-LINGUAS="en"
-
 # Delete these once ebeep/epause no longer exist in eutils.eclass.
 EBEEP_IGNORE="1"
 EPAUSE_IGNORE="1"
+
+CHROMEOS_CI_USERNAME=chrome-bot

@@ -1,1 +1,1 @@
-include chromiumos/third_party/shellcheck:/OWNERS
+include chromiumos/third_party/shellcheck:chromeos-0.7:/OWNERS

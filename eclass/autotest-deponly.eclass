@@ -1,8 +1,8 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright 2010 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 #
-# Original Author: The Chromium OS Authors <chromium-os-dev@chromium.org>
+# Original Author: The ChromiumOS Authors <chromium-os-dev@chromium.org>
 # Purpose: Eclass for handling autotest deps packages
 #
 
@@ -13,6 +13,8 @@ AUTOTEST_CONFIG_LIST=""
 AUTOTEST_DEPS_LIST=""
 AUTOTEST_PROFILERS_LIST=""
 _NEW_AUTOTEST_LANDED_FLAG=1
+
+BDEPEND="dev-python/chardet"
 
 #
 # In order to build only deps (call their setup function), we need to have

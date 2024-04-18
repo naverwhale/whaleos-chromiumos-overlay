@@ -1,0 +1,32 @@
+From 5172cc9c6bddadea3dd314cb5507488f99f57c57 Mon Sep 17 00:00:00 2001
+From: Yiwei Zhang <zzyiwei@chromium.org>
+Date: Fri, 20 Oct 2023 17:25:48 +0000
+Subject: [PATCH] CHROMIUM: Revert "venus: enable Vulkan 1.3 for Android 13 and
+ above"
+
+This reverts commit 2e645ed31444e105d525bf430d57c2dc55ca24f5.
+
+BUG=b:304821199
+TEST=1.3 being conditionally enabled across boards
+
+Signed-off-by: Yiwei Zhang <zzyiwei@chromium.org>
+---
+ src/virtio/vulkan/vn_instance.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/virtio/vulkan/vn_instance.h b/src/virtio/vulkan/vn_instance.h
+index e2784579bec..bd64f28af89 100644
+--- a/src/virtio/vulkan/vn_instance.h
++++ b/src/virtio/vulkan/vn_instance.h
+@@ -25,7 +25,7 @@
+ #define VN_MIN_RENDERER_VERSION VK_API_VERSION_1_1
+ 
+ /* max advertised version at both instance and device levels */
+-#if defined(ANDROID) && ANDROID_API_LEVEL < 33
++#ifdef ANDROID
+ #define VN_MAX_API_VERSION VK_MAKE_VERSION(1, 1, VK_HEADER_VERSION)
+ #else
+ #define VN_MAX_API_VERSION VK_MAKE_VERSION(1, 3, VK_HEADER_VERSION)
+-- 
+2.39.2
+

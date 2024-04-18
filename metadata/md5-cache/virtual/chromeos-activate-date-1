@@ -6,4 +6,4 @@ KEYWORDS=*
 LICENSE=metapackage
 RDEPEND=chromeos-base/chromeos-activate-date
 SLOT=0
-_md5_=9e6ce17dae9466aeb26a853dbdc20550
+_md5_=2a7060a078e6fc99027fd1f2eda0380b

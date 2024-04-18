@@ -1,7 +1,7 @@
-# Copyright 2015 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="6"
+EAPI="7"
 
 inherit cros-constants
 
@@ -26,6 +26,8 @@ KEYWORDS="~*"
 IUSE="fuzzer"
 
 src_install() {
+	platform_src_install
+
 	dolib.a "${OUT}"/libmodp_b64.a
 
 	insinto /usr/include

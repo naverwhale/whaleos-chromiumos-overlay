@@ -1,0 +1,15 @@
+BDEPEND=>=dev-util/ninja-1.8.2 >=dev-util/cmake-3.20.5 dev-vcs/git app-misc/jq
+DEFINED_PHASES=compile configure info install prepare setup test unpack
+DEPEND=>=media-libs/gmmlib-22.3.7:= >=x11-libs/libva-2.19.0
+DESCRIPTION=Intel Media Driver for VAAPI (iHD)
+EAPI=7
+HOMEPAGE=https://github.com/intel/media-driver
+IUSE=ihd_cmrtlib intel_oemcrypto intel_ihd_pavp internal video_cards_iHD_g8 video_cards_iHD_g9 video_cards_iHD_g11 video_cards_iHD_g12 cros_host cros_workon_tree_df99280d4bfcf3872f24ea24315c137396adbd22_44273b25b90849afe26cf9cd2677fa153a3eea74
+KEYWORDS=*
+LICENSE=intel_oemcrypto? ( internal? ( LICENSE.intel-pavp ) ) intel_oemcrypto? ( !internal? ( intel_ihd_pavp? ( LICENSE.intel-pavp ) ) ) intel_oemcrypto? ( !internal? ( !intel_ihd_pavp? ( MIT BSD ) ) ) !intel_oemcrypto? ( MIT BSD )
+PROPERTIES=live
+RDEPEND=>=media-libs/gmmlib-22.3.7:= >=x11-libs/libva-2.19.0
+REQUIRED_USE=|| ( video_cards_iHD_g8 video_cards_iHD_g9 video_cards_iHD_g11 video_cards_iHD_g12 )
+SLOT=0
+_eclasses_=cmake	34502c2b638b59994575d53ba3805d7b	cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	ninja-utils	578ba3585e2f3ebe63ab00c07874016e	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	xdg-utils	ff2ff954e6b17929574eee4efc5152ba
+_md5_=239c6a7d06ccd7107a1a278126372d94

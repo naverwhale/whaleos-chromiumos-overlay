@@ -1,4 +1,4 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -19,20 +19,13 @@ SLOT="0/0"
 KEYWORDS="~*"
 IUSE="kvm_host"
 
+BDEPEND="dev-libs/protobuf"
 DEPEND="
+	cros_host? ( dev-libs/protobuf:= )
+	dev-rust/third-party-crates-src:=
 	chromeos-base/system_api:=
 	dev-rust/libchromeos:=
-	dev-rust/sys_util:=
-	=dev-rust/dbus-0.9*:=
-	=dev-rust/dbus-tree-0.9*:=
-	=dev-rust/getopts-0.2*:=
-	=dev-rust/libc-0.2*:=
-	=dev-rust/log-0.4*:=
-	>=dev-rust/protobuf-2.16.2:= <dev-rust/protobuf-3
-	>=dev-rust/protoc-rust-2.16.2:= <dev-rust/protoc-rust-3
-	=dev-rust/remain-0.2*:=
-	dev-rust/sys_util:=
-	=dev-rust/tempfile-3*:=
+	sys-apps/dbus:=
 "
 
 RDEPEND="sys-apps/dbus"

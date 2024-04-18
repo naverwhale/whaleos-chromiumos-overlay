@@ -1,2 +1,1 @@
-set noparent
 include chromiumos/overlays/portage-stable:/profiles/OWNERS

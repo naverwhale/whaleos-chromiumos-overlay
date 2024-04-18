@@ -1,14 +1,14 @@
-BDEPEND=dev-vcs/git virtual/pkgconfig
+BDEPEND=dev-vcs/git app-misc/jq virtual/pkgconfig
 DEFINED_PHASES=configure info install preinst setup unpack
-DEPEND=chromeos-base/libbrillo:= virtual/libusb:1= chromeos-base/cfm-dfu-notification:= >=chromeos-base/libchrome-0.0.1-r117:0=[cros-debug=] sys-apps/baselayout
+DEPEND=chromeos-base/cfm-dfu-notification:= chromeos-base/libbrillo:= dev-libs/openssl:0= virtual/libusb:1= >=chromeos-base/libchrome-0.0.1-r884:0=[cros-debug=] dev-cpp/gtest:= sys-apps/baselayout
 DESCRIPTION=Logitech firmware updater
 EAPI=7
 HOMEPAGE=https://chromium.googlesource.com/chromiumos/third_party/logitech-updater
-IUSE=cros-debug cros_host cros_workon_tree_ cros-debug
+IUSE=cros-debug cros_host cros_workon_tree_
 KEYWORDS=~*
 LICENSE=BSD-Google
 PROPERTIES=live
-RDEPEND=chromeos-base/libbrillo:= virtual/libusb:1= chromeos-base/cfm-dfu-notification:= >=chromeos-base/libchrome-0.0.1-r117:0=[cros-debug=] sys-apps/baselayout
+RDEPEND=chromeos-base/cfm-dfu-notification:= chromeos-base/libbrillo:= dev-libs/openssl:0= virtual/libusb:1= >=chromeos-base/libchrome-0.0.1-r884:0=[cros-debug=] sys-apps/baselayout
 SLOT=0/9999
-_eclasses_=cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-credentials	4fd98ebbff6a1534ca9a89547e13dc92	cros-debug	d2750757005d6a444f8eb12bb9eb9944	cros-workon	ff100259492312ff6570e490bcb9a320	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	libchrome	b0adbfd1a2eae79766f7256eaad1da23	libchrome-version	f89118941e7f3c3825d2fe216c977c57	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	udev	452708c3f55cf6e918b045adb949a9e6	user	7c566af8c48023219fd63246e88d6621
-_md5_=974889840fc65ee3d6f06bf6fbb18e0a
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-debug	af551fd1f4be5284c65a5f020aa73c5c	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	libchrome	84a911cdf2eb95f651e86cd39c89d0f7	libchrome-version	c3e83b27c95464f9fe98ff4d1016ffbb	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	udev	eec0bbab06977f1cfc5597269c1fa152	user	bb36bb02334dae8c5fd9efa0d8d2ec70
+_md5_=a3ad86aabfabbb63b009d7a8f2c137ff

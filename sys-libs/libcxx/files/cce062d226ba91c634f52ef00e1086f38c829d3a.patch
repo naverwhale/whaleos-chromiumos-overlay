@@ -1,0 +1,349 @@
+commit cce062d226ba91c634f52ef00e1086f38c829d3a
+Author: Louis Dionne <ldionne.2@gmail.com>
+Date:   Wed Sep 13 12:30:05 2023 -0400
+
+    [libc++] Reintroduce the removed std::char_traits specialization (#66153)
+    
+    This partially reverts commit e30a148b098, which removed the base
+    template for std::char_traits. That base template had been marked as
+    deprecated since LLVM 16 and we were planning to remove it in LLVM 18.
+    However, as explained in the post-commit comments in
+    https://reviews.llvm.org/D157058, the deprecation mechanism didn't work
+    as expected. Basically, the deprecation warnings were never shown to
+    users since libc++ headers are system headers and Clang doesn't show
+    warnings in system headers.
+    
+    As a result, this removal came with basically no lead time as far as
+    users are concerned, which is a poor experience. For this reason, I am
+    re-introducing the deprecated char_traits specialization until we have a
+    proper way of phasing it out in a way that is not a surprise for users.
+
+diff --git a/libcxx/docs/ReleaseNotes/18.rst b/libcxx/docs/ReleaseNotes/18.rst
+index 83dade3bf2f0..14647a565d9e 100644
+--- a/libcxx/docs/ReleaseNotes/18.rst
++++ b/libcxx/docs/ReleaseNotes/18.rst
+@@ -85,14 +85,6 @@ Deprecations and Removals
+   warning). ``_LIBCPP_ENABLE_ASSERTIONS`` will be removed entirely in the next release and setting it will become an
+   error. See :ref:`the hardening documentation <using-hardening-modes>` for more details.
+ 
+-- The base template for ``std::char_traits`` has been removed. If you are using
+-  ``std::char_traits`` with types other than ``char``, ``wchar_t``, ``char8_t``,
+-  ``char16_t``, ``char32_t`` or a custom character type for which you
+-  specialized ``std::char_traits``, your code will no longer work. The Standard
+-  does not mandate that a base template is provided, and such a base template is
+-  bound to be incorrect for some types, which could previously cause unexpected
+-  behavior while going undetected.
+-
+ Upcoming Deprecations and Removals
+ ----------------------------------
+ 
+@@ -109,6 +101,17 @@ LLVM 18
+   and ``<experimental/vector>`` will be removed in LLVM 18, as all their contents will have been implemented in
+   namespace ``std`` for at least two releases.
+ 
++LLVM 19
++~~~~~~~
++
++- The base template for ``std::char_traits`` has been marked as deprecated and will be removed in LLVM 19. If you
++  are using ``std::char_traits`` with types other than ``char``, ``wchar_t``, ``char8_t``, ``char16_t``, ``char32_t``
++  or a custom character type for which you specialized ``std::char_traits``, your code will stop working when we
++  remove the base template. The Standard does not mandate that a base template is provided, and such a base template
++  is bound to be incorrect for some types, which could currently cause unexpected behavior while going undetected.
++  Note that the ``_LIBCPP_CHAR_TRAITS_REMOVE_BASE_SPECIALIZATION`` macro can be defined in LLVM 18 to eagerly remove
++  the specialization and prepare code bases for the unconditional removal in LLVM 19.
++
+ ABI Affecting Changes
+ ---------------------
+ 
+diff --git a/libcxx/include/__string/char_traits.h b/libcxx/include/__string/char_traits.h
+index baf2d2346a59..ca9867c39067 100644
+--- a/libcxx/include/__string/char_traits.h
++++ b/libcxx/include/__string/char_traits.h
+@@ -71,6 +71,108 @@ exposition-only to document what members a char_traits specialization should pro
+ };
+ */
+ 
++//
++// Temporary extension to provide a base template for std::char_traits.
++// TODO(LLVM-19): Remove this class.
++//
++#if !defined(_LIBCPP_CHAR_TRAITS_REMOVE_BASE_SPECIALIZATION)
++template <class _CharT>
++struct _LIBCPP_DEPRECATED_("char_traits<T> for T not equal to char, wchar_t, char8_t, char16_t or char32_t is non-standard and is provided for a temporary period. It will be removed in LLVM 18, so please migrate off of it.")
++    char_traits
++{
++    using char_type  = _CharT;
++    using int_type   = int;
++    using off_type   = streamoff;
++    using pos_type   = streampos;
++    using state_type = mbstate_t;
++
++    static inline void _LIBCPP_CONSTEXPR_SINCE_CXX17 _LIBCPP_HIDE_FROM_ABI
++        assign(char_type& __c1, const char_type& __c2) _NOEXCEPT {__c1 = __c2;}
++    static inline _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR bool eq(char_type __c1, char_type __c2) _NOEXCEPT
++        {return __c1 == __c2;}
++    static inline _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR bool lt(char_type __c1, char_type __c2) _NOEXCEPT
++        {return __c1 < __c2;}
++
++    static _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX17
++    int compare(const char_type* __s1, const char_type* __s2, size_t __n) {
++        for (; __n; --__n, ++__s1, ++__s2)
++        {
++            if (lt(*__s1, *__s2))
++                return -1;
++            if (lt(*__s2, *__s1))
++                return 1;
++        }
++        return 0;
++    }
++    _LIBCPP_INLINE_VISIBILITY static _LIBCPP_CONSTEXPR_SINCE_CXX17
++    size_t length(const char_type* __s) {
++        size_t __len = 0;
++        for (; !eq(*__s, char_type(0)); ++__s)
++            ++__len;
++        return __len;
++    }
++    _LIBCPP_INLINE_VISIBILITY static _LIBCPP_CONSTEXPR_SINCE_CXX17
++    const char_type* find(const char_type* __s, size_t __n, const char_type& __a) {
++        for (; __n; --__n)
++        {
++            if (eq(*__s, __a))
++                return __s;
++            ++__s;
++        }
++        return nullptr;
++    }
++    static _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR_SINCE_CXX20
++    char_type*       move(char_type* __s1, const char_type* __s2, size_t __n) {
++        if (__n == 0) return __s1;
++        char_type* __r = __s1;
++        if (__s1 < __s2)
++        {
++            for (; __n; --__n, ++__s1, ++__s2)
++                assign(*__s1, *__s2);
++        }
++        else if (__s2 < __s1)
++        {
++            __s1 += __n;
++            __s2 += __n;
++            for (; __n; --__n)
++                assign(*--__s1, *--__s2);
++        }
++        return __r;
++    }
++    _LIBCPP_INLINE_VISIBILITY
++    static _LIBCPP_CONSTEXPR_SINCE_CXX20
++    char_type*       copy(char_type* __s1, const char_type* __s2, size_t __n) {
++        if (!__libcpp_is_constant_evaluated()) {
++            _LIBCPP_ASSERT_NON_OVERLAPPING_RANGES(
++                __s2 < __s1 || __s2 >= __s1 + __n, "char_traits::copy overlapped range");
++        }
++        char_type* __r = __s1;
++        for (; __n; --__n, ++__s1, ++__s2)
++            assign(*__s1, *__s2);
++        return __r;
++    }
++    _LIBCPP_INLINE_VISIBILITY
++    static _LIBCPP_CONSTEXPR_SINCE_CXX20
++    char_type*       assign(char_type* __s, size_t __n, char_type __a) {
++        char_type* __r = __s;
++        for (; __n; --__n, ++__s)
++            assign(*__s, __a);
++        return __r;
++    }
++
++    static inline _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR int_type  not_eof(int_type __c) _NOEXCEPT
++        {return eq_int_type(__c, eof()) ? ~eof() : __c;}
++    static inline _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR char_type to_char_type(int_type __c) _NOEXCEPT
++        {return char_type(__c);}
++    static inline _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR int_type  to_int_type(char_type __c) _NOEXCEPT
++        {return int_type(__c);}
++    static inline _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR bool      eq_int_type(int_type __c1, int_type __c2) _NOEXCEPT
++        {return __c1 == __c2;}
++    static inline _LIBCPP_HIDE_FROM_ABI _LIBCPP_CONSTEXPR int_type  eof() _NOEXCEPT
++        {return int_type(EOF);}
++};
++#endif // !defined(_LIBCPP_CHAR_TRAITS_REMOVE_BASE_SPECIALIZATION)
++
+ // char_traits<char>
+ 
+ template <>
+diff --git a/libcxx/test/libcxx/strings/char.traits/char.traits.specializations/arbitrary_char_type.deprecated.verify.cpp b/libcxx/test/libcxx/strings/char.traits/char.traits.specializations/arbitrary_char_type.deprecated.verify.cpp
+new file mode 100644
+index 000000000000..ec6f34ef5462
+--- /dev/null
++++ b/libcxx/test/libcxx/strings/char.traits/char.traits.specializations/arbitrary_char_type.deprecated.verify.cpp
+@@ -0,0 +1,21 @@
++//===----------------------------------------------------------------------===//
++//
++// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
++// See https://llvm.org/LICENSE.txt for license information.
++// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
++//
++//===----------------------------------------------------------------------===//
++
++// <string>
++
++// template<> struct char_traits<T> for arbitrary T
++
++// Make sure we issue deprecation warnings.
++
++#include <string>
++
++void f() {
++    std::char_traits<unsigned char> t1; (void)t1; // expected-warning{{'char_traits<unsigned char>' is deprecated}}
++    std::char_traits<signed char> t2; (void)t2; // expected-warning{{'char_traits<signed char>' is deprecated}}
++    std::char_traits<unsigned long> t3; (void)t3; // expected-warning{{'char_traits<unsigned long>' is deprecated}}
++}
+diff --git a/libcxx/test/libcxx/strings/char.traits/char.traits.specializations/arbitrary_char_type.pass.cpp b/libcxx/test/libcxx/strings/char.traits/char.traits.specializations/arbitrary_char_type.pass.cpp
+new file mode 100644
+index 000000000000..c2de29d22b2f
+--- /dev/null
++++ b/libcxx/test/libcxx/strings/char.traits/char.traits.specializations/arbitrary_char_type.pass.cpp
+@@ -0,0 +1,146 @@
++//===----------------------------------------------------------------------===//
++//
++// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
++// See https://llvm.org/LICENSE.txt for license information.
++// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
++//
++//===----------------------------------------------------------------------===//
++
++// <string>
++
++// template<> struct char_traits<T> for arbitrary T
++
++// Non-standard but provided temporarily for users to migrate.
++
++// ADDITIONAL_COMPILE_FLAGS: -Wno-deprecated
++
++#include <string>
++#include <cassert>
++#include <type_traits>
++
++#include "test_macros.h"
++
++template <class Char>
++TEST_CONSTEXPR_CXX20 bool test() {
++    static_assert(std::is_same<typename std::char_traits<Char>::char_type, Char>::value, "");
++    static_assert(std::is_same<typename std::char_traits<Char>::int_type, int>::value, "");
++    static_assert(std::is_same<typename std::char_traits<Char>::off_type, std::streamoff>::value, "");
++    static_assert(std::is_same<typename std::char_traits<Char>::pos_type, std::streampos>::value, "");
++    static_assert(std::is_same<typename std::char_traits<Char>::state_type, std::mbstate_t>::value, "");
++
++    assert(std::char_traits<Char>::to_int_type(Char('a')) == Char('a'));
++    assert(std::char_traits<Char>::to_int_type(Char('A')) == Char('A'));
++    assert(std::char_traits<Char>::to_int_type(0) == 0);
++
++    assert(std::char_traits<Char>::to_char_type(Char('a')) == Char('a'));
++    assert(std::char_traits<Char>::to_char_type(Char('A')) == Char('A'));
++    assert(std::char_traits<Char>::to_char_type(0) == 0);
++
++    assert(std::char_traits<Char>::eof() == EOF);
++
++    assert(std::char_traits<Char>::not_eof(Char('a')) == Char('a'));
++    assert(std::char_traits<Char>::not_eof(Char('A')) == Char('A'));
++    assert(std::char_traits<Char>::not_eof(0) == 0);
++    assert(std::char_traits<Char>::not_eof(std::char_traits<Char>::eof()) !=
++           std::char_traits<Char>::eof());
++
++    assert(std::char_traits<Char>::lt(Char('\0'), Char('A')) == (Char('\0') < Char('A')));
++    assert(std::char_traits<Char>::lt(Char('A'), Char('\0')) == (Char('A') < Char('\0')));
++    assert(std::char_traits<Char>::lt(Char('a'), Char('a')) == (Char('a') < Char('a')));
++    assert(std::char_traits<Char>::lt(Char('A'), Char('a')) == (Char('A') < Char('a')));
++    assert(std::char_traits<Char>::lt(Char('a'), Char('A')) == (Char('a') < Char('A')));
++
++    assert( std::char_traits<Char>::eq(Char('a'), Char('a')));
++    assert(!std::char_traits<Char>::eq(Char('a'), Char('A')));
++
++    assert( std::char_traits<Char>::eq_int_type(Char('a'), Char('a')));
++    assert(!std::char_traits<Char>::eq_int_type(Char('a'), Char('A')));
++    assert(!std::char_traits<Char>::eq_int_type(std::char_traits<Char>::eof(), Char('A')));
++    assert( std::char_traits<Char>::eq_int_type(std::char_traits<Char>::eof(), std::char_traits<Char>::eof()));
++
++    {
++        Char s1[] = {1, 2, 3, 0};
++        Char s2[] = {0};
++        assert(std::char_traits<Char>::length(s1) == 3);
++        assert(std::char_traits<Char>::length(s2) == 0);
++    }
++
++    {
++        Char s1[] = {1, 2, 3};
++        assert(std::char_traits<Char>::find(s1, 3, Char(1)) == s1);
++        assert(std::char_traits<Char>::find(s1, 3, Char(2)) == s1+1);
++        assert(std::char_traits<Char>::find(s1, 3, Char(3)) == s1+2);
++        assert(std::char_traits<Char>::find(s1, 3, Char(4)) == 0);
++        assert(std::char_traits<Char>::find(s1, 3, Char(0)) == 0);
++        assert(std::char_traits<Char>::find(NULL, 0, Char(0)) == 0);
++    }
++
++    {
++        Char s1[] = {1, 2, 3};
++        Char s2[3] = {0};
++        assert(std::char_traits<Char>::copy(s2, s1, 3) == s2);
++        assert(s2[0] == Char(1));
++        assert(s2[1] == Char(2));
++        assert(s2[2] == Char(3));
++        assert(std::char_traits<Char>::copy(NULL, s1, 0) == NULL);
++        assert(std::char_traits<Char>::copy(s1, NULL, 0) == s1);
++    }
++
++    {
++        Char s1[] = {1, 2, 3};
++        assert(std::char_traits<Char>::move(s1, s1+1, 2) == s1);
++        assert(s1[0] == Char(2));
++        assert(s1[1] == Char(3));
++        assert(s1[2] == Char(3));
++        s1[2] = Char(0);
++        assert(std::char_traits<Char>::move(s1+1, s1, 2) == s1+1);
++        assert(s1[0] == Char(2));
++        assert(s1[1] == Char(2));
++        assert(s1[2] == Char(3));
++        assert(std::char_traits<Char>::move(NULL, s1, 0) == NULL);
++        assert(std::char_traits<Char>::move(s1, NULL, 0) == s1);
++    }
++
++    {
++        Char s1[] = {0};
++        assert(std::char_traits<Char>::compare(s1, s1, 0) == 0);
++        assert(std::char_traits<Char>::compare(NULL, NULL, 0) == 0);
++
++        Char s2[] = {1, 0};
++        Char s3[] = {2, 0};
++        assert(std::char_traits<Char>::compare(s2, s2, 1) == 0);
++        assert(std::char_traits<Char>::compare(s2, s3, 1) < 0);
++        assert(std::char_traits<Char>::compare(s3, s2, 1) > 0);
++    }
++
++    {
++        Char s2[3] = {0};
++        assert(std::char_traits<Char>::assign(s2, 3, Char(5)) == s2);
++        assert(s2[0] == Char(5));
++        assert(s2[1] == Char(5));
++        assert(s2[2] == Char(5));
++        assert(std::char_traits<Char>::assign(NULL, 0, Char(5)) == NULL);
++    }
++
++    {
++        Char c = Char('\0');
++        std::char_traits<Char>::assign(c, Char('a'));
++        assert(c == Char('a'));
++    }
++
++    return true;
++}
++
++int main(int, char**) {
++    test<unsigned char>();
++    test<signed char>();
++    test<unsigned long>();
++
++#if TEST_STD_VER > 17
++    static_assert(test<unsigned char>());
++    static_assert(test<signed char>());
++    static_assert(test<unsigned long>());
++#endif
++
++  return 0;
++}

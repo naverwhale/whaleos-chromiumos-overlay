@@ -1,0 +1,203 @@
+From 8c47417c881e37a33669da4678f4d12c45d5d97c Mon Sep 17 00:00:00 2001
+From: Jun Ishiguro <junis@google.com>
+Date: Tue, 19 Sep 2023 11:46:37 +0900
+Subject: [PATCH 1/3] Part1: CERT_FindCertByDERCert
+
+CERT_FindCertByDERCert
+NSSTrustDomain_FindCertificateByEncodedCertificate
+nssTrustDomain_FindCertificateByEncodedCertificate
+nssTrustDomain_FindCertificateByIssuerAndSerialNumber
+---
+ lib/certdb/cert.h        |  4 +++
+ lib/certdb/stanpcertdb.c | 11 +++++--
+ lib/nss/nss.def          |  1 +
+ lib/pki/nsspki.h         |  6 ++++
+ lib/pki/trustdomain.c    | 64 +++++++++++++++++++++++++++++++++++++---
+ 5 files changed, 80 insertions(+), 6 deletions(-)
+
+diff --git a/lib/certdb/cert.h b/lib/certdb/cert.h
+index 1981b8f..456494b 100644
+--- a/lib/certdb/cert.h
++++ b/lib/certdb/cert.h
+@@ -542,6 +542,10 @@ extern CERTCertificate *CERT_FindCertByNickname(CERTCertDBHandle *handle,
+ extern CERTCertificate *CERT_FindCertByDERCert(CERTCertDBHandle *handle,
+                                                SECItem *derCert);
+ 
++extern CERTCertificate *CERT_FindCertByDERCertForChromium(CERTCertDBHandle *handle,
++                                                          SECItem *derCert,
++                                                          PRBool ignoreChaps);
++
+ /*
+ ** Find a certificate in the database by a email address
+ **	"emailAddr" is the email address to look up
+diff --git a/lib/certdb/stanpcertdb.c b/lib/certdb/stanpcertdb.c
+index 8e1cf27..fd1efec 100644
+--- a/lib/certdb/stanpcertdb.c
++++ b/lib/certdb/stanpcertdb.c
+@@ -602,6 +602,12 @@ CERT_FindCertByNickname(CERTCertDBHandle *handle, const char *nickname)
+ 
+ CERTCertificate *
+ CERT_FindCertByDERCert(CERTCertDBHandle *handle, SECItem *derCert)
++{
++    return CERT_FindCertByDERCertForChromium(handle, derCert, PR_FALSE);
++}
++
++CERTCertificate *
++CERT_FindCertByDERCertForChromium(CERTCertDBHandle *handle, SECItem *derCert, PRBool ignoreChaps)
+ {
+     NSSCryptoContext *cc;
+     NSSCertificate *c;
+@@ -610,8 +616,9 @@ CERT_FindCertByDERCert(CERTCertDBHandle *handle, SECItem *derCert)
+     cc = STAN_GetDefaultCryptoContext();
+     c = NSSCryptoContext_FindCertificateByEncodedCertificate(cc, &encoding);
+     if (!c) {
+-        c = NSSTrustDomain_FindCertificateByEncodedCertificate(handle,
+-                                                               &encoding);
++        c = NSSTrustDomain_FindCertificateByEncodedCertificateForChromium(handle,
++                                                                          &encoding,
++                                                                          ignoreChaps);
+         if (!c)
+             return NULL;
+     }
+diff --git a/lib/nss/nss.def b/lib/nss/nss.def
+index e87395b..bb23f59 100644
+--- a/lib/nss/nss.def
++++ b/lib/nss/nss.def
+@@ -252,6 +252,7 @@ CERT_AddCertToListTail;
+ CERT_CertListFromCert;
+ CERT_DestroyCertArray;
+ CERT_FindCertByDERCert;
++CERT_FindCertByDERCertForChromium;
+ CERT_FindCertByIssuerAndSN;
+ CERT_FindSMimeProfile;
+ CERT_ImportCerts;
+diff --git a/lib/pki/nsspki.h b/lib/pki/nsspki.h
+index 0ecec08..f695edf 100644
+--- a/lib/pki/nsspki.h
++++ b/lib/pki/nsspki.h
+@@ -1575,6 +1575,12 @@ NSSTrustDomain_FindCertificateByEncodedCertificate(
+     NSSTrustDomain *td,
+     NSSBER *encodedCertificate);
+ 
++NSS_EXTERN NSSCertificate *
++NSSTrustDomain_FindCertificateByEncodedCertificateForChromium(
++    NSSTrustDomain *td,
++    NSSBER *encodedCertificate,
++    PRBool ignoreChaps);
++
+ /*
+  * NSSTrustDomain_FindBestCertificateByEmail
+  *
+diff --git a/lib/pki/trustdomain.c b/lib/pki/trustdomain.c
+index 151b888..ba691a7 100644
+--- a/lib/pki/trustdomain.c
++++ b/lib/pki/trustdomain.c
+@@ -16,6 +16,8 @@
+ #include "nssrwlk.h"
+ #include "pk11priv.h"
+ 
++#include <string.h>
++
+ #define NSSTRUSTDOMAIN_DEFAULT_CACHE_SIZE 32
+ 
+ extern const NSSError NSS_ERROR_NOT_FOUND;
+@@ -744,6 +746,27 @@ nssTrustDomain_FindCertificateByIssuerAndSerialNumber(
+     NSSTrustDomain *td,
+     NSSDER *issuer,
+     NSSDER *serial)
++{
++    /* Forward declaration */
++    NSS_IMPLEMENT NSSCertificate *
++    nssTrustDomain_FindCertificateByIssuerAndSerialNumberForChromium(
++        NSSTrustDomain *td,
++        NSSDER *issuer,
++        NSSDER *serial,
++        PRBool ignoreChaps);
++
++    return nssTrustDomain_FindCertificateByIssuerAndSerialNumberForChromium(td,
++                                                                            issuer,
++                                                                            serial,
++                                                                            PR_FALSE);
++}
++
++NSS_IMPLEMENT NSSCertificate *
++nssTrustDomain_FindCertificateByIssuerAndSerialNumberForChromium(
++    NSSTrustDomain *td,
++    NSSDER *issuer,
++    NSSDER *serial,
++    PRBool ignoreChaps)
+ {
+     NSSSlot **slots = NULL;
+     NSSSlot **slotp;
+@@ -761,6 +784,13 @@ nssTrustDomain_FindCertificateByIssuerAndSerialNumber(
+     slots = nssTrustDomain_GetActiveSlots(td, &updateLevel);
+     if (slots) {
+         for (slotp = slots; *slotp; slotp++) {
++            if (ignoreChaps) {
++                SECMODModule* pk11_module = PK11_GetModule((*slotp)->pk11slot);
++                if (pk11_module && strcmp(pk11_module->commonName, "Chaps") == 0) {
++                    continue;
++                }
++            }
++
+             NSSToken *token = nssSlot_GetToken(*slotp);
+             nssSession *session;
+             nssCryptokiObject *instance;
+@@ -826,6 +856,22 @@ NSS_IMPLEMENT NSSCertificate *
+ nssTrustDomain_FindCertificateByEncodedCertificate(
+     NSSTrustDomain *td,
+     NSSBER *ber)
++{
++    /* Forward declaration */
++    NSS_IMPLEMENT NSSCertificate *
++    nssTrustDomain_FindCertificateByEncodedCertificateForChromium(
++        NSSTrustDomain *td,
++        NSSBER *ber,
++        PRBool ignoreChaps);
++
++    return nssTrustDomain_FindCertificateByEncodedCertificateForChromium(td, ber, PR_FALSE);
++}
++
++NSS_IMPLEMENT NSSCertificate *
++nssTrustDomain_FindCertificateByEncodedCertificateForChromium(
++    NSSTrustDomain *td,
++    NSSBER *ber,
++    PRBool ignoreChaps)
+ {
+     PRStatus status;
+     NSSCertificate *rvCert = NULL;
+@@ -836,9 +882,10 @@ nssTrustDomain_FindCertificateByEncodedCertificate(
+     if (status != PR_SUCCESS) {
+         return NULL;
+     }
+-    rvCert = nssTrustDomain_FindCertificateByIssuerAndSerialNumber(td,
+-                                                                   &issuer,
+-                                                                   &serial);
++    rvCert = nssTrustDomain_FindCertificateByIssuerAndSerialNumberForChromium(td,
++                                                                              &issuer,
++                                                                              &serial,
++                                                                              ignoreChaps);
+     PORT_Free(issuer.data);
+     PORT_Free(serial.data);
+     return rvCert;
+@@ -849,7 +896,16 @@ NSSTrustDomain_FindCertificateByEncodedCertificate(
+     NSSTrustDomain *td,
+     NSSBER *ber)
+ {
+-    return nssTrustDomain_FindCertificateByEncodedCertificate(td, ber);
++    return NSSTrustDomain_FindCertificateByEncodedCertificateForChromium(td, ber, PR_FALSE);
++}
++
++NSS_IMPLEMENT NSSCertificate *
++NSSTrustDomain_FindCertificateByEncodedCertificateForChromium(
++    NSSTrustDomain *td,
++    NSSBER *ber,
++    PRBool ignoreChaps)
++{
++    return nssTrustDomain_FindCertificateByEncodedCertificateForChromium(td, ber, ignoreChaps);
+ }
+ 
+ NSS_IMPLEMENT NSSCertificate *
+-- 
+2.42.0.582.g8ccd20d70d-goog
+

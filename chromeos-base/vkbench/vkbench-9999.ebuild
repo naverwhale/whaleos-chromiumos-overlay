@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -7,7 +7,7 @@ EAPI=7
 CROS_WORKON_LOCALNAME="platform/vkbench"
 CROS_WORKON_PROJECT="chromiumos/platform/vkbench"
 
-inherit cros-workon cmake-utils
+inherit cros-workon cmake
 
 DESCRIPTION="Microbenchmark for vulkan"
 HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform/vkbench/"
@@ -29,4 +29,5 @@ RDEPEND="
 	media-libs/vulkan-loader:=
 	virtual/vulkan-icd:=
 "
-DEPEND="${RDEPEND}"
+DEPEND="${RDEPEND}
+	dev-util/vulkan-headers"

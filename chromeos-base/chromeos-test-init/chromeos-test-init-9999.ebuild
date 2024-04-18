@@ -1,7 +1,7 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2012 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="6"
+EAPI="7"
 CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_DESTDIR="${S}"
@@ -11,7 +11,7 @@ CROS_WORKON_SUBTREE="init/upstart/test-init"
 inherit cros-workon
 
 DESCRIPTION="Additional upstart jobs that will be installed on test images"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/init/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/init/"
 
 LICENSE="BSD-Google"
 SLOT="0"
@@ -31,13 +31,10 @@ src_install() {
 	doins upstart/test-init/*.conf
 
 	insinto /usr/share/cros
-	doins upstart/test-init/*_utils.sh
+	doins upstart/test-init/factory_utils.sh
 
 	if use encrypted_stateful && use tpm2; then
 		insinto /etc/init
 		doins upstart/test-init/encrypted_stateful/create-system-key.conf
-
-		insinto /usr/share/cros
-		doins upstart/test-init/encrypted_stateful/system_key_utils.sh
 	fi
 }

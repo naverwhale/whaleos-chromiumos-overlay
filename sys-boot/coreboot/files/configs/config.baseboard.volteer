@@ -23,7 +23,7 @@ CONFIG_HAVE_ME_BIN=y
 
 # Management Engine FW update
 CONFIG_SOC_INTEL_CSE_RW_UPDATE=y
-CONFIG_SOC_INTEL_CSE_RW_VERSION="15.0.23.1777"
+CONFIG_SOC_INTEL_CSE_RW_VERSION="15.0.42.2235"
 
 # Microcode
 CONFIG_CPU_UCODE_BINARIES="3rdparty/blobs/baseboard-volteer/ucode.bin"

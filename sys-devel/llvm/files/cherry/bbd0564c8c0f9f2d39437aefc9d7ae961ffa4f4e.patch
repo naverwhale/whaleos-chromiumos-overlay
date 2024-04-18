@@ -1,0 +1,123 @@
+commit bbd0564c8c0f9f2d39437aefc9d7ae961ffa4f4e
+Author: Joel E. Denny <jdenny.ornl@gmail.com>
+Date:   Thu Sep 7 12:34:55 2023 -0400
+
+    Revert "[lit] Try to fix c981c533055e test fails under windows"
+    
+    This reverts commit f254bbf23374190c88a2b1a5f163622fbec9a936.
+    
+    The reason for the revert is discussed at:
+    https://discourse.llvm.org/t/rfc-improving-lits-debug-output/72839/52
+
+diff --git a/llvm/utils/lit/tests/shtest-env.py b/llvm/utils/lit/tests/shtest-env.py
+index e7c64e2ae8af..a4775ac6688d 100644
+--- a/llvm/utils/lit/tests/shtest-env.py
++++ b/llvm/utils/lit/tests/shtest-env.py
+@@ -85,7 +85,7 @@
+ 
+ # CHECK: FAIL: shtest-env :: env-calls-not-builtin.txt ({{[^)]*}})
+ # CHECK: env -u FOO BAR=3 not rm {{.+}}.no-such-file
+-# CHECK: # executed command: env -u FOO BAR=3 not rm {{.+}}.no-such-file{{.+}}
++# CHECK: # executed command: env -u FOO BAR=3 not rm {{.+}}.no-such-file
+ # CHECK: # | Error: 'env' cannot call 'rm'
+ # CHECK: # error: command failed with exit status: {{.*}}
+ 
+diff --git a/llvm/utils/lit/tests/shtest-not.py b/llvm/utils/lit/tests/shtest-not.py
+index 36cc0e60d3f3..4590b9664b84 100644
+--- a/llvm/utils/lit/tests/shtest-not.py
++++ b/llvm/utils/lit/tests/shtest-not.py
+@@ -106,7 +106,7 @@
+ 
+ # CHECK: FAIL: shtest-not :: not-calls-env-builtin.txt {{.*}}
+ # CHECK: not --crash env -u FOO BAR=3 rm {{.*}}.no-such-file
+-# CHECK: # executed command: not --crash env -u FOO BAR=3 rm {{.+}}.no-such-file{{.+}}
++# CHECK: # executed command: not --crash env -u FOO BAR=3 rm {{.*}}.no-such-file
+ # CHECK: # | Error: 'env' cannot call 'rm'
+ # CHECK: # error: command failed with exit status: {{.*}}
+ 
+diff --git a/llvm/utils/lit/tests/shtest-output-printing.py b/llvm/utils/lit/tests/shtest-output-printing.py
+index 427ce8f235dd..3e49197520a9 100644
+--- a/llvm/utils/lit/tests/shtest-output-printing.py
++++ b/llvm/utils/lit/tests/shtest-output-printing.py
+@@ -8,7 +8,7 @@
+ #       CHECK: -- Testing: {{.*}}
+ #       CHECK: FAIL: shtest-output-printing :: basic.txt {{.*}}
+ #  CHECK-NEXT: ***{{\**}} TEST 'shtest-output-printing :: basic.txt' FAILED ***{{\**}}
+-#  CHECK-NEXT: Exit Code: {{[1-9][0-9]*}}
++#  CHECK-NEXT: Exit Code: 1
+ # CHECK-EMPTY:
+ #  CHECK-NEXT: Command Output (stdout):
+ #  CHECK-NEXT: --
+diff --git a/llvm/utils/lit/tests/shtest-shell.py b/llvm/utils/lit/tests/shtest-shell.py
+index 52a47f03e53e..8ce71296c144 100644
+--- a/llvm/utils/lit/tests/shtest-shell.py
++++ b/llvm/utils/lit/tests/shtest-shell.py
+@@ -238,7 +238,7 @@
+ # CHECK-NOT: error
+ 
+ #      CHECK: diff -u {{.*}}.foo {{.*}}.bar | FileCheck {{.*}} && false || true
+-# CHECK-NEXT: # executed command: diff -u {{.+}}.foo{{.+}} {{.+}}.bar{{.+}}
++# CHECK-NEXT: # executed command: diff -u {{.*}}.foo {{.*}}.bar
+ # CHECK-NEXT: # note: command had no output on stdout or stderr
+ # CHECK-NEXT: # error: command failed with exit status: 1
+ # CHECK-NEXT: # executed command: FileCheck
+@@ -253,8 +253,8 @@
+ # CHECK-NOT: error
+ 
+ #      CHECK: cat {{.*}}.bar | diff -u {{.*}}.foo - && false || true
+-# CHECK-NEXT: # executed command: cat {{.+}}.bar{{.+}}
+-# CHECK-NEXT: # executed command: diff -u {{.+}}.foo{{.+}} -
++# CHECK-NEXT: # executed command: cat {{.*}}.bar
++# CHECK-NEXT: # executed command: diff -u {{.*}}.foo -
+ # CHECK-NEXT: # .---command stdout{{-*}}
+ #      CHECK: # | @@
+ # CHECK-NEXT: # | -foo
+@@ -264,8 +264,8 @@
+ # CHECK-NEXT: # executed command: true
+ 
+ #      CHECK: cat {{.*}}.bar | diff -u - {{.*}}.foo && false || true
+-# CHECK-NEXT: # executed command: cat {{.+}}.bar{{.+}}
+-# CHECK-NEXT: # executed command: diff -u - {{.+}}.foo{{.+}}
++# CHECK-NEXT: # executed command: cat {{.*}}.bar
++# CHECK-NEXT: # executed command: diff -u - {{.*}}.foo
+ # CHECK-NEXT: # .---command stdout{{-*}}
+ #      CHECK: # | @@
+ # CHECK-NEXT: # | -bar
+@@ -279,8 +279,8 @@
+ # CHECK-NOT: error
+ 
+ #      CHECK: cat {{.*}}.bar | diff -u {{.*}}.foo - | FileCheck {{.*}}
+-# CHECK-NEXT: # executed command: cat {{.+}}.bar{{.+}}
+-# CHECK-NEXT: # executed command: diff -u {{.+}}.foo{{.+}} -
++# CHECK-NEXT: # executed command: cat {{.*}}.bar
++# CHECK-NEXT: # executed command: diff -u {{.*}}.foo -
+ # CHECK-NEXT: note: command had no output on stdout or stderr
+ # CHECK-NEXT: error: command failed with exit status: 1
+ # CHECK-NEXT: # executed command: FileCheck
+@@ -427,7 +427,7 @@
+ # CHECK: *** TEST 'shtest-shell :: diff-unified.txt' FAILED ***
+ 
+ #      CHECK: diff -u {{.*}}.foo {{.*}}.bar && false || true
+-# CHECK-NEXT: # executed command: diff -u {{.+}}.foo{{.+}} {{.+}}.bar{{.+}}
++# CHECK-NEXT: # executed command: diff -u {{.*}}.foo {{.*}}.bar
+ # CHECK-NEXT: # .---command stdout{{-*}}
+ #      CHECK: # | @@ {{.*}} @@
+ # CHECK-NEXT: # | 3
+@@ -443,7 +443,7 @@
+ # CHECK-NEXT: # executed command: true
+ 
+ #      CHECK: diff -U 2 {{.*}}.foo {{.*}}.bar && false || true
+-# CHECK-NEXT: # executed command: diff -U 2 {{.+}}.foo{{.+}} {{.+}}.bar{{.+}}
++# CHECK-NEXT: # executed command: diff -U 2 {{.*}}.foo {{.*}}.bar
+ # CHECK-NEXT: # .---command stdout{{-*}}
+ #      CHECK: # | @@ {{.*}} @@
+ # CHECK-NEXT: # | 4
+@@ -457,7 +457,7 @@
+ # CHECK-NEXT: # executed command: true
+ 
+ #      CHECK: diff -U4 {{.*}}.foo {{.*}}.bar && false || true
+-# CHECK-NEXT: # executed command: diff -U4 {{.+}}.foo{{.+}} {{.+}}.bar{{.+}}
++# CHECK-NEXT: # executed command: diff -U4 {{.*}}.foo {{.*}}.bar
+ # CHECK-NEXT: # .---command stdout{{-*}}
+ #      CHECK: # | @@ {{.*}} @@
+ # CHECK-NEXT: # | 2

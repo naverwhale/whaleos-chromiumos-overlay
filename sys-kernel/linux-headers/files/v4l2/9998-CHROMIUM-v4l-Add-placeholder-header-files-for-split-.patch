@@ -1,0 +1,53 @@
+From f1b5115371f3c1d286e5fc919cde320832d965e9 Mon Sep 17 00:00:00 2001
+From: Chen-Yu Tsai <wenst@chromium.org>
+Date: Fri, 12 May 2023 14:34:48 +0800
+Subject: [PATCH] CHROMIUM: v4l: Add placeholder header files for split V4L
+ controls
+
+In the past, due to having multiple uAPI version for the same stateless
+codec, we resorted to having each version's control definitions live in
+a separate file.
+
+However support for these stateless decoders have all been upstreamed.
+While cleaning up the system headers, we'd like to move to the standard
+videodev2.h and v4l2-controls.h header files. But we need the old files
+to exist for existing application code to include when built.
+
+Add empty placeholder files for them.
+
+BUG=b:278157861
+TEST=Check header
+
+Change-Id: I7a0b51e827955e1b209ac3a41ba13d784dcade79
+Signed-off-by: Chen-Yu Tsai <wenst@chromium.org>
+---
+ include/uapi/linux/media/av1-ctrls.h           | 0
+ include/uapi/linux/media/h264-ctrls-upstream.h | 0
+ include/uapi/linux/media/hevc-ctrls-upstream.h | 0
+ include/uapi/linux/media/vp8-ctrls-upstream.h  | 0
+ include/uapi/linux/media/vp9-ctrls-upstream.h  | 0
+ 5 files changed, 0 insertions(+), 0 deletions(-)
+ create mode 100644 include/uapi/linux/media/av1-ctrls.h
+ create mode 100644 include/uapi/linux/media/h264-ctrls-upstream.h
+ create mode 100644 include/uapi/linux/media/hevc-ctrls-upstream.h
+ create mode 100644 include/uapi/linux/media/vp8-ctrls-upstream.h
+ create mode 100644 include/uapi/linux/media/vp9-ctrls-upstream.h
+
+diff --git a/include/uapi/linux/media/av1-ctrls.h b/include/uapi/linux/media/av1-ctrls.h
+new file mode 100644
+index 000000000000..e69de29bb2d1
+diff --git a/include/uapi/linux/media/h264-ctrls-upstream.h b/include/uapi/linux/media/h264-ctrls-upstream.h
+new file mode 100644
+index 000000000000..e69de29bb2d1
+diff --git a/include/uapi/linux/media/hevc-ctrls-upstream.h b/include/uapi/linux/media/hevc-ctrls-upstream.h
+new file mode 100644
+index 000000000000..e69de29bb2d1
+diff --git a/include/uapi/linux/media/vp8-ctrls-upstream.h b/include/uapi/linux/media/vp8-ctrls-upstream.h
+new file mode 100644
+index 000000000000..e69de29bb2d1
+diff --git a/include/uapi/linux/media/vp9-ctrls-upstream.h b/include/uapi/linux/media/vp9-ctrls-upstream.h
+new file mode 100644
+index 000000000000..e69de29bb2d1
+-- 
+2.39.2
+

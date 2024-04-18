@@ -1,4 +1,4 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -9,7 +9,7 @@ CROS_WORKON_USE_VCSID="1"
 CROS_WORKON_PROJECT="chromiumos/third_party/flashrom"
 CROS_WORKON_EGIT_BRANCH="master"
 CROS_WORKON_LOCALNAME="flashrom"
-CROS_WORKON_SUBTREE="${CROS_RUST_SUBDIR}"
+CROS_WORKON_SUBTREE="${CROS_RUST_SUBDIR} bindings/rust/libflashrom bindings/rust/libflashrom-sys include"
 
 inherit cros-workon cros-rust
 
@@ -18,22 +18,23 @@ HOMEPAGE="https://www.flashrom.org/Flashrom"
 
 LICENSE="GPL-2"
 KEYWORDS="~*"
-DEPEND="=dev-rust/rand-0.6*:=
-	=dev-rust/chrono-0.4*:=
-	=dev-rust/clap-2.33*:=
-	=dev-rust/libc-0.2*:=
-	=dev-rust/log-0.4*:=
-	=dev-rust/built-0.3*:=
-	=dev-rust/sys-info-0.5.7:=
-	=dev-rust/serde_json-1*:=
+DEPEND="
+	dev-rust/third-party-crates-src:=
+	sys-apps/flashrom
 "
 
-RDEPEND="!<=sys-apps/flashrom-tester-1.60-r41"
+RDEPEND="!<=sys-apps/flashrom-tester-1.60-r41
+	sys-apps/flashrom
+"
+
+BDEPEND=""
 
 src_compile() {
 	# Override HOST_CFLAGS so that build dependencies use the correct
 	# flags on cross-compiled targets using cc-rs.
 	tc-export_build_env
+	# ignore missing BUILD_CFLAGS definition lint
+	# shellcheck disable=2154
 	export HOST_CFLAGS="${BUILD_CFLAGS}"
 	ecargo_build
 	if use test; then
@@ -42,7 +43,7 @@ src_compile() {
 }
 
 src_test() {
-	cros-rust_src_test --workspace
+	cros-rust_src_test --workspace -- --test-threads=1
 }
 
 src_install() {

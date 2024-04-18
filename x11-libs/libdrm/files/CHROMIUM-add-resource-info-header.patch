@@ -1,4 +1,4 @@
-From c34623bb40aac265fbcf333149d19e6422e514ba Mon Sep 17 00:00:00 2001
+From 4572aeaecc9d859e051e6690ed3cda1b401678ac Mon Sep 17 00:00:00 2001
 From: Gurchetan Singh <gurchetansingh@google.com>
 Date: Thu, 20 Jun 2019 10:48:37 -0700
 Subject: [PATCH] CHROMIUM: add resource info header
@@ -28,5 +28,5 @@ index f06a789f..a92d764d 100644
  
  struct drm_virtgpu_3d_box {
 -- 
-2.20.1
+2.31.0
 

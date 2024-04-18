@@ -1,0 +1,53 @@
+https://gerrit.khronos.org/c/vk-gl-cts/+/12191
+
+From ba97716060281a914a9f828e5eef07165a8b50e5 Mon Sep 17 00:00:00 2001
+From: Charlie Turner <cturner@igalia.com>
+Date: Tue, 20 Jun 2023 16:16:08 +0100
+Subject: [PATCH] Allow DECODE_OUTPUT and DECODE_DPB features for YCbCr formats
+
+Affects:
+dEQP-VK.api.info.format_properties.*
+
+VK-GL-CTS issue: 4280
+Components: Vulkan
+
+Change-Id: I60e138aff5f481547e5f439339cd11d21e7e1d96
+---
+ .../modules/vulkan/api/vktApiFeatureInfo.cpp       | 14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/external/vulkancts/modules/vulkan/api/vktApiFeatureInfo.cpp b/external/vulkancts/modules/vulkan/api/vktApiFeatureInfo.cpp
+index badb1e78b..eada5d713 100644
+--- a/external/vulkancts/modules/vulkan/api/vktApiFeatureInfo.cpp
++++ b/external/vulkancts/modules/vulkan/api/vktApiFeatureInfo.cpp
+@@ -3745,6 +3745,17 @@ bool requiresYCbCrConversion(Context& context, VkFormat format)
+ 
+ VkFormatFeatureFlags getAllowedOptimalTilingFeatures (Context &context, VkFormat format)
+ {
++
++	VkFormatFeatureFlags vulkanOnlyFeatureFlags = 0;
++#ifndef CTS_USES_VULKANSC
++	if (context.isDeviceFunctionalitySupported(VK_KHR_VIDEO_DECODE_QUEUE_EXTENSION_NAME))
++		vulkanOnlyFeatureFlags |= VK_FORMAT_FEATURE_VIDEO_DECODE_DPB_BIT_KHR |
++								  VK_FORMAT_FEATURE_VIDEO_DECODE_OUTPUT_BIT_KHR;
++	if (context.isDeviceFunctionalitySupported(VK_KHR_VIDEO_ENCODE_QUEUE_EXTENSION_NAME))
++		vulkanOnlyFeatureFlags |= VK_FORMAT_FEATURE_VIDEO_ENCODE_INPUT_BIT_KHR |
++							      VK_FORMAT_FEATURE_VIDEO_ENCODE_DPB_BIT_KHR;
++#endif
++
+ 	// YCbCr formats only support a subset of format feature flags
+ 	const VkFormatFeatureFlags ycbcrAllows =
+ 		VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT |
+@@ -3759,7 +3770,8 @@ VkFormatFeatureFlags getAllowedOptimalTilingFeatures (Context &context, VkFormat
+ 		VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_BIT |
+ 		VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT |
+ 		VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_MINMAX_BIT |
+-		VK_FORMAT_FEATURE_DISJOINT_BIT;
++		VK_FORMAT_FEATURE_DISJOINT_BIT |
++		vulkanOnlyFeatureFlags;
+ 
+ 	// By default everything is allowed.
+ 	VkFormatFeatureFlags allow = (VkFormatFeatureFlags)~0u;
+-- 
+2.39.2
+

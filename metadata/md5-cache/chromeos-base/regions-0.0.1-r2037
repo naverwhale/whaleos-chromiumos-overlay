@@ -1,0 +1,13 @@
+BDEPEND=|| ( ( dev-lang/python:3.8 dev-python/pyyaml[python_targets_python3_8(-),python_single_target_python3_8(+)] ) ( dev-lang/python:3.9 dev-python/pyyaml[python_targets_python3_9(-),python_single_target_python3_9(+)] ) ( dev-lang/python:3.10 dev-python/pyyaml[python_targets_python3_10(-),python_single_target_python3_10(+)] ) ( dev-lang/python:3.11 dev-python/pyyaml[python_targets_python3_11(-),python_single_target_python3_11(+)] ) ) dev-vcs/git app-misc/jq
+DEFINED_PHASES=compile info install setup test unpack
+DESCRIPTION=Chromium OS Region Data
+EAPI=7
+HOMEPAGE=https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/regions/
+IUSE=cros-debug cros_host cros_workon_tree_36cda69e16d13862bdb2a8eff49eb2f37b86de8c
+KEYWORDS=*
+LICENSE=BSD-Google
+PROPERTIES=live
+RDEPEND=app-misc/jq
+SLOT=0/0.0.1-r2037
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	python-any-r1	54a3178500786b0a7ede4a23b7f2a6ad	python-utils-r1	76252008070e69454f51fa80c07638c9	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=103f6b3eb92e08085add39726ed04306

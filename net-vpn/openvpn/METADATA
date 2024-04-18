@@ -1,0 +1,15 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Metadata for CVEs that are fixed or don't affect ChromeOS.
+
+third_party {
+  security {
+    # ChromeOS > Platform > System > Networking
+    tag: "vuln_reporting:buganizer_component:156085"
+
+    mitigated_security_patch: "CVE-2018-9336"  # we don't use the openvpnserv binary
+    mitigated_security_patch: "CVE-2020-20813"  # we don't use openvpn as server
+  }
+}

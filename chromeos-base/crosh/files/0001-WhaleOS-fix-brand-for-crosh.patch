@@ -1,0 +1,26 @@
+From 7dcb741d0fc0f058bf759e33ab2082299958a6ad Mon Sep 17 00:00:00 2001
+From: Jaewon Jung <jw.jung@navercorp.com>
+Date: Thu, 2 Nov 2023 13:14:21 +0900
+Subject: [PATCH] [WhaleOS] fix brand for crosh
+
+Signed-off-by: Jaewon Jung <jw.jung@navercorp.com>
+---
+ src/main.rs | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/main.rs b/src/main.rs
+index f964074877..fae093897a 100644
+--- a/src/main.rs
++++ b/src/main.rs
+@@ -52,7 +52,7 @@ Options:
+ 
+ fn intro() {
+     println!(
+-        r#"Welcome to crosh, the ChromeOS developer shell.
++        r#"Welcome to crosh, the WhaleOS developer shell.
+ 
+ If you got here by mistake, don't panic!  Just close this tab and carry on.
+ 
+-- 
+2.25.1
+

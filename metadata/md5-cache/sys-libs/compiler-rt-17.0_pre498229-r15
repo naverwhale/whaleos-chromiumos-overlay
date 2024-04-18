@@ -1,0 +1,12 @@
+BDEPEND=sys-devel/llvm python_single_target_python3_11? ( dev-lang/python:3.11 >=dev-lang/python-exec-2:=[python_targets_python3_11] ) python_single_target_python3_10? ( dev-lang/python:3.10 >=dev-lang/python-exec-2:=[python_targets_python3_10] ) python_single_target_python3_9? ( dev-lang/python:3.9 >=dev-lang/python-exec-2:=[python_targets_python3_9] ) python_single_target_python3_8? ( dev-lang/python:3.8 >=dev-lang/python-exec-2:=[python_targets_python3_8] ) >=dev-util/ninja-1.8.2 >=dev-util/cmake-3.20.5 dev-vcs/git python_targets_python3_6? ( dev-python/dataclasses ) dev-vcs/git app-misc/jq
+DEFINED_PHASES=compile configure info install prepare setup test unpack
+DESCRIPTION=Compiler runtime library for clang
+EAPI=7
+HOMEPAGE=http://compiler-rt.llvm.org/
+IUSE=+llvm-crt continue-on-patch-failure llvm-next continue-on-patch-failure python_targets_python3_6 cros_host cros_workon_tree_61008e62ee9355dc4f54966bb66709274963c4ad python_single_target_python3_11 python_single_target_python3_10 python_single_target_python3_9 python_single_target_python3_8
+KEYWORDS=*
+LICENSE=LLVM-exception
+PROPERTIES=live live
+SLOT=0
+_eclasses_=cmake	34502c2b638b59994575d53ba3805d7b	cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-llvm	994e8d2dc3e05acc1b942f0fd3a85b27	cros-workon	247d4700539e27bc12026f785ec53757	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	ninja-utils	578ba3585e2f3ebe63ab00c07874016e	python-single-r1	674c48c926cbb44e91b656e0399d8f54	python-utils-r1	76252008070e69454f51fa80c07638c9	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	xdg-utils	ff2ff954e6b17929574eee4efc5152ba
+_md5_=69e6d01e0ed7243f2a9c83a4b92e818e

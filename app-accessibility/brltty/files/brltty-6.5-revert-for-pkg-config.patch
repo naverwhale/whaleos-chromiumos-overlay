@@ -1,0 +1,32 @@
+diff --git a/mk4build b/mk4build
+index 640fd12e7..48c0bdebd 100755
+--- a/mk4build
++++ b/mk4build
+@@ -3,7 +3,7 @@
+ # BRLTTY - A background process providing access to the console screen (when in
+ #          text mode) for a blind person using a refreshable braille display.
+ #
+-# Copyright (C) 1995-2022 by The BRLTTY Developers.
++# Copyright (C) 1995-2021 by The BRLTTY Developers.
+ #
+ # BRLTTY comes with ABSOLUTELY NO WARRANTY.
+ #
+@@ -54,15 +54,11 @@ then
+    needTemporaryDirectory
+    objectExtension="build.${objectExtension}"
+ 
+-   for variable in CC CFLAGS CXX CXXFLAGS LDFLAGS LDLIBS PKG_CONFIG PKG_CONFIG_SYSROOT_DIR PKG_CONFIG_LIBDIR PKG_CONFIG_PATH
++   for variable in CC CFLAGS CXX CXXFLAGS LDFLAGS LDLIBS PKG_CONFIG
+    do
+-      unset "${variable}"
+       getVariable "${variable}_FOR_BUILD" value
+-
+-      [ -n "${value}" ] && {
+-         setVariable "${variable}" "${value}"
+-         export "${variable}"
+-      }
++      setVariable "${variable}" "${value}"
++      export "${variable}"
+    done
+ 
+    "${sourceRoot}/configure" \

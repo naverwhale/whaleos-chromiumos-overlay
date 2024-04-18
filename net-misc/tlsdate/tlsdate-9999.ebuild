@@ -1,11 +1,11 @@
-# Copyright 2012 The Chromium OS Authors
+# Copyright 2012 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="6"
+EAPI="7"
 CROS_WORKON_PROJECT="chromiumos/third_party/tlsdate"
 CROS_WORKON_EGIT_BRANCH=master
 
-inherit autotools flag-o-matic toolchain-funcs cros-sanitizers cros-workon cros-debug systemd user
+inherit autotools flag-o-matic toolchain-funcs cros-sanitizers cros-workon cros-debug systemd tmpfiles user
 
 DESCRIPTION="Update local time over HTTPS"
 HOMEPAGE="https://github.com/ioerror/tlsdate"
@@ -16,7 +16,7 @@ KEYWORDS="~*"
 IUSE="-asan +dbus +seccomp systemd"
 
 DEPEND="dev-libs/openssl:0=
-	dev-libs/libevent
+	dev-libs/libevent:=
 	dbus? ( sys-apps/dbus )"
 RDEPEND="${DEPEND}
 	chromeos-base/chromeos-ca-certificates
@@ -71,11 +71,11 @@ src_install() {
 	if use systemd; then
 		systemd_dounit init/tlsdated.service
 		systemd_enable_service system-services.target tlsdated.service
-		systemd_dotmpfilesd init/tlsdated-directories.conf
 	else
 		insinto /etc/init
 		doins init/tlsdated.conf
 	fi
+	dotmpfiles init/tlsdated-directories.conf
 }
 
 pkg_preinst() {

@@ -1,0 +1,25 @@
+# Triggers Android-specific RTM_GETLINK behavior to pass CTS.
+# From http://aosp/1229615.
+
+--- a/include/sepol/policydb/policydb.h
++++ b/include/sepol/policydb/policydb.h
+@@ -791,6 +791,8 @@ extern int policydb_set_target_platform(policydb_t *p, int platform);
+ 
+ #define POLICYDB_CONFIG_UNKNOWN_MASK	(DENY_UNKNOWN | REJECT_UNKNOWN | ALLOW_UNKNOWN)
+ 
++#define POLICYDB_CONFIG_ANDROID_NETLINK_ROUTE  1 << 31;
++
+ #define OBJECT_R "object_r"
+ #define OBJECT_R_VAL 1
+ 
+--- a/src/write.c
++++ b/src/write.c
+@@ -2119,6 +2119,8 @@ int policydb_write(policydb_t * p, struct policy_file *fp)
+ 
+ 	config |= (POLICYDB_CONFIG_UNKNOWN_MASK & p->handle_unknown);
+ 
++	config |= POLICYDB_CONFIG_ANDROID_NETLINK_ROUTE;
++
+ 	/* Write the magic number and string identifiers. */
+ 	items = 0;
+ 	if (p->policy_type == POLICY_KERN) {

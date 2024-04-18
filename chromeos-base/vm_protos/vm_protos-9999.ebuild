@@ -1,4 +1,4 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -7,7 +7,6 @@ CROS_GO_PACKAGES=(
 	"chromiumos/vm_tools/..."
 )
 
-CROS_WORKON_INCREMENTAL_BUILD=1
 CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_OUTOFTREE_BUILD=1
@@ -18,12 +17,13 @@ PLATFORM_SUBDIR="vm_tools/proto"
 inherit cros-go cros-workon platform
 
 DESCRIPTION="Chrome OS VM protobuf API"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/vm_tools/proto"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/vm_tools/proto"
 LICENSE="BSD-Google"
 KEYWORDS="~*"
 IUSE="fuzzer"
 
 RDEPEND="
+	dev-cpp/abseil-cpp:=
 	dev-libs/protobuf:=
 	net-libs/grpc:=
 	!<chromeos-base/vm_guest_tools-0.0.2
@@ -32,7 +32,14 @@ RDEPEND="
 DEPEND="
 	${RDEPEND}
 	dev-go/protobuf:=
+	dev-go/protobuf-legacy-api:=
 	dev-go/grpc:=
+"
+
+BDEPEND="
+	dev-go/protobuf-legacy-api
+	dev-libs/protobuf
+	net-libs/grpc
 "
 
 src_unpack() {
@@ -41,6 +48,8 @@ src_unpack() {
 }
 
 src_install() {
+	platform_src_install
+
 	insinto /usr/"$(get_libdir)"/pkgconfig
 	doins vm_protos.pc
 

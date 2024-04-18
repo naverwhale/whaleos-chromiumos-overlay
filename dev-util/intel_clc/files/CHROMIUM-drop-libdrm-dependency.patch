@@ -1,0 +1,133 @@
+diff -ruN mesa-23.2.1.orig/meson.build mesa-23.2.1/meson.build
+--- mesa-23.2.1.orig/meson.build	2023-09-28 21:11:25.000000000 +0000
++++ mesa-23.2.1/meson.build	2023-10-04 20:40:26.500401087 +0000
+@@ -121,7 +121,7 @@
+ # Only build shared_glapi if at least one OpenGL API is enabled
+ with_shared_glapi = with_shared_glapi and with_any_opengl
+ 
+-system_has_kms_drm = ['openbsd', 'netbsd', 'freebsd', 'gnu/kfreebsd', 'dragonfly', 'linux', 'sunos', 'android'].contains(host_machine.system())
++system_has_kms_drm = false
+ 
+ gallium_drivers = get_option('gallium-drivers')
+ if gallium_drivers.contains('auto')
+diff -ruN mesa-23.2.1.orig/src/intel/dev/intel_device_info.c mesa-23.2.1/src/intel/dev/intel_device_info.c
+--- mesa-23.2.1.orig/src/intel/dev/intel_device_info.c	2023-09-28 21:11:25.000000000 +0000
++++ mesa-23.2.1/src/intel/dev/intel_device_info.c	2023-10-04 20:41:01.320368207 +0000
+@@ -28,8 +28,6 @@
+ #include <string.h>
+ #include <unistd.h>
+ 
+-#include <xf86drm.h>
+-
+ #include "intel_device_info.h"
+ #include "intel_wa.h"
+ #include "i915/intel_device_info.h"
+@@ -1550,97 +1548,6 @@
+    return 1024;
+ }
+ 
+-bool
+-intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
+-{
+-   /* Get PCI info.
+-    *
+-    * Some callers may already have a valid drm device which holds values of
+-    * PCI fields queried here prior to calling this function. But making this
+-    * query optional leads to a more cumbersome implementation. These callers
+-    * still need to initialize the fields somewhere out of this function and
+-    * rely on an ioctl to get PCI device id for the next step when skipping
+-    * this drm query.
+-    */
+-   drmDevicePtr drmdev = NULL;
+-   if (drmGetDevice2(fd, DRM_DEVICE_GET_PCI_REVISION, &drmdev)) {
+-      mesa_loge("Failed to query drm device.");
+-      return false;
+-   }
+-   if (!intel_device_info_init_common(
+-          drmdev->deviceinfo.pci->device_id, devinfo)) {
+-      drmFreeDevice(&drmdev);
+-      return false;
+-   }
+-   devinfo->pci_domain = drmdev->businfo.pci->domain;
+-   devinfo->pci_bus = drmdev->businfo.pci->bus;
+-   devinfo->pci_dev = drmdev->businfo.pci->dev;
+-   devinfo->pci_func = drmdev->businfo.pci->func;
+-   devinfo->pci_device_id = drmdev->deviceinfo.pci->device_id;
+-   devinfo->pci_revision_id = drmdev->deviceinfo.pci->revision_id;
+-   drmFreeDevice(&drmdev);
+-   devinfo->no_hw = debug_get_bool_option("INTEL_NO_HW", false);
+-
+-   if (devinfo->ver == 10) {
+-      mesa_loge("Gfx10 support is redacted.");
+-      return false;
+-   }
+-
+-   devinfo->kmd_type = intel_get_kmd_type(fd);
+-   if (devinfo->kmd_type == INTEL_KMD_TYPE_INVALID) {
+-      mesa_loge("Unknown kernel mode driver");
+-      return false;
+-   }
+-
+-   /* remaining initializion queries the kernel for device info */
+-   if (devinfo->no_hw) {
+-      /* Provide some sensible values for NO_HW. */
+-      devinfo->gtt_size =
+-         devinfo->ver >= 8 ? (1ull << 48) : 2ull * 1024 * 1024 * 1024;
+-      intel_device_info_compute_system_memory(devinfo, false);
+-      return true;
+-   }
+-
+-   bool ret;
+-   switch (devinfo->kmd_type) {
+-   case INTEL_KMD_TYPE_I915:
+-      ret = intel_device_info_i915_get_info_from_fd(fd, devinfo);
+-      break;
+-   case INTEL_KMD_TYPE_XE:
+-      ret = intel_device_info_xe_get_info_from_fd(fd, devinfo);
+-      break;
+-   default:
+-      ret = false;
+-      unreachable("Missing");
+-   }
+-   if (!ret) {
+-      mesa_logw("Could not get intel_device_info.");
+-      return false;
+-   }
+-
+-   /* region info is required for lmem support */
+-   if (devinfo->has_local_mem && !devinfo->mem.use_class_instance) {
+-      mesa_logw("Could not query local memory size.");
+-      return false;
+-   }
+-
+-   /* Gfx7 and older do not support EU/Subslice info */
+-   assert(devinfo->subslice_total >= 1 || devinfo->ver <= 7);
+-   devinfo->subslice_total = MAX2(devinfo->subslice_total, 1);
+-
+-   init_max_scratch_ids(devinfo);
+-
+-   for (enum intel_engine_class engine = INTEL_ENGINE_CLASS_RENDER;
+-        engine < ARRAY_SIZE(devinfo->engine_class_prefetch); engine++)
+-      devinfo->engine_class_prefetch[engine] =
+-            intel_device_info_calc_engine_prefetch(devinfo, engine);
+-
+-   intel_device_info_init_was(devinfo);
+-   intel_device_info_apply_workarounds(devinfo);
+-
+-   return true;
+-}
+-
+ bool intel_device_info_update_memory_info(struct intel_device_info *devinfo, int fd)
+ {
+    bool ret;
+diff -ruN mesa-23.2.1.orig/src/intel/dev/meson.build mesa-23.2.1/src/intel/dev/meson.build
+--- mesa-23.2.1.orig/src/intel/dev/meson.build	2023-09-28 21:11:25.000000000 +0000
++++ mesa-23.2.1/src/intel/dev/meson.build	2023-10-04 20:40:45.764382905 +0000
+@@ -31,7 +31,6 @@
+   'intel_device_info.h',
+   'intel_hwconfig.c',
+   'intel_hwconfig.h',
+-  'intel_kmd.c',
+   'intel_kmd.h',
+ )
+ 

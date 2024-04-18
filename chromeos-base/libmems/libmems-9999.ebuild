@@ -1,4 +1,4 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -14,38 +14,20 @@ PLATFORM_SUBDIR="libmems"
 inherit cros-workon platform
 
 DESCRIPTION="MEMS support library for Chromium OS."
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/libmems"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/libmems"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
 IUSE=""
 
 COMMON_DEPEND="
-	net-libs/libiio:="
+	chromeos-base/system_api:=
+	net-libs/libiio:=
+	virtual/libudev:=
+"
 RDEPEND="${COMMON_DEPEND}"
-DEPEND="${COMMON_DEPEND}
-	chromeos-base/system_api:="
-
-src_install() {
-	dolib.so "${OUT}/lib/libmems.so"
-	dolib.so "${OUT}/lib/libmems_test_support.so"
-
-	insinto "/usr/$(get_libdir)/pkgconfig"
-	doins libmems.pc
-	doins libmems_test_support.pc
-
-	insinto "/usr/include/chromeos/libmems"
-	doins *.h
-}
+DEPEND="${COMMON_DEPEND}"
 
 platform_pkg_test() {
-	local tests=(
-		libmems_testrunner
-	)
-
-	local test_bin
-	for test_bin in "${tests[@]}"; do
-		platform_test "run" "${OUT}/${test_bin}"
-	done
+	platform test_all
 }
-

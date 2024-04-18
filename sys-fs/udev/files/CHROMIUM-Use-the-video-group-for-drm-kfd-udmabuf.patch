@@ -1,0 +1,36 @@
+From 7fd1a47bcfb11d351f978eb44c608fd7d6edb7a1 Mon Sep 17 00:00:00 2001
+From: Matt Turner <msturner@google.com>
+Date: Wed, 2 Aug 2023 16:32:03 +0000
+Subject: [PATCH] CHROMIUM: Use the "video" group for drm, kfd, udmabuf
+
+---
+ rules.d/50-udev-default.rules.in | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+
+diff --git a/rules.d/50-udev-default.rules.in b/rules.d/50-udev-default.rules.in
+index 18a3cf46bf..79e2ed7688 100644
+--- a/rules.d/50-udev-default.rules.in
++++ b/rules.d/50-udev-default.rules.in
+@@ -36,8 +36,8 @@ SUBSYSTEM=="dvb", GROUP="video"
+ SUBSYSTEM=="media", GROUP="video"
+ SUBSYSTEM=="cec", GROUP="video"
+ 
+-SUBSYSTEM=="drm", KERNEL=="renderD*", GROUP="render", MODE="{{GROUP_RENDER_MODE}}"
+-SUBSYSTEM=="kfd", GROUP="render", MODE="{{GROUP_RENDER_MODE}}"
++SUBSYSTEM=="drm", KERNEL=="renderD*", GROUP="video", MODE="{{GROUP_RENDER_MODE}}"
++SUBSYSTEM=="kfd", GROUP="video", MODE="{{GROUP_RENDER_MODE}}"
+ 
+ SUBSYSTEM=="misc", KERNEL=="sgx_enclave", GROUP="sgx", MODE="0660"
+ 
+@@ -98,7 +98,7 @@ KERNEL=="vhost-vsock", GROUP="kvm", MODE="{{DEV_KVM_MODE}}", OPTIONS+="static_no
+ 
+ KERNEL=="vhost-net", GROUP="kvm", MODE="{{DEV_KVM_MODE}}", OPTIONS+="static_node=vhost-net"
+ 
+-KERNEL=="udmabuf", GROUP="kvm"
++KERNEL=="udmabuf", GROUP="video"
+ 
+ SUBSYSTEM=="ptp", ATTR{clock_name}=="KVM virtual PTP", SYMLINK += "ptp_kvm"
+ 
+-- 
+2.39.2
+

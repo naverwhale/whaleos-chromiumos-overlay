@@ -1,12 +1,20 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="7"
 CROS_WORKON_PROJECT="chromiumos/platform/ec"
 CROS_WORKON_LOCALNAME="platform/ec"
-PYTHON_COMPAT=( python3_6 )
+PYTHON_COMPAT=( python3_{6..9} )
 
-inherit cros-workon distutils-r1
+# This ebuild is upreved via PuPR, so disable the normal uprev process for
+# cros-workon ebuilds.
+#
+# To uprev manually, run:
+#    cros_mark_as_stable --force --overlay-type private --packages \
+#     chromeos-base/ec-devutils commit
+CROS_WORKON_MANUAL_UPREV="1"
+
+inherit cros-workon distutils-r1 libchrome
 
 DESCRIPTION="Host development utilities for Chromium OS EC"
 HOMEPAGE="https://www.chromium.org/chromium-os/ec-development"
@@ -18,6 +26,8 @@ IUSE="hammerd"
 
 DEPEND="virtual/libusb:1=
 	sys-apps/flashmap:=
+	dev-embedded/libftdi:=
+	chromeos-base/libec:=
 	"
 RDEPEND="
 	${DEPEND}
@@ -32,6 +42,11 @@ BDEPEND="
 	dev-python/setuptools[${PYTHON_USEDEP}]
 	virtual/pkgconfig
 	"
+# b/274791539: gtest is required because libec includes a libchrome header that
+# requires gtest to be installed when building.
+DEPEND+="
+	dev-cpp/gtest
+"
 
 set_board() {
 	# No need to be board specific, no tools below build code that is
@@ -56,7 +71,20 @@ src_compile() {
 	# host (BUILDCC, amd64). So we need to override HOSTCC by target "CC".
 	export HOSTCC="${CC}"
 	set_board
-	emake utils-host
+
+	# b/247791129: EC expects HOST_PKG_CONFIG to be the pkg-config targeting the
+	# platform that the EC is running on top of (e.g., the Chromebook's AP).
+	# That platform corresponds to the ChromeOS "$BOARD" and the pkg-config for
+	# the "$BOARD" being built is specified by tc-getPKG_CONFIG.
+	export HOST_PKG_CONFIG
+	HOST_PKG_CONFIG=$(tc-getPKG_CONFIG)
+
+	# EC expects BUILD_PKG_CONFIG to be the pkg-config targeting the build
+	# machine (the machine doing the compilation).
+	export BUILD_PKG_CONFIG
+	BUILD_PKG_CONFIG=$(tc-getBUILD_PKG_CONFIG)
+
+	emake CC="${CC}" utils-host
 	# Add usb_updater2 for servo or hammer updates.
 	emake -C extra/usb_updater usb_updater2
 	if use hammerd; then

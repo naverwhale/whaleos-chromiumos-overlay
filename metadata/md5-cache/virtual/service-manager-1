@@ -7,4 +7,4 @@ KEYWORDS=*
 LICENSE=metapackage
 RDEPEND=chromeos-base/chromeos-init
 SLOT=0
-_md5_=aacb28cfd4a447d1598161b049d6e8ea
+_md5_=cbff227d2af65a32b3402f2fd3a01616

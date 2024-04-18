@@ -1,4 +1,4 @@
-From c0d98828b76c81cac47311c6dd0e40d42cee9bf9 Mon Sep 17 00:00:00 2001
+From e333741b9e2ec539d6a8dcdd305b4c59a76f931b Mon Sep 17 00:00:00 2001
 From: Benjamin Gordon <bmgordon@chromium.org>
 Date: Fri, 1 Jun 2018 15:24:29 -0600
 Subject: [PATCH libdrm 7/7] CHROMIUM: drm_fourcc.h: Add back VENDOR_NV name
@@ -20,11 +20,11 @@ Change-Id: I5cb0cc0e6144665103c38d32489fe68ac34429b2
  1 file changed, 3 insertions(+)
 
 diff --git a/include/drm/drm_fourcc.h b/include/drm/drm_fourcc.h
-index 4b146d7a..5a3f0c77 100644
+index 649273d3..ea02d62e 100644
 --- a/include/drm/drm_fourcc.h
 +++ b/include/drm/drm_fourcc.h
-@@ -187,6 +187,9 @@ extern "C" {
- #define DRM_FORMAT_MOD_VENDOR_BROADCOM 0x07
+@@ -371,6 +371,9 @@ extern "C" {
+ 
  /* add more to the end as needed */
  
 +/* For backwards compatibility prior to 2.4.92. */
@@ -34,5 +34,5 @@ index 4b146d7a..5a3f0c77 100644
  
  /* Vendor ID for downstream, interim ChromeOS specific modifiers. */
 -- 
-2.16.4
+2.31.0
 

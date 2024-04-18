@@ -25,20 +25,21 @@ DEPEND="${RDEPEND}
 PATCHES=(
 	"${FILESDIR}"/${PN}-1.2.0-cxxflags.patch
 	"${FILESDIR}"/port_to_newer_cups_headers.patch
-	"${FILESDIR}"/dymo-cups-drivers-1.4.0.5-flexible-tests.patch
+	"${FILESDIR}"/${PN}-1.4.0.5-flexible-tests.patch
+	"${FILESDIR}"/${PN}-1.4.0.5-remove-ppd.patch
 )
 
 DOCS=( AUTHORS README ChangeLog docs/SAMPLES )
 
 src_prepare() {
 	default
-	eapply_user
+	rm -rf ppd/
 	eautoreconf
 }
 
 src_configure() {
 	sanitizers-setup-env
-	default
+	econf cups_serverbindir=/usr/libexec/cups
 }
 
 src_install() {

@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -18,19 +18,25 @@ DESCRIPTION="Intel IPU6 (Image Processing Unit) Chrome OS camera HAL"
 LICENSE="Apache-2.0"
 SLOT="0"
 KEYWORDS="~*"
-IUSE="ipu6se ipu6ep"
+IUSE="ipu6se ipu6ep ipu6epmtl ipu6epadln"
 
 RDEPEND="
 	chromeos-base/chromeos-config-tools
 	chromeos-base/cros-camera-libs
 	chromeos-base/cros-camera-android-deps
 	dev-libs/expat
-	!ipu6se? ( !ipu6ep? ( media-libs/intel-ipu6-camera-bins ) )
+	!ipu6se? ( !ipu6ep? ( !ipu6epmtl? ( !ipu6epadln? ( media-libs/intel-ipu6-camera-bins ) ) ) )
 	ipu6se? (
 		media-libs/intel-ipu6se-camera-bins
 		x11-libs/libva-intel-media-driver
 	)
 	ipu6ep? ( media-libs/intel-ipu6ep-camera-bins )
+	ipu6epadln? (
+		media-libs/intel-ipu6epadln-camera-bins
+		x11-libs/libva-intel-media-driver
+		x11-libs/libva
+	)
+	ipu6epmtl? ( media-libs/intel-ipu6epmtl-camera-bins )
 	!media-libs/cros-camera-hal-intel-ipu6-squash
 	media-libs/libsync
 	media-libs/libyuv
@@ -43,14 +49,5 @@ DEPEND="${RDEPEND}
 
 src_install() {
 	platform_src_install
-
-	dolib.so "${OUT}/lib/libcamhal.so"
-	cros-camera_dohal "${OUT}/lib/libcamhal.so" intel-ipu6.so
-	dolib.so "${OUT}/lib/libcam_algo.so"
-
-	if use ipu6se; then
-		dolib.so "${OUT}/lib/libcam_algo_vendor_gpu.so"
-	fi
-
 	udev_dorules "${FILESDIR}/50-ipu-psys0.rules"
 }

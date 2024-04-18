@@ -1,0 +1,26 @@
+commit 80786af06da325510eeb6846aeaf964a3214c175
+Author: Joel E. Denny <jdenny.ornl@gmail.com>
+Date:   Thu Sep 7 12:34:29 2023 -0400
+
+    Revert "[lit] Fix yet another test fail under windows"
+    
+    This reverts commit b6bd9d275f783f8150c8a04145ef2a31edb4fddf.
+    
+    The reason for the revert is discussed at:
+    https://discourse.llvm.org/t/rfc-improving-lits-debug-output/72839/52
+
+diff --git a/llvm/utils/lit/tests/shtest-output-printing.py b/llvm/utils/lit/tests/shtest-output-printing.py
+index 129cff981eb5..3e49197520a9 100644
+--- a/llvm/utils/lit/tests/shtest-output-printing.py
++++ b/llvm/utils/lit/tests/shtest-output-printing.py
+@@ -31,8 +31,8 @@
+ #  CHECK-NEXT: # error: command failed with exit status: 1
+ #  CHECK-NEXT: # executed command: true
+ #  CHECK-NEXT: # RUN: at line 4
+-#  CHECK-NEXT: not {{.*}}python{{.*}} {{.*}}write-a-lot.py &> [[FILE:.*]]
+-#  CHECK-NEXT: # executed command: not {{.*}}python{{.*}} {{.*}}write-a-lot.py{{.*}}
++#  CHECK-NEXT: not {{.*}}/python{{.*}} {{.*}}/write-a-lot.py &> [[FILE:.*]]
++#  CHECK-NEXT: # executed command: not {{.*}}/python{{.*}} {{.*}}/write-a-lot.py
+ #  CHECK-NEXT: # .---redirected output from '[[FILE]]'
+ #  CHECK-NEXT: # | All work and no play makes Jack a dull boy.
+ #  CHECK-NEXT: # | All work and no play makes Jack a dull boy.

@@ -1,10 +1,10 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=6
+EAPI="7"
 
 DESCRIPTION="A test Downloadable Content (DLC) module for DLC tast tests"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/dlcservice"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/dlcservice"
 SRC_URI=""
 
 LICENSE="BSD-Google"

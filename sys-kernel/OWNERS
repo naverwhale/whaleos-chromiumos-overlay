@@ -1,2 +1,3 @@
-include /OWNERS.kernel
+include chromiumos/owners:v1:/kernel/OWNERS.build
+
 chromeos-ci-prod@chromeos-bot.iam.gserviceaccount.com

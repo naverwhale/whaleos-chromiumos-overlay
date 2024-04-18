@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -35,6 +35,9 @@
 #    `--library-path='/usr/lib/libfoo'`.
 
 "${CHROOT_SOURCE_ROOT}"/src/platform2/common-mk/platform2_test.py \
+    --strategy=unprivileged \
+    --user=root \
+    --bind-mount-dev \
     --sysroot="${SYSROOT}" \
     --env LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${WORKDIR/${SYSROOT}/}/${P}-build/girepository/" \
     -- \

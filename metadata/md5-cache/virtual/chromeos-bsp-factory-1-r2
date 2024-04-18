@@ -7,4 +7,4 @@ KEYWORDS=*
 LICENSE=metapackage
 RDEPEND=|| ( chromeos-base/factory-board chromeos-base/chromeos-factory-board ) chromeos-base/factory-baseboard
 SLOT=0
-_md5_=f751f770e3e280c6899a8e4937188431
+_md5_=0fb5730634e896a3fc9fd574f74798ab

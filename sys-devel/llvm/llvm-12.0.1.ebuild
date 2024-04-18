@@ -1,15 +1,13 @@
 # Copyright 1999-2019 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=6
+EAPI=7
 
 : ${CMAKE_MAKEFILE_GENERATOR:=ninja}
-# (needed due to CMAKE_BUILD_TYPE != Gentoo)
-CMAKE_MIN_VERSION=3.7.0-r1
-PYTHON_COMPAT=( python3_{6..9} )
+PYTHON_COMPAT=( python3_{8..11} )
 
-inherit cmake-utils flag-o-matic multilib-minimal \
-	multiprocessing pax-utils python-any-r1 toolchain-funcs eapi7-ver
+inherit cmake flag-o-matic multilib-minimal \
+	multiprocessing pax-utils python-any-r1 toolchain-funcs
 
 DESCRIPTION="Low Level Virtual Machine"
 HOMEPAGE="https://llvm.org/"
@@ -29,7 +27,7 @@ ALL_LLVM_TARGETS=( "${ALL_LLVM_TARGETS[@]/#/llvm_targets_}" )
 #  a. gtest: BSD.
 #  b. YAML tests: MIT.
 
-LICENSE="UoI-NCSA rc BSD public-domain
+LICENSE="LLVM-exception rc BSD public-domain
 	llvm_targets_ARM? ( LLVM-Grant )"
 SLOT="$(ver_cut 1)"
 KEYWORDS="*"
@@ -66,8 +64,7 @@ BDEPEND="
 # Force older versions to be removed first.
 RDEPEND="${RDEPEND}
 	!<sys-devel/llvm-${SLOT}"
-PDEPEND="sys-devel/llvm-common
-	gold? ( sys-devel/llvmgold )"
+PDEPEND="gold? ( sys-devel/llvmgold )"
 
 REQUIRED_USE="|| ( ${ALL_LLVM_TARGETS[*]} )"
 
@@ -95,6 +92,8 @@ src_prepare() {
 
 	# User patches + QA
 	eapply_user
+
+	cmake_src_prepare
 }
 
 # Is LLVM being linked against libc++?
@@ -140,6 +139,8 @@ multilib_src_configure() {
 		-DCMAKE_INSTALL_PREFIX="${EPREFIX}/usr/lib/llvm"
 		-DLLVM_LIBDIR_SUFFIX=${libdir#lib}
 
+		-DBUILD_SHARED_LIBS=OFF
+
 		-DLLVM_TARGETS_TO_BUILD="${LLVM_TARGETS// /;}"
 		-DLLVM_BUILD_TESTS=$(usex test)
 		-DLLVM_BUILD_TOOLS=$(usex tools)
@@ -164,6 +165,7 @@ multilib_src_configure() {
 
 		# disable OCaml bindings (now in dev-ml/llvm-ocaml)
 		-DOCAMLFIND=NO
+		-DCMAKE_BUILD_TYPE=RelWithDebInfo
 	)
 
 	if is_libcxx_linked; then
@@ -230,11 +232,11 @@ multilib_src_configure() {
 
 	# LLVM_ENABLE_ASSERTIONS=NO does not guarantee this for us, #614844
 	use debug || local -x CPPFLAGS="${CPPFLAGS} -DNDEBUG"
-	cmake-utils_src_configure
+	cmake_src_configure
 }
 
 multilib_src_compile() {
-	cmake-utils_src_compile
+	cmake_src_compile
 
 	pax-mark m "${BUILD_DIR}"/bin/llvm-rtdyld
 	pax-mark m "${BUILD_DIR}"/bin/lli
@@ -250,7 +252,7 @@ multilib_src_compile() {
 multilib_src_test() {
 	# respect TMPDIR!
 	local -x LIT_PRESERVES_TMP=1
-	cmake-utils_src_make check
+	cmake_build check
 }
 
 src_install() {
@@ -279,7 +281,7 @@ src_install() {
 }
 
 multilib_src_install() {
-	cmake-utils_src_install
+	cmake_src_install
 
 	# move headers to /usr/include for wrapping
 	rm -rf "${ED%/}"/usr/include || die

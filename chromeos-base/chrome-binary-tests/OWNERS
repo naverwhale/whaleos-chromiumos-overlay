@@ -1,0 +1,2 @@
+include chromiumos/third_party/autotest:/OWNERS
+include chromiumos/platform/graphics:/OWNERS.chrome_binary_tests

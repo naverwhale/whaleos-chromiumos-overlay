@@ -1,0 +1,57 @@
+From c9b4d69139585c6401c32cc4d7d3a4cb6281bf2c Mon Sep 17 00:00:00 2001
+From: Ezequiel Garcia <ezequiel@collabora.com>
+Date: Thu, 26 Nov 2020 10:36:12 +0100
+Subject: [PATCH] BACKPORT: media: controls: Add the stateless codec control
+ class
+
+Add a new control class to hold the stateless codecs controls
+that are ready to be moved out of staging.
+
+Signed-off-by: Ezequiel Garcia <ezequiel@collabora.com>
+Tested-by: Jernej Skrabec <jernej.skrabec@siol.net>
+Signed-off-by: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Signed-off-by: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
+(cherry picked from commit 008d2bd6e96b5a7e80dacfb02cd182c3839ce819)
+
+Conflicts:
+   Documentation/media/uapi/v4l/vidioc-g-ext-ctrls.rst
+
+Non-uAPI changes dropped.
+
+BUG=b:278157861
+TEST=Check header
+
+Change-Id: Ifa891a012d17b66790717fce3eeae2d7c4ff1583
+Signed-off-by: Chen-Yu Tsai <wenst@chromium.org>
+---
+ include/uapi/linux/v4l2-controls.h | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/include/uapi/linux/v4l2-controls.h b/include/uapi/linux/v4l2-controls.h
+index 7e3519d41c98..9a82943ce691 100644
+--- a/include/uapi/linux/v4l2-controls.h
++++ b/include/uapi/linux/v4l2-controls.h
+@@ -65,6 +65,7 @@
+ #define V4L2_CTRL_CLASS_FM_RX		0x00a10000	/* FM Receiver controls */
+ #define V4L2_CTRL_CLASS_RF_TUNER	0x00a20000	/* RF tuner controls */
+ #define V4L2_CTRL_CLASS_DETECT		0x00a30000	/* Detection controls */
++#define V4L2_CTRL_CLASS_CODEC_STATELESS 0x00a40000	/* Stateless codecs controls */
+ 
+ /* User-class control IDs */
+ 
+@@ -1111,6 +1112,12 @@ enum v4l2_detect_md_mode {
+ #define V4L2_CID_DETECT_MD_THRESHOLD_GRID	(V4L2_CID_DETECT_CLASS_BASE + 3)
+ #define V4L2_CID_DETECT_MD_REGION_GRID		(V4L2_CID_DETECT_CLASS_BASE + 4)
+ 
++
++/*  Stateless CODECs controls */
++#define V4L2_CID_CODEC_STATELESS_BASE          (V4L2_CTRL_CLASS_CODEC_STATELESS | 0x900)
++#define V4L2_CID_CODEC_STATELESS_CLASS         (V4L2_CTRL_CLASS_CODEC_STATELESS | 1)
++
++
+ /* MPEG-compression definitions kept for backwards compatibility */
+ #ifndef __KERNEL__
+ #define V4L2_CTRL_CLASS_MPEG            V4L2_CTRL_CLASS_CODEC
+-- 
+2.40.1.606.ga4b1b128d6-goog
+

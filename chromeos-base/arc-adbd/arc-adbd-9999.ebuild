@@ -1,4 +1,4 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -14,7 +14,7 @@ PLATFORM_SUBDIR="arc/adbd"
 inherit cros-workon platform
 
 DESCRIPTION="Container to run Android's adbd proxy."
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/arc/adbd"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/arc/adbd"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
@@ -25,19 +25,7 @@ RDEPEND="
 "
 
 src_install() {
-	insinto /etc/init
-	if use arcvm; then
-		doins init/arcvm-adbd.conf
-		insinto /etc/dbus-1/system.d
-		doins init/dbus-1/ArcVmAdbd.conf
-	else
-		doins init/arc-adbd.conf
-	fi
-
-	insinto /usr/share/policy
-	use seccomp && newins "seccomp/arc$(usex arcvm vm '')-adbd-${ARCH}.policy" "arc$(usex arcvm vm '')-adbd-seccomp.policy"
-
-	dosbin "${OUT}/arc-adbd"
+	platform_src_install
 
 	# Install fuzzers.
 	# fuzzer_component_id is unknown/unlisted

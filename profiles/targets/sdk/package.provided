@@ -2,3 +2,10 @@
 # needs this facility on systems using SELinux. Provide a non-virtual package
 # to avoid confusing warnings.
 sys-apps/opentmpfiles-0.2
+
+# We don't really want to use the shadow utils' user/group management utilities
+# in the SDK, but some packages may depend on it. We pretend we have the
+# package even though we don't, and that should work out for the most part.
+# (For example, net-misc/openssh conditionally depends on sys-apps/shadow, but
+# it doesn't actually need it.)
+sys-apps/shadow-4.13

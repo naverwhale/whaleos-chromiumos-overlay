@@ -1,0 +1,10 @@
+# proto-file: chromiumos/build/api/subtools.proto
+# proto-message: chromiumos.build.api.SubtoolPackage
+name: "shellcheck"
+type: EXPORT_CIPD
+max_files: 1
+paths: [
+  {
+    input: "/usr/bin/shellcheck"
+  }
+]

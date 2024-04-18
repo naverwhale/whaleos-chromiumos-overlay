@@ -1,0 +1,13 @@
+BDEPEND=dev-lang/go
+DEFINED_PHASES=compile install nofetch postinst test unpack
+DEPEND=dev-go/go-sys dev-go/net dev-go/term
+DESCRIPTION=Go supplementary cryptography libraries
+EAPI=7
+HOMEPAGE=https://golang.org/x/crypto
+KEYWORDS=*
+LICENSE=BSD-Google
+RESTRICT=binchecks strip
+SLOT=0
+SRC_URI=https://go.googlesource.com/crypto/+archive/v0.9.0.tar.gz -> go.googlesource.com-crypto-v0.9.0.tar.gz
+_eclasses_=cros-go	77ba1c1ddf5c20dab7e47e19efeffef7	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=fa3cbf96690a966bc90453f07f3f093b

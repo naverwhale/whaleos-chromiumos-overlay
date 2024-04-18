@@ -1,7 +1,7 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
+EAPI="7"
 CROS_WORKON_PROJECT="chromiumos/third_party/autotest"
 CROS_WORKON_LOCALNAME="third_party/autotest/files"
 
@@ -27,21 +27,26 @@ SERVER_IUSE_TESTS="
 	+tests_bluetooth_AdapterAudioLink
 	+tests_bluetooth_AdapterAUHealth
 	+tests_bluetooth_AdapterCLHealth
+	+tests_bluetooth_AdapterCTSHealth
 	+tests_bluetooth_AdapterEPHealth
 	+tests_bluetooth_AdapterLEAdvertising
 	+tests_bluetooth_AdapterLEBetterTogether
 	+tests_bluetooth_AdapterLEHIDHealth
 	+tests_bluetooth_AdapterLEHealth
+	+tests_bluetooth_AdapterLLPrivacyHealth
 	+tests_bluetooth_AdapterLLTHealth
 	+tests_bluetooth_AdapterMDHealth
 	+tests_bluetooth_AdapterMTBF
 	+tests_bluetooth_AdapterPowerMeasure
+	+tests_bluetooth_AdapterQRHealth
 	+tests_bluetooth_AdapterQuickHealth
 	+tests_bluetooth_AdapterRvR
 	+tests_bluetooth_AdapterSAHealth
 	+tests_bluetooth_AdapterSRHealth
+	+tests_bluetooth_FastPair
 	+tests_bluetooth_PeerUpdate
 	+tests_bluetooth_PeerVerify
+	+tests_bluetooth_WiFiCoexHealth
 "
 
 IUSE_TESTS="${IUSE_TESTS}

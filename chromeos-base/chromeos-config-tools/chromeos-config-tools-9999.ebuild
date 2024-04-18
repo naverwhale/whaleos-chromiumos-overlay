@@ -1,7 +1,7 @@
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Copyright 2016 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=5
+EAPI="7"
 
 CROS_WORKON_INCREMENTAL_BUILD=1
 
@@ -26,12 +26,11 @@ PLATFORM_SUBDIR="chromeos-config"
 inherit cros-workon platform gtest
 
 DESCRIPTION="Chrome OS configuration tools"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/chromeos-config"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/chromeos-config"
 
 LICENSE="BSD-Google"
 SLOT=0
 KEYWORDS="~*"
-IUSE=""
 
 GTEST_METADATA=(
 	libcros_config/cros_config_functional_test.yaml
@@ -39,11 +38,11 @@ GTEST_METADATA=(
 
 GTEST_TEST_INSTALL_DIR="/usr/local/gtest/cros_config"
 
-RDEPEND=""
-
 DEPEND="${RDEPEND}"
 
 src_install() {
+	platform_src_install
+
 	dolib.so "${OUT}/lib/libcros_config.so"
 
 	insinto "/usr/include/chromeos/chromeos-config/libcros_config"
@@ -60,7 +59,6 @@ src_install() {
 
 	dobin "${OUT}"/cros_config
 	newbin cros_config_mock.sh cros_config_mock
-	dosbin "${OUT}"/cros_configfs
 
 	if use test; then
 		exeinto "${GTEST_TEST_INSTALL_DIR}"
@@ -68,19 +66,11 @@ src_install() {
 
 		install_gtest_metadata "${GTEST_METADATA[@]}"
 	fi
-
-	# Install init scripts.
-	insinto /etc/init
-	doins init/*.conf
 }
 
 platform_pkg_test() {
-	# Run this here since we may not run cros_config_main_test.
-	./chromeos-config-test-setup.sh
 	local tests=(
 		fake_cros_config_test
-		cros_config_test
-		cros_config_main_test
 	)
 
 	local test_bin

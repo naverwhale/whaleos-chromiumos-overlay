@@ -1,3 +1,4 @@
+BDEPEND=app-misc/jq
 DEFINED_PHASES=info install setup unpack
 DESCRIPTION=Handwriting Spanish Language Pack for Chromium OS
 EAPI=7
@@ -7,5 +8,5 @@ LICENSE=BSD-Google
 REQUIRED_USE=dlc ondevice_handwriting
 SLOT=0/9999
 SRC_URI=gs://chromeos-localmirror/distfiles/languagepack-handwriting-es-20210730.tar.xz
-_eclasses_=cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-credentials	4fd98ebbff6a1534ca9a89547e13dc92	cros-workon	ff100259492312ff6570e490bcb9a320	dlc	7fff3565c77657ab37a6955949c208a7	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
-_md5_=e8541497c0bef2d1ef80c1e670201a24
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-workon	247d4700539e27bc12026f785ec53757	dlc	0e249e19536561abe6eb72bd84e06026	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=17359bfd22c3708de5646a389b439189

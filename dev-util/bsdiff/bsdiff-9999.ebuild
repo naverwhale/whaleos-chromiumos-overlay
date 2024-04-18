@@ -35,6 +35,8 @@ RDEPEND="
 DEPEND="${RDEPEND}"
 
 src_install() {
+	platform_src_install
+
 	if use cros_host; then
 		dobin "${OUT}"/bsdiff
 		dobin "${OUT}"/bspatch
@@ -55,7 +57,4 @@ src_install() {
 
 platform_pkg_test() {
 	platform_test "run" "${OUT}/bsdiff_test"
-
-	# Run fuzzer.
-	platform_fuzzer_test "${OUT}"/bspatch_fuzzer
 }

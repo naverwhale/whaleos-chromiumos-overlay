@@ -32,19 +32,72 @@ DEPEND="${RDEPEND}
 	>=sys-apps/texinfo-4.8
 	>=sys-devel/bison-1.875"
 PDEPEND=">=sys-devel/gcc-config-2.3"
-BDEPEND="${CATEGORY}/binutils"
+# Go is required for the toolchain wrappers.
+BDEPEND="
+	dev-lang/go
+"
 
 RESTRICT="strip"
 
-IUSE="cet gcc_repo gcj git_gcc go graphite gtk hardened hardfp llvm-next llvm-tot mounted_gcc multilib
+IUSE="cet gcc_repo gcj git_gcc go graphite gtk hardened hardfp llvm_libgcc mounted_gcc multilib
 	nls cxx openmp test tests +thumb upstream_gcc vanilla vtable_verify +wrapper_ccache"
+
+# The -bootstrap suffix is used to indicate a stage 1 gcc compiler. This
+# compiler only supports the C language and doesn't provide any additional
+# libraries. It's only useful for building glibc and the stage 2 gcc compiler.
+# The stage 2 compiler can be built using a stage 1 or stage 2 compiler.
+if [[ "${CATEGORY}" == cross-*-bootstrap ]]; then
+	BDEPEND+="
+		${CATEGORY%-bootstrap}/binutils
+	"
+	RDEPEND+="
+		!${CATEGORY%-bootstrap}/gcc
+	"
+	# The following USE flags are invalid when compiling a stage1 compiler.
+	RESTRICT_USE="!cet !cxx !go !multilib !openmp"
+elif [[ "${CATEGORY}" == cross-* ]]; then
+	# We still want to support the crossdev flow that doesn't use the -bootstrap
+	# package. We use the cxx USE flag as a proxy to determine if we are building
+	# a stage1 or stage2 gcc. If !cxx then we are building a stage1 compiler
+	# that only requires the host's C compiler. If cxx then we are building a
+	# stage2 compiler that requires the host's C compiler, a bootstrap cross
+	# compiler, and glibc.
+	BDEPEND+="
+		cxx? (
+			|| (
+				${CATEGORY}-bootstrap/gcc
+				${CATEGORY}/gcc
+			)
+		)
+		${CATEGORY}/binutils
+	"
+	DEPEND+="
+		cxx? (
+			${CATEGORY}/glibc
+		)
+	"
+	# libgcc requires linux-headers
+	if [[ ${CATEGORY} == *-linux* ]]; then
+		DEPEND+="
+			cxx? ( ${CATEGORY}/linux-headers )
+		"
+	fi
+	RDEPEND+="
+		!${CATEGORY}-bootstrap/gcc
+	"
+else
+	BDEPEND+="
+		${CATEGORY}/binutils
+	"
+fi
 
 is_crosscompile() { [[ ${CHOST} != "${CTARGET}" ]] ; }
 
 export CTARGET=${CTARGET:-${CHOST}}
 if [[ ${CTARGET} = "${CHOST}" ]] ; then
-	if [[ ${CATEGORY/cross-} != "${CATEGORY}" ]] ; then
-		export CTARGET=${CATEGORY/cross-}
+	if [[ "${CATEGORY}" == cross-* ]] ; then
+		CTARGET=${CATEGORY/cross-}
+		CTARGET=${CTARGET%-bootstrap}
 	fi
 fi
 
@@ -85,13 +138,35 @@ STDCXX_INCDIR=${TOOLCHAIN_STDCXX_INCDIR:-${LIBPATH}/include/g++-v${GCC_BRANCH_VE
 
 SLOT="${CTARGET}"
 
-PREFIX="/usr"
-
 SRC_URI="mirror://gnu/gcc/gcc-${PV}/gcc-${PV}.tar.xz
 	https://dev.gentoo.org/~${PATCH_DEV}/distfiles/gcc-${GCC_RELEASE_VER}-patches-${PATCH_VER}.tar.bz2"
 
 PATCHES=(
 	"${FILESDIR}/0001-Fix-emutls.c-to-not-leak-pthread-keys.patch"
+	"${FILESDIR}/0002-Fix-locale-header.patch"  # b/277967395, b/289256840
+	"${FILESDIR}/0003-Fix-fortify-builtin-level.patch"
+
+	# Patches for CVE-2023-4039. Note that direct patches for gcc-10 weren't
+	# available; these were backported from the gcc-11 patch set.
+	"${FILESDIR}/CVE-2023-4039/0001-aarch64-Use-local-frame-vars-in-shrink-wrapping-code.patch"
+	"${FILESDIR}/CVE-2023-4039/0002-aarch64-Avoid-a-use-of-callee_offset.patch"
+	"${FILESDIR}/CVE-2023-4039/0003-aarch64-Explicitly-handle-frames-with-no-saved-regis.patch"
+	"${FILESDIR}/CVE-2023-4039/0004-aarch64-Add-bytes_below_saved_regs-to-frame-info.patch"
+	"${FILESDIR}/CVE-2023-4039/0005-aarch64-Add-bytes_below_hard_fp-to-frame-info.patch"
+	"${FILESDIR}/CVE-2023-4039/0006-aarch64-Tweak-aarch64_save-restore_callee_saves.patch"
+	"${FILESDIR}/CVE-2023-4039/0007-aarch64-Only-calculate-chain_offset-if-there-is-a-ch.patch"
+	"${FILESDIR}/CVE-2023-4039/0008-aarch64-Rename-locals_offset-to-bytes_above_locals.patch"
+	"${FILESDIR}/CVE-2023-4039/0009-aarch64-Rename-hard_fp_offset-to-bytes_above_hard_fp.patch"
+	"${FILESDIR}/CVE-2023-4039/0010-aarch64-Tweak-frame_size-comment.patch"
+	"${FILESDIR}/CVE-2023-4039/0011-aarch64-Measure-reg_offset-from-the-bottom-of-the-fr.patch"
+	"${FILESDIR}/CVE-2023-4039/0012-aarch64-Simplify-top-of-frame-allocation.patch"
+	"${FILESDIR}/CVE-2023-4039/0013-aarch64-Minor-initial-adjustment-tweak.patch"
+	"${FILESDIR}/CVE-2023-4039/0014-aarch64-Tweak-stack-clash-boundary-condition.patch"
+	"${FILESDIR}/CVE-2023-4039/0015-aarch64-Put-LR-save-probe-in-first-16-bytes.patch"
+	"${FILESDIR}/CVE-2023-4039/0016-aarch64-Simplify-probe-of-final-frame-allocation.patch"
+	"${FILESDIR}/CVE-2023-4039/0017-aarch64-Explicitly-record-probe-registers-in-frame-i.patch"
+	"${FILESDIR}/CVE-2023-4039/0018-aarch64-Remove-below_hard_fp_saved_regs_size.patch"
+	"${FILESDIR}/CVE-2023-4039/0019-aarch64-Make-stack-smash-canary-protect-saved-regist.patch"
 )
 
 S="${WORKDIR}/gcc-${PV}"
@@ -110,10 +185,20 @@ src_configure() {
 		ewarn "Skipping configure due to existing build output"
 		return
 	fi
-	cros_use_gcc
 
-	# GCC builds do not like LD being set, it will find correct LD to use.
-	unset LD BUILD_LD
+	# We need to enable `cros_allow_gnu_build_tools` because the ./configure
+	# script will probe for `${CTARGET}-gcc`. If we have the wrappers then
+	# it kills the processes. We could set GCC_FOR_TARGET=/bin/false, but I'm
+	# not sure we actually need the hack. In a chroot without gcc installed,
+	# then the ./configure will set GCC_FOR_TARGET to `gcc`, but it sets
+	# has_gcc_for_target=false so it won't get used.
+	cros_allow_gnu_build_tools
+
+	if is_crosscompile; then
+		# Cross GCC builds do not like LD being set, it will find correct LD to use.
+		# TODO: We might be able to set LD_FOR_TARGET instead.
+		unset LD BUILD_LD
+	fi
 
 	local gcc_langs="c"
 	use cxx && gcc_langs+=",c++"
@@ -138,6 +223,7 @@ src_configure() {
 		--disable-canonical-system-headers
 		--enable-checking=release
 		--enable-linker-build-id
+		--enable-wchar
 
 		--with-bugurl='https://bugs.chromium.org'
 
@@ -170,6 +256,12 @@ src_configure() {
 			--enable-cxx-flags="-Wl,-L../libsupc++/.libs"
 			--enable-vtable-verify
 		)
+	fi
+
+	# Make PIE (position independent executable) default for Cross-compiler
+	# Linux/GNU	builds.
+	if [[ "${CTARGET}" == *linux-gnu* ]]; then
+		confgcc+=( --enable-default-pie )
 	fi
 
 	# Handle target-specific options.
@@ -212,10 +304,15 @@ src_configure() {
 		;;
 	esac
 
+	# Handle ABI-specific options.
+	local needed_libc="glibc"
+	if [[ "${CTARGET}" == *-eabi || "${CTARGET}" == *-elf ]]; then
+		confgcc+=( --with-newlib )
+		needed_libc="newlib"
+	fi
+
 	if is_crosscompile; then
 		confgcc+=( --enable-poison-system-directories )
-
-		local needed_libc="glibc"
 		if [[ -n ${needed_libc} ]]; then
 			if ! has_version "${CATEGORY}/${needed_libc}"; then
 				confgcc+=( --disable-shared --disable-threads --without-headers )
@@ -250,7 +347,7 @@ src_compile() {
 	TARGET_GO_FLAGS=""
 
 	if use hardened ; then
-		TARGET_FLAGS="${TARGET_FLAGS} -fstack-protector-strong -D_FORTIFY_SOURCE=2"
+		TARGET_FLAGS="${TARGET_FLAGS} -fstack-protector-strong -D_FORTIFY_SOURCE=3"
 	fi
 
 	EXTRA_CFLAGS_FOR_TARGET="${TARGET_FLAGS}"
@@ -271,7 +368,7 @@ src_compile() {
 	# errors. See crosbug.com/16719
 	local LD_NON_GOLD=$(get_binutils_path_ld "${CTARGET}")/ld
 
-	emake CFLAGS="${GCC_CFLAGS}" \
+	emake CFLAGS="${GCC_CFLAGS}" CXXFLAGS="${CXXFLAGS} -Wno-register" \
 		LDFLAGS="-Wl,-O1" \
 		STAGE1_CFLAGS="-O2 -pipe" \
 		BOOT_CFLAGS="-O2" \
@@ -356,11 +453,9 @@ EOF
 
 	cd "${D}${BINPATH}" || die
 
+	local wrapper_version="${PF}"
+	# For wrapper build argument only, not actually used in gcc wrappers.
 	local use_llvm_next=false
-	if use llvm-next || use llvm-tot
-	then
-		use_llvm_next=true
-	fi
 
 	if is_crosscompile ; then
 		local sysroot_wrapper_file_prefix
@@ -388,17 +483,18 @@ EOF
 			local ccache_suffix="${ccache_suffixes[${ccache_index}]}"
 			local ccache_option="${ccache_option_values[${ccache_index}]}"
 			# Build new golang wrapper
-			"${FILESDIR}/compiler_wrapper/build.py" --config="${sysroot_wrapper_config}" \
+			GO111MODULE=off "${FILESDIR}/compiler_wrapper/build.py" --config="${sysroot_wrapper_config}" \
 				--use_ccache="${ccache_option}" \
 				--use_llvm_next="${use_llvm_next}" \
-				--output_file="${D}${BINPATH}/${sysroot_wrapper_file_prefix}.${ccache_suffix}" || die
+				--output_file="${D}${BINPATH}/${sysroot_wrapper_file_prefix}.${ccache_suffix}" \
+				--version="${wrapper_version}" || die
 		done
 
 		local use_ccache_index
 		use_ccache_index="$(usex wrapper_ccache 1 0)"
 		local sysroot_wrapper_file="${sysroot_wrapper_file_prefix}.${ccache_suffixes[${use_ccache_index}]}"
 
-		for x in c++ g++ gcc; do
+		for x in cpp c++ g++ gcc; do
 			if [[ -f "${CTARGET}-${x}" ]]; then
 				mv "${CTARGET}-${x}" "${CTARGET}-${x}.real"
 				dosym "${sysroot_wrapper_file}" "${BINPATH}/${CTARGET}-${x}" || die
@@ -415,11 +511,12 @@ EOF
 
 		exeinto "${BINPATH}"
 
-		"${FILESDIR}/compiler_wrapper/build.py" --config=cros.host --use_ccache=false \
+		GO111MODULE=off "${FILESDIR}/compiler_wrapper/build.py" --config=cros.host --use_ccache=false \
 			--use_llvm_next="${use_llvm_next}" \
-			--output_file="${D}${BINPATH}/${sysroot_wrapper_file}" || die
+			--output_file="${D}${BINPATH}/${sysroot_wrapper_file}" \
+			--version="${wrapper_version}" || die
 
-		for x in c++ g++ gcc; do
+		for x in cpp c++ g++ gcc; do
 			if [[ -f "${CTARGET}-${x}" ]]; then
 				mv "${CTARGET}-${x}" "${CTARGET}-${x}.real"
 				dosym "${sysroot_wrapper_file}" "${BINPATH}/${CTARGET}-${x}" || die
@@ -447,6 +544,11 @@ EOF
 
 pkg_postinst() {
 	gcc-config "$(get_gcc_config_file)"
+	if [[ "${CTARGET}" == "${CHOST}" ]]; then
+		# Point cc and cpp to clang based tools instead of gcc.
+		ln -sf "clang_cc_wrapper" "/usr/bin/cc"
+		ln -sf "clang-cpp" "/usr/bin/cpp"
+	fi
 }
 
 pkg_postrm() {
@@ -538,6 +640,20 @@ gcc_movelibs() {
 		rmdir "${D}${FROMDIR}" >& /dev/null
 	done
 	find -depth "${ED}" -type d -exec rmdir {} + >& /dev/null
+
+	# We remove all instances of the GCC-installed libgcc, since we will be
+	# installing compiler-rt and libunwind in its place.
+	#
+	# We'd like to remove libgcc.a, but this is required to build glibc, and
+	# that causes complications. libgcc_eh.a also can't be removed yet, due
+	# to it defining `__gcc_personality_v0`, which is a compiler-rt thing on
+	# the LLVM side. We'll be able to remove both nce we can remove libgcc.a,
+	# since this remnant of GCC's libgcc is confusing the system. Alternatively,
+	# once we get a true LLVM runtimes build happening, we should be able to
+	# remove libgcc_eh.a.
+	if use llvm_libgcc; then
+		rm -f "${D}${LIBPATH}"/libgcc_s* || die
+	fi
 }
 
 # make sure the libtool archives have libdir set to where they actually

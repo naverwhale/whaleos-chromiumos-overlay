@@ -1,10 +1,10 @@
 DEFINED_PHASES=install
 DEPEND=!sys-firmware/parade-ps8751a3 !sys-boot/chromeos-firmware-ps8751
 DESCRIPTION=PS8751-A3 Firmware Binary
-EAPI=6
+EAPI=7
 KEYWORDS=*
 LICENSE=Google-Partners-Website
 RDEPEND=!sys-firmware/parade-ps8751a3 !sys-boot/chromeos-firmware-ps8751
 SLOT=0
 SRC_URI=gs://chromeos-localmirror/distfiles/parade-ps8751a3-firmware-54.tar.xz
-_md5_=c294cb1b6b618e967e54fa440e6b85cf
+_md5_=d2c92affd9ff1f0e905a79c30280c55d

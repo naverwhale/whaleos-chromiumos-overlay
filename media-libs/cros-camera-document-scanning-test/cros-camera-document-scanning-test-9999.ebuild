@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -22,12 +22,7 @@ KEYWORDS="~*"
 RDEPEND="
 	chromeos-base/libbrillo:=
 	dev-cpp/gtest:=
-	media-libs/cros-camera-document-scanning:="
+	media-libs/cros-camera-libfs:="
 
 DEPEND="${RDEPEND}
 	virtual/pkgconfig"
-
-src_install() {
-	platform_src_install
-	dobin "${OUT}/document_scanner_perf_test"
-}

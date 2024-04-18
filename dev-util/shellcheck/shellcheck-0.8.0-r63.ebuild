@@ -1,0 +1,55 @@
+# Copyright 1999-2018 Gentoo Authors
+# Distributed under the terms of the GNU General Public License v2
+
+EAPI=7
+
+CROS_WORKON_COMMIT="3762bda92e819371eed2c7e8dc43911b7a6a1d44"
+CROS_WORKON_TREE="30ad57c4768dad923b6772b855ea9307c1c6e354"
+CROS_WORKON_PROJECT="chromiumos/third_party/shellcheck"
+CROS_WORKON_LOCALNAME="shellcheck"
+CROS_WORKON_EGIT_BRANCH="chromeos-0.7"
+CROS_WORKON_DESTDIR="${S}"
+
+# shellcheck disable=SC2034
+CABAL_FILE="${S}/ShellCheck.cabal"
+# shellcheck disable=SC2034
+CABAL_LIVE_VERSION=true  # Avoid automatic SRC_URI from haskell-cabal.eclass.
+
+CABAL_FEATURES="profile haddock hoogle hscolour test-suite"
+CABAL_EXTRA_CONFIGURE_FLAGS="--disable-executable-dynamic
+	--disable-shared
+	--ghc-option=-optl-static
+"
+
+inherit cros-subtool cros-workon haskell-cabal
+
+DESCRIPTION="Shell script analysis tool"
+HOMEPAGE="https://www.shellcheck.net/"
+
+LICENSE="GPL-3"
+SLOT="0/${PV}"
+KEYWORDS="*"
+IUSE=""
+
+DEPEND=">=dev-haskell/aeson-1.4.0:=[profile?] <dev-haskell/aeson-2.2:=[profile?]
+	>=dev-haskell/diff-0.4.0:=[profile?] <dev-haskell/diff-0.5:=[profile?]
+	>=dev-haskell/mtl-2.2.1:=[profile?]
+	>=dev-haskell/parsec-3.0:=[profile?]
+	>=dev-haskell/quickcheck-2.14.2:2=[template-haskell,profile?]
+	<dev-haskell/quickcheck-2.15:2=[profile?]
+	>=dev-haskell/regex-tdfa-1.2.0:=[profile?]
+	<dev-haskell/regex-tdfa-1.4:=[profile?]
+	dev-haskell/semigroups:=[profile?]
+	>=dev-lang/ghc-8.10.1:=
+	>=dev-haskell/cabal-3.0.0.0
+	dev-libs/gmp[static-libs]
+	dev-libs/libffi[static-libs]
+"
+
+src_install() {
+	cabal_src_install
+	rm "${ED}/usr/share/doc/${PF}/LICENSE" || die
+	# TODO(crbug.com/1000756): Add support for manpage build process (requires pandoc)
+	doman "${FILESDIR}/${PN}.1"
+	cros-subtool_src_install
+}

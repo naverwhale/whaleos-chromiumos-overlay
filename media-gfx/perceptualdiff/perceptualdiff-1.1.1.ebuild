@@ -1,9 +1,9 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright 2010 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
-# $Header: $
 
-EAPI="4"
-inherit eutils multilib
+EAPI="7"
+
+inherit multilib
 
 DESCRIPTION="An image comparison utility"
 HOMEPAGE="http://pdiff.sourceforge.net/"
@@ -21,9 +21,13 @@ DOCS="gpl.txt README.txt"
 
 S=${WORKDIR}
 
+PATCHES=(
+	"${FILESDIR}"/CMakeFiles-search-in-SYSROOT.patch
+	"${FILESDIR}"/Metric.cpp-printf-needs-stdio.patch
+)
+
 src_prepare() {
-	epatch "${FILESDIR}"/CMakeFiles-search-in-SYSROOT.patch
-	epatch "${FILESDIR}"/Metric.cpp-printf-needs-stdio.patch
+	default
 	# Use the correct ABI lib dir.
 	sed -i \
 		-e "s:/lib$:/$(get_libdir):" \

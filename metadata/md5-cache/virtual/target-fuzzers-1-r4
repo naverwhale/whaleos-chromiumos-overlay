@@ -6,4 +6,4 @@ KEYWORDS=*
 LICENSE=metapackage
 RDEPEND=virtual/implicit-system virtual/chromium-os-fuzzers
 SLOT=0
-_md5_=bb31357da26e90225325845fca8d45c2
+_md5_=695e080ec0aeb69983de383b3a0b2fef

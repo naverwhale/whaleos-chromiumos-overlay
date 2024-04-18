@@ -1,121 +1,63 @@
-# Copyright (C) 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE.makefile file.
 
 EAPI=7
 
-ZEPHYR_VERSIONS=( v2.7 )
-
 CROS_WORKON_USE_VCSID=1
 CROS_WORKON_PROJECT=(
+	"chromiumos/third_party/zephyr"
 	"chromiumos/third_party/zephyr/cmsis"
 	"chromiumos/third_party/zephyr/hal_stm32"
 	"chromiumos/third_party/zephyr/nanopb"
+	"chromiumos/third_party/zephyr/picolibc"
+	"external/pigweed/pigweed/pigweed"
 	"chromiumos/platform/ec"
 )
-for v in "${ZEPHYR_VERSIONS[@]}"; do
-	CROS_WORKON_PROJECT+=("chromiumos/third_party/zephyr")
-done
 
 CROS_WORKON_LOCALNAME=(
+	"third_party/zephyr/main"
 	"third_party/zephyr/cmsis"
 	"third_party/zephyr/hal_stm32"
 	"third_party/zephyr/nanopb"
+	"third_party/zephyr/picolibc"
+	"third_party/pigweed"
 	"platform/ec"
 )
-for v in "${ZEPHYR_VERSIONS[@]}"; do
-	CROS_WORKON_LOCALNAME+=("third_party/zephyr/main/${v}")
-done
 
 CROS_WORKON_DESTDIR=(
+	"${S}/zephyr-base"
 	"${S}/modules/cmsis"
 	"${S}/modules/hal_stm32"
 	"${S}/modules/nanopb"
+	"${S}/modules/picolibc"
+	"${S}/modules/pigweed"
 	"${S}/modules/ec"
 )
-for v in "${ZEPHYR_VERSIONS[@]}"; do
-	CROS_WORKON_DESTDIR+=("${S}/zephyr-base/${v}")
-done
 
-inherit cros-workon cros-unibuild coreboot-sdk toolchain-funcs
+inherit cros-workon cros-zephyr-utils
 
 DESCRIPTION="Zephyr based Embedded Controller firmware"
 KEYWORDS="~*"
-LICENSE="Apache-2.0 BSD-Google"
-IUSE="unibuild"
-REQUIRED_USE="unibuild"
-
-# Add instances of vX.Y as 'zephyr_vX_Y' to IUSE
-IUSE="${IUSE} $(for v in "${ZEPHYR_VERSIONS[@]}"; do echo "zephyr_${v//./_}"; done)"
-
-BDEPEND="
-	chromeos-base/zephyr-build-tools
-	dev-python/docopt
-	dev-python/pykwalify
-	dev-util/ninja
-"
-
-DEPEND="
-	chromeos-base/chromeos-config
-"
-RDEPEND="${DEPEND}"
-
-ZEPHYR_EC_BUILD_DIRECTORIES=()
-
-get_zephyr_version() {
-	local v
-	for v in "${ZEPHYR_VERSIONS[@]}"; do
-		if use "zephyr_${v//./_}"; then
-			echo "${v}"
-			return 0
-		fi
-	done
-
-	die "Please specify a zephyr_vX_X USE flag."
-}
-
-# Run zmake from the EC source directory, with default arguments for
-# modules and Zephyr base location for this ebuild.
-run_zmake() {
-	PYTHONPATH="${S}/modules/ec/zephyr/zmake" python3 -m zmake -D \
-		--modules-dir="${S}/modules" \
-		--zephyr-base="${S}/zephyr-base/$(get_zephyr_version)" \
-		"$@"
-}
-
-src_configure() {
-	tc-export CC
-
-	while read -r board && read -r path; do
-		if [[ -z "${path}" ]]; then
-			continue
-		fi
-		if [[ ! -d "${S}/modules/ec/zephyr/${path}" ]]; then
-			die "Specified path for Zephyr project does not exist."
-		fi
-		local build_dir="build-${board}"
-
-		run_zmake configure "modules/ec/zephyr/${path}" -B "${build_dir}" \
-			|| die "Failed to configure ${build_dir}."
-
-		ZEPHYR_EC_BUILD_DIRECTORIES+=("${build_dir}")
-	done < <(cros_config_host "get-firmware-build-combinations" zephyr-ec || die)
-}
 
 src_compile() {
-	tc-export CC
-
-	for build_dir in "${ZEPHYR_EC_BUILD_DIRECTORIES[@]}"; do
-		run_zmake build "${build_dir}" || die "Failed to build ${build_dir}."
-	done
+	cros-zephyr-compile zephyr-ec
 }
 
 src_install() {
-	for build_dir in "${ZEPHYR_EC_BUILD_DIRECTORIES[@]}"; do
-		board="$(echo "${build_dir}" |cut -d/ -f1)"
-		board="${board#build-}"
+	local firmware_name project
+	local root_build_dir="build"
 
-		insinto "/firmware/${board}"
-		doins "${build_dir}"/output/*
-	done
+	while read -r firmware_name && read -r project; do
+		if [[ -z "${project}" ]]; then
+			continue
+		fi
+
+		# Do not strip elf files so debug symbols are available
+		# in the firmware_from_source.tar.bz2 bundles from builders.
+		dostrip -x "/firmware/${firmware_name}"/zephyr.{rw,ro}.elf
+
+		insinto "/firmware/${firmware_name}"
+		doins "${root_build_dir}/${project}"/output/*
+	done < <(cros_config_host "get-firmware-build-combinations" zephyr-ec || die)
 }

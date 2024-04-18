@@ -1,0 +1,13 @@
+diff --git a/clvk/src/config.def b/clvk/src/config.def
+index 232c375..693eb0e 100644
+--- a/clvk/src/config.def
++++ b/clvk/src/config.def
+@@ -51,7 +51,7 @@ OPTION(uint32_t, max_cmd_group_size, UINT32_MAX)
+ OPTION(uint32_t, max_first_cmd_group_size, UINT32_MAX)
+ 
+ // experimental
+-OPTION(bool, dynamic_batches, false)
++OPTION(bool, dynamic_batches, true)
+ 
+ OPTION(uint32_t, max_entry_points_instances, 2*1024u) // FIXME find a better definition
+ 

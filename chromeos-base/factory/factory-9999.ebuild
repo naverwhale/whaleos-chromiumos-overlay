@@ -1,4 +1,4 @@
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Copyright 2016 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -6,14 +6,13 @@ CROS_WORKON_PROJECT="chromiumos/platform/factory"
 CROS_WORKON_LOCALNAME="platform/factory"
 CROS_WORKON_OUTOFTREE_BUILD=1
 
-# TODO(crbug.com/999876): Upgrade to Python 3 at some point.
-PYTHON_COMPAT=( python3_{4,5,6,7} )
+PYTHON_COMPAT=( python3_{8..11} )
 
-inherit cros-workon python-r1 cros-constants cros-factory
+inherit cros-workon python-single-r1 cros-constants cros-factory
 
 # External dependencies
 LOCAL_MIRROR_URL=http://commondatastorage.googleapis.com/chromeos-localmirror/
-WEBGL_AQUARIUM_URI=${LOCAL_MIRROR_URL}/distfiles/webgl-aquarium-20130524.tar.bz2
+WEBGL_AQUARIUM_URI=${LOCAL_MIRROR_URL}/distfiles/webgl-aquarium-20221212.tar.bz2
 
 DESCRIPTION="Chrome OS Factory Software Platform"
 HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform/factory/"
@@ -21,11 +20,44 @@ SRC_URI="${WEBGL_AQUARIUM_URI}"
 LICENSE="BSD-Google"
 KEYWORDS="~*"
 
-DEPEND="virtual/chromeos-bsp-factory:=
+IUSE="test"
+REQUIRED_USE="${PYTHON_REQUIRED_USE}"
+
+# TODO(b/263836581) We will propose to inline virtual packages when calculating
+# reverse dependency. We can remove duplicate dependencies, for example
+# chromeos-base/factory-board, if the proposal is accepted.
+RDEPEND="
+	${PYTHON_DEPS}
+	chromeos-base/factory-deps
+"
+DEPEND="
+	${PYTHON_DEPS}
+	test? ( chromeos-base/factory-deps )
+	virtual/chromeos-bsp-factory:=
+	|| (
+		chromeos-base/factory-board
+		chromeos-base/chromeos-factory-board
+	)
+	chromeos-base/factory-baseboard
 	virtual/chromeos-regions:=
-	dev-python/jsonrpclib:=
-	dev-python/pyyaml:=
-	dev-python/protobuf-python:=
+"
+
+# shellcheck disable=SC2016
+BDEPEND="
+	app-arch/makeself
+	app-arch/zip
+	chromeos-base/vboot_reference
+	dev-java/java-config
+	dev-lang/closure-compiler-bin
+	dev-libs/closure-library
+	dev-libs/protobuf
+	$(python_gen_cond_dep '
+		dev-python/jsonrpclib[${PYTHON_USEDEP}]
+		dev-python/jsonschema[${PYTHON_USEDEP}]
+		dev-python/protobuf-python[${PYTHON_USEDEP}]
+		dev-python/pyyaml[${PYTHON_USEDEP}]
+	')
+	sys-devel/gettext
 "
 
 BUILD_DIR="${WORKDIR}/build"
@@ -52,6 +84,7 @@ src_configure() {
 	export SRCROOT="${CROS_WORKON_SRCROOT}"
 	export TARGET_DIR=/usr/local/factory
 	export WEBGL_AQUARIUM_DIR="${WORKDIR}/webgl_aquarium_static"
+	export CLOSURE_LIB_DIR="/opt/closure-library"
 	export FROM_EBUILD=1
 
 	# Support out-of-tree build.

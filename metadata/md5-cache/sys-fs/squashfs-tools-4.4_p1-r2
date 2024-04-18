@@ -10,5 +10,5 @@ RDEPEND=sys-libs/zlib lz4? ( app-arch/lz4 ) lzma? ( app-arch/xz-utils ) lzo? ( d
 REQUIRED_USE=selinux? ( xattr )
 SLOT=0
 SRC_URI=https://github.com/plougher/squashfs-tools/archive/4.4-git.1.tar.gz -> squashfs-tools-4.4-git.1.tar.gz
-_eclasses_=eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_eclasses_=flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
 _md5_=7505acff5443ca524f3546fef0713ae2

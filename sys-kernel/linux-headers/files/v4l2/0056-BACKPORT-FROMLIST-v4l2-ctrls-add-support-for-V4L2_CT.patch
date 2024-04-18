@@ -1,0 +1,31 @@
+From 0e1cfbb448db4e491a9272d95653b6a4a2a7f440 Mon Sep 17 00:00:00 2001
+From: Yunke Cao <yunkec@chromium.org>
+Date: Fri, 4 Aug 2023 11:07:20 +0900
+Subject: [PATCH 4/5] BACKPORT: FROMLIST: v4l2-ctrls: add support for
+ V4L2_CTRL_WHICH_MIN/MAX_VAL
+
+Copied the definition of V4L2_CTRL_WHICH_MIN/MAX_VAL from
+https://patchwork.kernel.org/project/linux-media/patch/20230426082923.132909-7-yunkec@google.com/
+
+Signed-off-by: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Signed-off-by: Yunke Cao <yunkec@google.com>
+---
+ include/uapi/linux/videodev2.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index 396a603..a0be8da 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -1723,6 +1723,8 @@ struct v4l2_ext_controls {
+ #define V4L2_CTRL_WHICH_CUR_VAL   0
+ #define V4L2_CTRL_WHICH_DEF_VAL   0x0f000000
+ #define V4L2_CTRL_WHICH_REQUEST_VAL 0x0f010000
++#define V4L2_CTRL_WHICH_MIN_VAL   0x0f020000
++#define V4L2_CTRL_WHICH_MAX_VAL   0x0f030000
+ 
+ enum v4l2_ctrl_type {
+ 	V4L2_CTRL_TYPE_INTEGER	     = 1,
+-- 
+2.41.0.585.gd2178a4bd4-goog
+

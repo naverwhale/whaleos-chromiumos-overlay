@@ -1,0 +1,12 @@
+BDEPEND=dev-lang/go
+DEFINED_PHASES=compile install nofetch postinst test unpack
+DESCRIPTION=Leveled execution logs for Go
+EAPI=7
+HOMEPAGE=https://github.com/golang/glog
+KEYWORDS=*
+LICENSE=BSD-Google
+RESTRICT=binchecks strip
+SLOT=0
+SRC_URI=https://github.com/golang/glog/archive/v1.0.0.tar.gz -> github.com-golang-glog-v1.0.0.tar.gz
+_eclasses_=cros-go	77ba1c1ddf5c20dab7e47e19efeffef7	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=e2ddda95206b8ca8889152ea3083c3e7

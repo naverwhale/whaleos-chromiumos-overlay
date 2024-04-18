@@ -1,10 +1,9 @@
 # Copyright 1999-2014 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: /var/cvsroot/gentoo-x86/sys-apps/baselayout/baselayout-2.2.ebuild,v 1.17 2014/01/18 09:05:09 vapier Exp $
 
-EAPI="4"
+EAPI="7"
 
-inherit eutils multilib
+inherit multilib
 
 DESCRIPTION="Filesystem baselayout and init scripts (Modified for Chromium OS)"
 HOMEPAGE="http://src.chromium.org/"
@@ -16,9 +15,9 @@ SLOT="0"
 KEYWORDS="*"
 IUSE="+auto_seed_etc_files kvm_host"
 
-src_prepare() {
-	epatch "${FILESDIR}"/add-dash-shell.patch
-}
+PATCHES=(
+	"${FILESDIR}"/add-dash-shell.patch
+)
 
 src_install() {
 	emake \
@@ -65,23 +64,25 @@ pkg_postinst() {
 	# If they don't exist then we install them
 	for x in master.passwd passwd shadow group fstab ; do
 		if use auto_seed_etc_files ; then
-			[ -e "${ROOT}etc/${x}" ] && continue
-			[ -e "${ROOT}usr/share/baselayout/${x}" ] || continue
-			cp -p "${ROOT}usr/share/baselayout/${x}" "${ROOT}"etc
+			[ -e "${EROOT}/etc/${x}" ] && continue
+			[ -e "${EROOT}/usr/share/baselayout/${x}" ] || continue
+			cp -p "${EROOT}/usr/share/baselayout/${x}" "${EROOT}"/etc || die
 		else
-			touch "${ROOT}etc/${x}" && continue
+			touch "${EROOT}/etc/${x}" && continue
 		fi
 	done
 
 	# Force shadow permissions to not be world-readable #260993
 	for x in shadow ; do
-		[ -e "${ROOT}etc/${x}" ] && chmod o-rwx "${ROOT}etc/${x}"
+		if [ -e "${EROOT}/etc/${x}" ] ; then
+			chmod o-rwx "${EROOT}/etc/${x}" || die
+		fi
 	done
 
 	if use kvm_host ; then
 		# Set up the symlinked /etc/hosts file by moving the existing one into
 		# /etc/hosts.d and then symlinking to it from /etc/hosts.
-		mv "${ROOT}/etc/hosts" "${ROOT}/etc/hosts.d/hosts"
-		ln -s /etc/hosts.d/hosts "${ROOT}/etc/hosts"
+		mv "${EROOT}/etc/hosts" "${EROOT}/etc/hosts.d/hosts"
+		ln -s /etc/hosts.d/hosts "${EROOT}/etc/hosts"
 	fi
 }

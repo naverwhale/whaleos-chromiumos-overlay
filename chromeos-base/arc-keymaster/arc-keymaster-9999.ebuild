@@ -1,4 +1,4 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -21,28 +21,34 @@ PLATFORM_SUBDIR="arc/keymaster"
 # This BoringSSL integration follows go/boringssl-cros.
 # DO NOT COPY TO OTHER PACKAGES WITHOUT CONSULTING SECURITY TEAM.
 BORINGSSL_PN="boringssl"
-BORINGSSL_PV="430a7423039682e4bbc7b522e3b57b2c8dca5e3b"
+BORINGSSL_PV="3a667d10e94186fd503966f5638e134fe9fb4080"
 BORINGSSL_P="${BORINGSSL_PN}-${BORINGSSL_PV}"
 BORINGSSL_OUTDIR="${WORKDIR}/boringssl_outputs/"
 
 CMAKE_USE_DIR="${WORKDIR}/${BORINGSSL_P}"
 BUILD_DIR="${WORKDIR}/${BORINGSSL_P}_build"
 
-inherit flag-o-matic cmake-utils cros-workon platform user
+inherit flag-o-matic cmake cros-workon platform user
 
 DESCRIPTION="Android keymaster service in Chrome OS."
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/arc/keymaster"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/arc/keymaster"
 SRC_URI="https://github.com/google/${BORINGSSL_PN}/archive/${BORINGSSL_PV}.tar.gz -> ${BORINGSSL_P}.tar.gz"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
 IUSE="+seccomp"
 
+# TODO(b/285015727): Here we depend on arc-keymint for
+# arc_keymint_feature_query. When arc-keymint is launched and
+# arc_keymint_feature_query is no longer needed, remove the dependency to
+# arc-keymint.
 RDEPEND="
 	chromeos-base/chaps:=
 	chromeos-base/cryptohome:=
 	chromeos-base/cryptohome-client:=
+	chromeos-base/arc-keymint:=
 	chromeos-base/minijail:=
+	dev-libs/openssl:0=
 	dev-libs/protobuf:=
 "
 
@@ -66,7 +72,7 @@ src_unpack() {
 }
 
 src_prepare() {
-	cmake-utils_src_prepare
+	cmake_src_prepare
 
 	# Expose libhardware headers from arc-toolchain-p.
 	local arc_arch="${ARCH}"
@@ -91,6 +97,10 @@ src_prepare() {
 	eapply "${FILESDIR}/0001-keymaster-fix-C-17-compilation.patch"
 	# Make P Keymaster compatible with latest BoringSSL.
 	eapply "${FILESDIR}/keymaster-boringssl-update.patch"
+	# Fix a crash with return error rather than assert.
+	eapply "${FILESDIR}/keymaster-assert-fix.patch"
+	(cd "${WORKDIR}/${BORINGSSL_P}" &&
+		eapply "${FILESDIR}/boringssl-suppress-unused-but-set-variable.patch") || die
 }
 
 src_configure() {
@@ -99,13 +109,16 @@ src_configure() {
 		"-DCMAKE_SYSTEM_PROCESSOR=${CHOST%%-*}"
 		"-DBUILD_SHARED_LIBS=OFF"
 	)
-	cmake-utils_src_configure
+	cmake_src_configure
 	platform_src_configure
 }
 
 src_compile() {
+	# The build is banned from accessing internet, thus turn off Go Modules
+	# to prevent Go from trying to fetch package.
+	export GO111MODULE=off
 	# Compile BoringSSL and expose libcrypto.a.
-	cmake-utils_src_compile
+	cmake_src_compile
 	mkdir -p "${BORINGSSL_OUTDIR}" || die
 	cp -p "${BUILD_DIR}/crypto/libcrypto.a" "${BORINGSSL_OUTDIR}/libboringcrypto.a" || die
 
@@ -113,6 +126,8 @@ src_compile() {
 }
 
 src_install() {
+	platform_src_install
+
 	insinto /etc/init
 	doins init/arc-keymasterd.conf
 

@@ -1,14 +1,14 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-EAPI=6
+EAPI=7
 
 CROS_WORKON_PROJECT="chromiumos/third_party/mesa"
 CROS_WORKON_LOCALNAME="mesa-freedreno"
 CROS_WORKON_EGIT_BRANCH="chromeos-freedreno"
 
-inherit base meson multilib-minimal flag-o-matic toolchain-funcs cros-workon arc-build
+inherit meson multilib-minimal flag-o-matic toolchain-funcs cros-workon arc-build
 
 DESCRIPTION="OpenGL-like graphic library for Linux"
 HOMEPAGE="http://mesa3d.sourceforge.net/"
@@ -42,6 +42,8 @@ DEPEND="
 RDEPEND="${DEPEND}"
 
 src_configure() {
+	cros_optimize_package_for_speed
+
 	arc-build-select-clang
 
 	multilib-minimal_src_configure
@@ -65,7 +67,6 @@ multilib_src_configure() {
 		-Dgles1=enabled
 		-Dgles2=enabled
 		-Dshared-glapi=enabled
-		-Ddri-drivers=
 		-Dgallium-drivers=freedreno
 		-Dgallium-vdpau=disabled
 		-Dgallium-xa=disabled

@@ -1,0 +1,45 @@
+From d8c1bbbb0b408642912a005458a1052fba1eb896 Mon Sep 17 00:00:00 2001
+From: Ezequiel Garcia <ezequiel@collabora.com>
+Date: Thu, 4 Mar 2021 15:07:52 +0100
+Subject: [PATCH] BACKPORT: media: uapi: Move the VP8 stateless control type
+ out of staging
+
+Move the VP8 stateless control types out of staging,
+and re-number it to avoid any confusion.
+
+Signed-off-by: Ezequiel Garcia <ezequiel@collabora.com>
+Signed-off-by: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Signed-off-by: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
+(cherry picked from commit e74b504a87c110071376438564a6f7a351a215bf)
+
+Conflicts:
+   include/media/vp8-ctrls.h
+   include/uapi/linux/videodev2.h
+
+Dropped changes to vp8-ctrls.h, which doesn't exist in v4.14.
+
+BUG=b:278157861
+TEST=Check header
+
+Change-Id: Ib3b908b0b9d5fadb621183729960b4a38ccd23a2
+Signed-off-by: Chen-Yu Tsai <wenst@chromium.org>
+---
+ include/uapi/linux/videodev2.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index 417f8fcc45fc..d5ad3d004120 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -1677,6 +1677,8 @@ enum v4l2_ctrl_type {
+ 	V4L2_CTRL_TYPE_H264_SLICE_PARAMS    = 0x0203,
+ 	V4L2_CTRL_TYPE_H264_DECODE_PARAMS   = 0x0204,
+ 	V4L2_CTRL_TYPE_H264_PRED_WEIGHTS    = 0x0205,
++
++	V4L2_CTRL_TYPE_VP8_FRAME            = 0x0240,
+ };
+ 
+ /*  Used in the VIDIOC_QUERYCTRL ioctl for querying controls */
+-- 
+2.40.1.606.ga4b1b128d6-goog
+

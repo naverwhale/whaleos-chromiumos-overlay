@@ -1,4 +1,4 @@
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright 2013 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="7"
@@ -12,21 +12,26 @@ PLATFORM_SUBDIR="disk_updater"
 inherit cros-workon platform
 
 DESCRIPTION="Root disk firmware updater"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/disk_updater/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/disk_updater/"
 SRC_URI=""
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
 IUSE="+sata mmc nvme"
 
-DEPEND=""
+DEPEND="
+	test? (
+		sys-apps/diffutils
+	)
+"
 
-RDEPEND="${DEPEND}
+RDEPEND="
 	chromeos-base/chromeos-common-script
 	dev-util/shflags
 	sata? ( sys-apps/hdparm )
 	mmc? ( sys-apps/mmc-utils )
-	nvme? ( sys-apps/nvme-cli )"
+	nvme? ( sys-apps/nvme-cli )
+"
 
 platform_pkg_test() {
 	# We can test all, even if mmc or nvme are not installed.
@@ -36,11 +41,4 @@ platform_pkg_test() {
 	for test_type in "${tests[@]}"; do
 		platform_test "run" "tests/chromeos-disk-firmware-${test_type}-test.sh"
 	done
-}
-
-src_install() {
-	insinto "/etc/init"
-	doins "scripts/chromeos-disk-firmware-update.conf"
-
-	dosbin "scripts/chromeos-disk-firmware-update.sh"
 }

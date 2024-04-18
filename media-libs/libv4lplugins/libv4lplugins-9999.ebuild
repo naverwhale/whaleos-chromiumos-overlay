@@ -1,7 +1,7 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="5"
+EAPI="7"
 
 CROS_WORKON_PROJECT="chromiumos/third_party/libv4lplugins"
 inherit autotools cros-workon eutils
@@ -30,6 +30,7 @@ src_unpack() {
 }
 
 src_prepare() {
+	default
 	if use rockchip; then
 		PLUGIN_DIR="libv4l-rockchip"
 	elif use rockchip_v2; then

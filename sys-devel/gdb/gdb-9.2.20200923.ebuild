@@ -1,10 +1,10 @@
 # Copyright 1999-2020 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=6
-PYTHON_COMPAT=( python{2_7,3_4,3_5,3_6} )
+EAPI=7
+PYTHON_COMPAT=( python3_{6..9} )
 
-inherit flag-o-matic eutils python-single-r1 versionator
+inherit flag-o-matic eutils python-single-r1
 
 GIT_SHAI="234e271db36e2a8be022f7a4bbabfa1623a6ae9a"   # GDB 9.2
 SRC_URI="https://android.googlesource.com/toolchain/gdb/+archive/${GIT_SHAI}.tar.gz -> ${P}.tar.gz"
@@ -40,12 +40,13 @@ RDEPEND="server? ( !dev-util/gdbserver )
 		xml? ( dev-libs/expat )
 		sys-libs/zlib
 	)"
-DEPEND="${RDEPEND}
+DEPEND="${RDEPEND}"
+BDEPEND="
 	app-arch/xz-utils
 	sys-apps/texinfo
 	client? (
-		>=sys-libs/ncurses-5.2-r2:0=
 		virtual/yacc
+		sys-devel/flex
 		test? ( dev-util/dejagnu )
 		nls? ( sys-devel/gettext )
 	)"
@@ -60,6 +61,9 @@ PATCHES=(
 	"${FILESDIR}"/gdb-9.2-sigsys.patch
 	"${FILESDIR}"/gdb-9.2-update-loclists.patch
 	"${FILESDIR}"/gdb-9.2-inlined-unwind.patch
+	"${FILESDIR}"/gdb-9.2-amd64-linux-siginfo.c-Adjust-include-order-to-avoid-.patch
+	"${FILESDIR}"/gdb-9.2-iterator-include.patch
+	"${FILESDIR}"/gdb-13.1-locale-header.patch
 )
 
 pkg_setup() {
@@ -77,7 +81,7 @@ src_unpack() {
 	else
 		default
 	fi
-	S="${WORKDIR}/${PN}-$(get_version_component_range 1-2)"
+	S="${WORKDIR}/${PN}-$(ver_cut 1-2)"
 }
 
 src_prepare() {
@@ -101,6 +105,14 @@ gdb_branding() {
 
 src_configure() {
 	strip-unsupported-flags
+
+	# ChromeOS specific flags.
+	cros_enable_cxx_exceptions
+	# We do not want to build gdb with sanitizer flags, https://crbug.com/841859.
+	filter_sanitizers
+	# We need to run gdb on both the host and devices, so compile for a
+	# base set of x86-64 instructions.
+	use amd64 && filter-flags "-march=*"
 
 	local myconf=(
 		--with-pkgversion="$(gdb_branding)"
@@ -160,6 +172,8 @@ src_configure() {
 		# https://sourceware.org/ml/gdb-patches/2014-12/msg00058.html
 		myconf+=( --disable-largefile )
 	fi
+
+	export GCC_FOR_TARGET="$(tc-getCC)"
 
 	mkdir "${GDB_BUILD_DIR}" || die
 	pushd "${GDB_BUILD_DIR}" || die

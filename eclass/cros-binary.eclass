@@ -1,8 +1,8 @@
-# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2012 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 #
-# Original Author: The Chromium OS Authors <chromium-os-dev@chromium.org>
+# Original Author: The ChromiumOS Authors <chromium-os-dev@chromium.org>
 # Purpose: Install binary packages for Chromium OS
 #
 
@@ -98,9 +98,9 @@ fi
 # to the binary will be changed.
 : ${CROS_BINARY_LOCAL_URI_BASE:=}
 
-# Check for EAPI 2+
+# Check for EAPI 7+.
 case "${EAPI:-0}" in
-0|1) die "unsupported EAPI (${EAPI}) in eclass (${ECLASS})" ;;
+[0123456]) die "unsupported EAPI (${EAPI}) in eclass (${ECLASS})" ;;
 esac
 
 cros-binary_check_file() {

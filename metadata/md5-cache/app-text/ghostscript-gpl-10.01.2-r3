@@ -1,0 +1,15 @@
+BDEPEND=virtual/pkgconfig >=app-portage/elt-patches-20170815 || ( >=sys-devel/automake-1.16.5-r1:1.16 >=sys-devel/automake-1.15.1-r2:1.15 ) >=sys-devel/autoconf-2.69 >=sys-devel/libtool-2.4
+DEFINED_PHASES=compile configure install prepare
+DEPEND=app-text/libpaper:= media-libs/fontconfig >=media-libs/freetype-2.4.9:2= !!media-libs/jbig2dec >=media-libs/lcms-2.6:2 >=media-libs/libpng-1.6.2:= media-libs/libjpeg-turbo:= >=media-libs/openjpeg-2.1.0:2= tiff? ( >=media-libs/tiff-4.0.1:= ) >=sys-libs/zlib-1.2.7 cups? ( >=net-print/cups-1.3.8 ) dbus? ( sys-apps/dbus ) gtk? ( x11-libs/gtk+:3 ) idn? ( net-dns/libidn ) X? ( x11-libs/libXt x11-libs/libXext )
+DESCRIPTION=Interpreter for the PostScript language and PDF
+EAPI=7
+HOMEPAGE=https://ghostscript.com/
+IUSE=asan cups dbus fuzzer gtk idn internal l10n_de crosfonts static-libs tiff unicode X msan l10n_ja l10n_ko l10n_zh-CN l10n_zh-TW fuzzer asan cfi cfi_diag cfi_recover coverage fuzzer msan thinlto tsan ubsan
+KEYWORDS=*
+LICENSE=internal? ( LICENSE.artifex_commercial ) !internal? ( AGPL-3 CPL-1.0 )
+RDEPEND=app-text/libpaper:= media-libs/fontconfig >=media-libs/freetype-2.4.9:2= !!media-libs/jbig2dec >=media-libs/lcms-2.6:2 >=media-libs/libpng-1.6.2:= media-libs/libjpeg-turbo:= >=media-libs/openjpeg-2.1.0:2= tiff? ( >=media-libs/tiff-4.0.1:= ) >=sys-libs/zlib-1.2.7 cups? ( >=net-print/cups-1.3.8 ) dbus? ( sys-apps/dbus ) gtk? ( x11-libs/gtk+:3 ) idn? ( net-dns/libidn ) X? ( x11-libs/libXt x11-libs/libXext ) !crosfonts? ( >=media-fonts/urw-fonts-2.4.9 ) l10n_ja? ( media-fonts/kochi-substitute ) l10n_ko? ( media-fonts/baekmuk-fonts ) l10n_zh-CN? ( media-fonts/arphicfonts ) l10n_zh-TW? ( media-fonts/arphicfonts )
+REQUIRED_USE=cfi? ( thinlto ) cfi_diag? ( cfi ) cfi_recover? ( cfi_diag )
+SLOT=0
+SRC_URI=https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10012/ghostscript-10.01.2.tar.xz https://dev.gentoo.org/~sam/distfiles/app-text/ghostscript-gpl/ghostscript-gpl-10.0-patches.tar.xz
+_eclasses_=autotools	9adb87822e85056674b476e1090a72ae	cros-constants	676fcfd1679a06bba553adf90e231454	cros-fuzzer	84a11d1ae67e44213942468798d0c105	cros-sanitizers	4504f3661db0fe02309acd3555785cf2	flag-o-matic	ad475baa777c9978fa035216c8264a10	libtool	f143db5a74ccd9ca28c1234deffede96	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=02e5d2c5862680cf5190b2798b5a1180

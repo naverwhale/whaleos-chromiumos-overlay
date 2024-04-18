@@ -1,4 +1,4 @@
-From 8a8d3afaacd56b8115c8c5d61d61566d4da51fb1 Mon Sep 17 00:00:00 2001
+From 6ac1ef183eb4b31e2d2b501dbf75cb57a6ba7036 Mon Sep 17 00:00:00 2001
 From: Lukasz Spintzyk <lukasz.spintzyk@displaylink.com>
 Date: Wed, 10 Feb 2016 12:55:44 +0100
 Subject: [PATCH] CHROMIUM: drm/evdi: Add Evdi module userspace api file.
@@ -32,7 +32,7 @@ Change-Id: I355eb33d9953b1157888e4699ceb749865d8bb19
  create mode 100644 include/drm/evdi_drm.h
 
 diff --git a/Makefile.sources b/Makefile.sources
-index 55290fe9..1cb0fa35 100644
+index 07986fd0..10d3a755 100644
 --- a/Makefile.sources
 +++ b/Makefile.sources
 @@ -22,6 +22,7 @@ LIBDRM_INCLUDE_H_FILES := \
@@ -42,7 +42,7 @@ index 55290fe9..1cb0fa35 100644
 +	include/drm/evdi_drm.h \
  	include/drm/i915_drm.h \
  	include/drm/mach64_drm.h \
- 	include/drm/mga_drm.h \
+ 	include/drm/mediatek_drm.h \
 diff --git a/include/drm/evdi_drm.h b/include/drm/evdi_drm.h
 new file mode 100644
 index 00000000..3a00c7fc
@@ -135,10 +135,10 @@ index 00000000..3a00c7fc
 +#endif /* __EVDI_UAPI_DRM_H__ */
 +
 diff --git a/meson.build b/meson.build
-index fc02f552..b10fdad4 100644
+index b3251e95..a8744aa6 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -317,6 +317,7 @@ install_headers(
+@@ -351,6 +351,7 @@ install_headers(
    'include/drm/savage_drm.h', 'include/drm/sis_drm.h',
    'include/drm/tegra_drm.h', 'include/drm/vc4_drm.h',
    'include/drm/via_drm.h', 'include/drm/virtgpu_drm.h',
@@ -147,5 +147,5 @@ index fc02f552..b10fdad4 100644
  )
  if with_vmwgfx
 -- 
-2.30.0.365.g02bc693789-goog
+2.31.0
 

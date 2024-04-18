@@ -1,0 +1,60 @@
+From efd6637fda2ea9d3d390c3d92273d236a5cd4387 Mon Sep 17 00:00:00 2001
+From: Jeremy Wu <jrwu@google.com>
+Date: Tue, 25 Apr 2023 05:50:24 +0000
+Subject: [PATCH] avcodec/aacenc: add strict bit rate control option
+
+In certain use cases, controlling the maximum frame size is critical. An
+example is when transmitting AAC packets over Bluetooth A2DP.
+
+While the spec allows the packets to be fragmented (but UNRECOMMENDED),
+in practice most headsets do not recognize nor reassemble such packets.
+
+In this patch, we allow setting `bit_rate_tolerance` to 0 to indicate
+that the specified bit rate should be treated as an upper bound up to
+frame level.
+
+Signed-off-by: Jeremy Wu <jrwu@chromium.org>
+---
+ libavcodec/aacenc.c        | 12 ++++++++++++
+ libavcodec/options_table.h |  2 +-
+ 2 files changed, 13 insertions(+), 1 deletion(-)
+
+diff --git a/libavcodec/aacenc.c b/libavcodec/aacenc.c
+index 408c03144c..f2d509c37c 100644
+--- a/libavcodec/aacenc.c
++++ b/libavcodec/aacenc.c
+@@ -833,6 +833,18 @@ static int aac_encode_frame(AVCodecContext *avctx, AVPacket *avpkt,
+         too_many_bits = FFMIN(too_many_bits, 6144 * s->channels - 3);
+         too_few_bits = FFMIN(FFMAX(rate_bits - rate_bits/4, target_bits), too_many_bits);
+ 
++        /* When strict bit-rate control is demanded */
++        if (avctx->bit_rate_tolerance == 0) {
++            if (rate_bits < frame_bits) {
++                float ratio = ((float)rate_bits) / frame_bits;
++                s->lambda *= FFMIN(0.9f, ratio);
++                continue;
++            }
++            /* reset lambda when solution is found */
++            s->lambda = avctx->global_quality > 0 ? avctx->global_quality : 120;
++            break;
++        }
++
+         /* When using ABR, be strict (but only for increasing) */
+         too_few_bits = too_few_bits - too_few_bits/8;
+         too_many_bits = too_many_bits + too_many_bits/2;
+diff --git a/libavcodec/options_table.h b/libavcodec/options_table.h
+index e72b4d12b6..01ad6f7992 100644
+--- a/libavcodec/options_table.h
++++ b/libavcodec/options_table.h
+@@ -50,7 +50,7 @@ static const AVOption avcodec_options[] = {
+ {"bt", "Set video bitrate tolerance (in bits/s). In 1-pass mode, bitrate tolerance specifies how far "
+        "ratecontrol is willing to deviate from the target average bitrate value. This is not related "
+        "to minimum/maximum bitrate. Lowering tolerance too much has an adverse effect on quality.",
+-       OFFSET(bit_rate_tolerance), AV_OPT_TYPE_INT, {.i64 = AV_CODEC_DEFAULT_BITRATE*20 }, 1, INT_MAX, V|E},
++       OFFSET(bit_rate_tolerance), AV_OPT_TYPE_INT, {.i64 = AV_CODEC_DEFAULT_BITRATE*20 }, 0, INT_MAX, A|V|E},
+ {"flags", NULL, OFFSET(flags), AV_OPT_TYPE_FLAGS, {.i64 = DEFAULT }, 0, UINT_MAX, V|A|S|E|D, "flags"},
+ {"unaligned", "allow decoders to produce unaligned output", 0, AV_OPT_TYPE_CONST, { .i64 = AV_CODEC_FLAG_UNALIGNED }, INT_MIN, INT_MAX, V | D, "flags" },
+ {"mv4", "use four motion vectors per macroblock (MPEG-4)", 0, AV_OPT_TYPE_CONST, {.i64 = AV_CODEC_FLAG_4MV }, INT_MIN, INT_MAX, V|E, "flags"},
+-- 
+2.39.2
+

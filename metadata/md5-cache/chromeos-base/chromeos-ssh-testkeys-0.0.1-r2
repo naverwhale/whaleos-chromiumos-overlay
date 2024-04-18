@@ -1,9 +1,0 @@
-DEFINED_PHASES=compile install
-DESCRIPTION=Install Chromium OS ssh test keys to a shared location.
-EAPI=4
-HOMEPAGE=http://www.chromium.org/
-IUSE=-generated_ssh_key
-KEYWORDS=*
-LICENSE=BSD-Google
-SLOT=0
-_md5_=d59b0d3c0bb819311e9f341a291864ee

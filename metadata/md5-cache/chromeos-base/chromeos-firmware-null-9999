@@ -1,14 +1,16 @@
+BDEPEND=dev-vcs/git app-misc/jq chromeos-base/chromeos-config-host:=
 DEFINED_PHASES=compile info install setup test unpack
-DEPEND=has_chromeos_config_bsp? ( chromeos-base/chromeos-config-bsp:= ) has_chromeos_config_bsp_private? ( chromeos-base/chromeos-config-bsp-private:= ) has_chromeos_config_bsp_baseboard? ( chromeos-base/chromeos-config-bsp-baseboard:= ) has_chromeos_config_bsp_baseboard_private? ( chromeos-base/chromeos-config-bsp-baseboard-private:= ) unibuild? ( chromeos-base/chromeos-config:= ) chromeos-base/vboot_reference unibuild? ( chromeos-base/chromeos-config ) app-arch/gzip app-arch/sharutils app-arch/tar sys-apps/util-linux bootimage? ( sys-boot/chromeos-bootimage ) cros_ec? ( chromeos-base/chromeos-ec ) zephyr_ec? ( chromeos-base/chromeos-zephyr )
+DEPEND=has_chromeos_config_bsp? ( chromeos-base/chromeos-config-bsp:= ) has_chromeos_config_bsp_private? ( chromeos-base/chromeos-config-bsp-private:= ) has_chromeos_config_bsp_baseboard? ( chromeos-base/chromeos-config-bsp-baseboard:= ) has_chromeos_config_bsp_baseboard_private? ( chromeos-base/chromeos-config-bsp-baseboard-private:= ) unibuild? ( chromeos-base/chromeos-config:= ) chromeos-base/vboot_reference bootimage? ( sys-boot/chromeos-bootimage ) cros_ec? ( chromeos-base/chromeos-ec ) zephyr_ec? ( chromeos-base/chromeos-zephyr )
 DESCRIPTION=Chrome OS Firmware (Template - change to board name)
-EAPI=5
+EAPI=7
 HOMEPAGE=https://chromium.googlesource.com/chromiumos/platform/firmware/
-IUSE=cros_host cros_workon_tree_ cros_host cros_workon_tree_ has_chromeos_config_bsp has_chromeos_config_bsp_private has_chromeos_config_bsp_baseboard has_chromeos_config_bsp_baseboard_private unibuild bootimage cros_ec cros_ish tot_firmware unibuild zephyr_ec
+IUSE=cros_host cros_workon_tree_ has_chromeos_config_bsp has_chromeos_config_bsp_private has_chromeos_config_bsp_baseboard has_chromeos_config_bsp_baseboard_private unibuild bootimage cros_ec cros_ish tot_firmware unibuild zephyr_ec
 KEYWORDS=~*
 LICENSE=BSD-Google
-PROPERTIES=live live
-RDEPEND=has_chromeos_config_bsp? ( chromeos-base/chromeos-config-bsp:= ) has_chromeos_config_bsp_private? ( chromeos-base/chromeos-config-bsp-private:= ) has_chromeos_config_bsp_baseboard? ( chromeos-base/chromeos-config-bsp-baseboard:= ) has_chromeos_config_bsp_baseboard_private? ( chromeos-base/chromeos-config-bsp-baseboard-private:= ) unibuild? ( chromeos-base/chromeos-config:= ) chromeos-base/vboot_reference unibuild? ( chromeos-base/chromeos-config ) app-arch/gzip app-arch/sharutils app-arch/tar sys-apps/util-linux chromeos-base/vpd sys-apps/flashrom sys-apps/mosys cros_ish? ( chromeos-base/chromeos-ish )
+PROPERTIES=live
+RDEPEND=has_chromeos_config_bsp? ( chromeos-base/chromeos-config-bsp:= ) has_chromeos_config_bsp_private? ( chromeos-base/chromeos-config-bsp-private:= ) has_chromeos_config_bsp_baseboard? ( chromeos-base/chromeos-config-bsp-baseboard:= ) has_chromeos_config_bsp_baseboard_private? ( chromeos-base/chromeos-config-bsp-baseboard-private:= ) unibuild? ( chromeos-base/chromeos-config:= ) chromeos-base/vboot_reference chromeos-base/vpd sys-apps/flashrom cros_ish? ( chromeos-base/chromeos-ish )
+REQUIRED_USE=unibuild
 RESTRICT=mirror
 SLOT=0
-_eclasses_=cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-credentials	4fd98ebbff6a1534ca9a89547e13dc92	cros-firmware	af8b6205e77f2a6312e83fa6e4f8b83e	cros-unibuild	1e3c054ec0012700a0ee1c421b79a600	cros-workon	ff100259492312ff6570e490bcb9a320	desktop	b1d22ac8bdd4679ab79c71aca235009d	epatch	ed88001f77c6dd0d5f09e45c1a5b480e	estack	686eaab303305a908fd57b2fd7617800	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	ltprune	2729691420b6deeda2a90b1f1183fb55	multilib	2477ebe553d3e4d2c606191fe6c33602	preserve-libs	ef207dc62baddfddfd39a164d9797648	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	vcs-clean	2a0f74a496fa2b1552c4f3398258b7bf
-_md5_=de6ecd6d5e24caf9d8a8cf4f989341c6
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-firmware	d1d4cb1f1d3c89bcef47b17b843594a9	cros-unibuild	94ba1b876f001e1859d822211bb80291	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	python-any-r1	54a3178500786b0a7ede4a23b7f2a6ad	python-utils-r1	76252008070e69454f51fa80c07638c9	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=ba6ca66f9437b1a3efdfb92a445e7215

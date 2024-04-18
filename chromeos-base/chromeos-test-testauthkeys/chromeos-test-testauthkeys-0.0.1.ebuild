@@ -1,7 +1,7 @@
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright 2013 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI="4"
+EAPI="7"
 
 DESCRIPTION="Install Chromium OS test public keys for ssh clients on test image"
 HOMEPAGE="http://www.chromium.org/"

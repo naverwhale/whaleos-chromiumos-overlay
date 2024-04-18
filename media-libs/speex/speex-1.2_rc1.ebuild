@@ -2,7 +2,7 @@
 # Distributed under the terms of the GNU General Public License v2
 # $Header: /var/cvsroot/gentoo-x86/media-libs/speex/speex-1.2_rc1.ebuild,v 1.8 2009/12/11 19:59:55 ranger Exp $
 
-EAPI=5
+EAPI=7
 
 inherit autotools eutils flag-o-matic
 
@@ -25,10 +25,10 @@ S=${WORKDIR}/${MY_P}
 src_unpack() {
 	unpack ${A}
 	cd "${S}"
-	epatch "${FILESDIR}"/${P}-configure.patch
-	epatch "${FILESDIR}"/${P}-backup-input-length.patch
-	epatch "${FILESDIR}"/${P}-fix-sse-inner-product.patch
-	epatch "${FILESDIR}"/${P}-add-neon-optimization.patch
+	eapply "${FILESDIR}"/${P}-configure.patch
+	eapply "${FILESDIR}"/${P}-backup-input-length.patch
+	eapply "${FILESDIR}"/${P}-fix-sse-inner-product.patch
+	eapply "${FILESDIR}"/${P}-add-neon-optimization.patch
 
 	sed -i -e 's:noinst_PROGRAMS:check_PROGRAMS:' \
 		"${S}"/libspeex/Makefile.am \

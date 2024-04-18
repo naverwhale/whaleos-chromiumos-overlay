@@ -1,0 +1,41 @@
+From 873222429eb79a30a6377ff4caa0663e47c05e7b Mon Sep 17 00:00:00 2001
+From: Chih-Yu Huang <akahuang@google.com>
+Date: Fri, 20 Oct 2023 17:10:05 +0900
+Subject: [PATCH] Add DHCP option 114 captive_portal_uri
+
+This patch adds the DHCP option 114 captive_portal_uri for supporting
+RFC 8910.
+---
+ src/dbus/rpc-dbus.c         | 1 +
+ src/dhcpcd-definitions.conf | 3 +++
+ 2 files changed, 4 insertions(+)
+
+diff --git a/src/dbus/rpc-dbus.c b/src/dbus/rpc-dbus.c
+index c0031db..16c1350 100644
+--- a/src/dbus/rpc-dbus.c
++++ b/src/dbus/rpc-dbus.c
+@@ -213,6 +213,7 @@ static const struct o_dbus dhos[] = {
+ 	  "NetinfoServerAddress" },
+ 	{ "netinfo_server_tag=", DBUS_TYPE_STRING, 0, "NetinfoServerTag" },
+ 	{ "default_url=", DBUS_TYPE_STRING, 0, "DefaultURL" },
++	{ "captive_portal_uri=", DBUS_TYPE_STRING, 0, "CaptivePortalUri" },
+ 	{ "subnet_selection=", DBUS_TYPE_UINT32, 0, "SubnetSelection" },
+ 	{ "domain_search=", DBUS_TYPE_ARRAY, DBUS_TYPE_STRING,
+ 	  "DomainSearch" },
+diff --git a/src/dhcpcd-definitions.conf b/src/dhcpcd-definitions.conf
+index 1b8d780..55b47a2 100644
+--- a/src/dhcpcd-definitions.conf
++++ b/src/dhcpcd-definitions.conf
+@@ -182,6 +182,9 @@ define 101	string			tzdb_timezone
+ # DHCP IPv6-Only Preferred, RFC8925
+ define 108	uint32			ipv6_only_preferred
+ 
++# DHCP Captive Portal, RFC8910
++define 114	string			captive_portal_uri
++
+ # DHCP Auto-Configuration, RFC2563
+ define 116	byte			auto_configure
+ 
+-- 
+2.39.2
+

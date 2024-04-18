@@ -6,4 +6,4 @@ KEYWORDS=*
 LICENSE=metapackage
 RDEPEND=chromeos-base/arcvm-codec-software
 SLOT=0
-_md5_=b8f218b07b109f35e682d0fa01b1d66e
+_md5_=765a7d0a77b6efe5b958ec977e7c2fe8

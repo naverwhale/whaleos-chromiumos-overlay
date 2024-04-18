@@ -1,6 +1,5 @@
-BDEPEND=>=app-portage/elt-patches-20170815
+BDEPEND=>=app-portage/elt-patches-20170815 || ( >=sys-devel/automake-1.16.5-r1:1.16 >=sys-devel/automake-1.15.1-r2:1.15 ) >=sys-devel/autoconf-2.69 >=sys-devel/libtool-2.4
 DEFINED_PHASES=configure prepare
-DEPEND=!<sys-devel/gettext-0.18.1.1-r3 || ( >=sys-devel/automake-1.16.1:1.16 >=sys-devel/automake-1.15.1:1.15 ) >=sys-devel/autoconf-2.69 >=sys-devel/libtool-2.4
 DESCRIPTION=A portable filesystem benchmark that tries to reproduce the load of a real-world busy file server
 EAPI=7
 HOMEPAGE=https://github.com/jedisct1/Blogbench
@@ -8,5 +7,5 @@ KEYWORDS=*
 LICENSE=BSD
 SLOT=0
 SRC_URI=https://github.com/jedisct1/Blogbench/archive/d000aaf9390100bb3024e6b4aed9d945256259d5.tar.gz -> blogbench-1.1.20200218.tar.gz
-_eclasses_=autotools	d0e5375d47f4c809f406eb892e531513	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	libtool	f143db5a74ccd9ca28c1234deffede96	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
-_md5_=82271049425d7ff83d1ea8448a10c7fe
+_eclasses_=autotools	9adb87822e85056674b476e1090a72ae	flag-o-matic	ad475baa777c9978fa035216c8264a10	libtool	f143db5a74ccd9ca28c1234deffede96	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=03f5e7cd5effc304ca6568c14bcbdb22

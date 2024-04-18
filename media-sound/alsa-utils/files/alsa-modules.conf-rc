@@ -36,3 +36,6 @@ alias /dev/midi snd-seq-oss
 
 # Set this to the correct number of cards.
 options snd cards_limit=1
+
+# if defined(WHALEBOOK), Set this to enable mic
+options snd-hda-intel model=laptop-dmic,headset-mic

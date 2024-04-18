@@ -1,7 +1,11 @@
 # Copyright 1999-2020 Gentoo Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=6
+# This version of ghc is only used for bootstrapping 8.10.  It does not get
+# built during normal SDK builder runs.  To create an updated bootstrap binpkg,
+# run as `USE=ghcmakebinary emerge =ghc-8.6.5`.
+
+EAPI=7
 
 # to make make a crosscompiler use crossdev and symlink ghc tree into
 # cross overlay. result would look like 'cross-sparc-unknown-linux-gnu/ghc'
@@ -14,7 +18,7 @@ if [[ ${CTARGET} = ${CHOST} ]] ; then
 fi
 
 inherit autotools bash-completion-r1 eutils flag-o-matic ghc-package
-inherit multilib multiprocessing pax-utils toolchain-funcs versionator prefix
+inherit multilib multiprocessing pax-utils toolchain-funcs prefix
 inherit check-reqs
 DESCRIPTION="The Glasgow Haskell Compiler"
 HOMEPAGE="https://www.haskell.org/ghc/"
@@ -29,12 +33,12 @@ BIN_P="${PN}-${BIN_PV}"
 #arch_binaries="$arch_binaries alpha? ( https://slyfox.uni.cx/~slyfox/distfiles/ghc-bin-${PV}-alpha.tbz2 )"
 #arch_binaries="$arch_binaries arm? ( https://slyfox.uni.cx/~slyfox/distfiles/ghc-bin-${PV}-armv7a-hardfloat-linux-gnueabi.tbz2 )"
 #arch_binaries="$arch_binaries arm64? ( https://slyfox.uni.cx/~slyfox/distfiles/ghc-bin-${PV}-aarch64-unknown-linux-gnu.tbz2 )"
-arch_binaries="$arch_binaries amd64? ( https://slyfox.uni.cx/~slyfox/distfiles/ghc-bin-${BIN_PV}-x86_64-pc-linux-gnu.tbz2 )"
+arch_binaries="$arch_binaries amd64? ( gs://chromeos-localmirror/distfiles/ghc-bin-${BIN_PV}-x86_64-pc-linux-gnu.tbz2 )"
 #arch_binaries="$arch_binaries ia64?  ( https://slyfox.uni.cx/~slyfox/distfiles/ghc-bin-${PV}-ia64-fixed-fiw.tbz2 )"
 #arch_binaries="$arch_binaries ppc? ( https://slyfox.uni.cx/~slyfox/distfiles/ghc-bin-${PV}-ppc.tbz2 )"
-arch_binaries="$arch_binaries ppc64? ( !big-endian? ( https://slyfox.uni.cx/~slyfox/distfiles/ghc-bin-${PV}-powerpc64le-unknown-linux-gnu.tbz2 ) )"
+#arch_binaries="$arch_binaries ppc64? ( !big-endian? ( https://slyfox.uni.cx/~slyfox/distfiles/ghc-bin-${PV}-powerpc64le-unknown-linux-gnu.tbz2 ) )"
 #arch_binaries="$arch_binaries sparc? ( https://slyfox.uni.cx/~slyfox/distfiles/ghc-bin-${PV}-sparc.tbz2 )"
-arch_binaries="$arch_binaries x86? ( https://slyfox.uni.cx/~slyfox/distfiles/ghc-bin-${PV}-i686-pc-linux-gnu.tbz2 )"
+#arch_binaries="$arch_binaries x86? ( https://slyfox.uni.cx/~slyfox/distfiles/ghc-bin-${PV}-i686-pc-linux-gnu.tbz2 )"
 
 # various ports:
 #arch_binaries="$arch_binaries x86-fbsd? ( https://slyfox.uni.cx/~slyfox/distfiles/ghc-bin-${PV}-x86-fbsd.tbz2 )"
@@ -84,7 +88,7 @@ RESTRICT="!test? ( test )"
 RDEPEND="
 	>=dev-lang/perl-5.6.1
 	dev-libs/gmp:0=
-	sys-libs/ncurses:0=[unicode]
+	sys-libs/ncurses:0=[unicode(+)]
 	elfutils? ( dev-libs/elfutils )
 	!ghcmakebinary? ( dev-libs/libffi:= )
 	numa? ( sys-process/numactl )
@@ -402,6 +406,11 @@ src_unpack() {
 src_prepare() {
 	ghc_setup_cflags
 
+	# allow GCC usage because of the pre-built bootstrap GHC (stage 0). There is a
+	# bug report to replace with a pure LLVM build:
+	# https://issuetracker.google.com/219056517
+	cros_allow_gnu_build_tools
+
 	if ! use ghcbootstrap && [[ ${CHOST} != *-darwin* && ${CHOST} != *-solaris* ]]; then
 		# Modify the wrapper script from the binary tarball to use GHC_PERSISTENT_FLAGS.
 		# See bug #313635.
@@ -488,9 +497,11 @@ src_prepare() {
 		eapply "${FILESDIR}"/${PN}-7.0.4-CHOST-prefix.patch
 		eapply "${FILESDIR}"/${PN}-8.2.1-darwin.patch
 		eapply "${FILESDIR}"/${PN}-7.8.3-prim-lm.patch
-		eapply "${FILESDIR}"/${PN}-8.0.2-no-relax-everywhere.patch
+		eapply "${FILESDIR}"/${PN}-8.6.5-no-relax-everywhere.patch
 		eapply "${FILESDIR}"/${PN}-8.4.2-allow-cross-bootstrap.patch
 		eapply "${FILESDIR}"/${PN}-8.6.5-numa.patch
+		eapply "${FILESDIR}"/${PN}-8.6.5-m4-take-AR-var-into-consideration.patch
+		eapply "${FILESDIR}"/${PN}-8.6.5-autoconf.patch
 
 		# a bunch of crosscompiler patches
 		# needs newer version:
@@ -587,9 +598,18 @@ src_configure() {
 		# Don't allow things like ccache or versioned binary slip.
 		# We use stable thing across gcc upgrades.
 		# User can use EXTRA_ECONF=CC=... to override this default.
+		if use ghcbootstrap; then
+			econf_args+=(
+				AR="$(tc-getAR)"
+				CC="$(tc-getCC)"
+			)
+		else
+			econf_args+=(
+				AR="${CTARGET}-ar"
+				CC="${CTARGET}-gcc"
+			)
+		fi
 		econf_args+=(
-			AR=${CTARGET}-ar
-			CC=${CTARGET}-gcc
 			# these should be inferred by GHC but ghc defaults
 			# to using bundled tools on windows.
 			Windres=${CTARGET}-windres
@@ -612,7 +632,11 @@ src_configure() {
 				econf_args+=(LD=${CTARGET}-ld.bfd)
 			;;
 			*)
-				econf_args+=(LD=${CTARGET}-ld)
+				if use ghcbootstrap; then
+					econf_args+=(LD="$(tc-getLD)")
+				else
+					econf_args+=(LD="${CTARGET}-ld")
+				fi
 		esac
 
 		if [[ ${CBUILD} != ${CHOST} ]]; then

@@ -106,7 +106,7 @@ index 7b9b777..f66275e 100644
  		fprintf(stderr, "error: could not describe device\n");
  	}
 +	if (fp_time != NULL) {
-+		close(fp_time);
++		fclose(fp_time);
 +	}
  	close(fd);
  	return 0;

@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -22,13 +22,11 @@ RDEPEND="
 	chromeos-base/cros-camera-libs:=
 	dev-cpp/gtest:=
 	media-libs/libyuv
-	virtual/jpeg:0"
+	virtual/jpeg:0="
 
-DEPEND="${RDEPEND}"
+DEPEND="
+	${RDEPEND}
+	media-libs/cros-camera-libcamera_connector_headers
+"
 
 BDEPEND="virtual/pkgconfig"
-
-src_install() {
-	platform_src_install
-	dobin "${OUT}/cros_camera_connector_test"
-}

@@ -1,37 +1,41 @@
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Copyright 2016 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
 
 CROS_WORKON_PROJECT="apps/libapps"
 CROS_WORKON_LOCALNAME="third_party/libapps"
-CROS_WORKON_SUBTREE="libdot hterm nassh ssh_client terminal"
+CROS_WORKON_SUBTREE="libdot hterm nassh ssh_client terminal wasi-js-bindings wassh"
 
 inherit cros-workon
 
 DESCRIPTION="The Chromium OS Shell extension (the HTML/JS rendering part)"
-HOMEPAGE="https://chromium.googlesource.com/apps/libapps/+/master/nassh/doc/chromeos-crosh.md"
+HOMEPAGE="https://chromium.googlesource.com/apps/libapps/+/HEAD/nassh/docs/chromeos-crosh.md"
 # These are kept in sync with libdot.py settings.
 FONTS_HASHES=(
 	# Current one.
 	d6dc5eaf459abd058cd3aef1e25963fde893f9d87f5f55f340431697ce4b3506
 	# Next one.
-	d6dc5eaf459abd058cd3aef1e25963fde893f9d87f5f55f340431697ce4b3506
+)
+NODE_HASHES=(
+	# Current one.
+	16.13.0/ab9544e24e752d3d17f335fb7b2055062e582d11
+	# Next one.
 )
 NPM_HASHES=(
 	# Current one.
-	2cd2dd365999ae139b6b0fb62a5a09e2a7fb5ab1c0926cf1968a1dec9b74fea5
+	473756c69f6978a0b9ebb636e20c6afc0a05614e9bf728dec3b6303d74799690
 	# Next one.
-	16e0b36c0c3d448c7fd00d1db3ba27ff8477007fb4b0eae31ae25960aeae3fbc
+	9fa46a29844cc1c69c67698c8dddff1e5bcd015037ffe30e6fad786b9e674719
 )
 PLUGIN_VERSIONS=(
 	# Current one.
-	0.41
+	0.54
 	# Next one.
-	0.42
+	0.58
 )
 SRC_URI="
-	https://storage.googleapis.com/chromium-nodejs/14.15.4/b2e40ddbac04d05baafbb007f203c6663c9d4ca9
+	$(printf 'https://storage.googleapis.com/chromium-nodejs/%s ' "${NODE_HASHES[@]}")
 	$(printf 'https://storage.googleapis.com/chromeos-localmirror/secureshell/distfiles/fonts-%s.tar.xz ' \
 		"${FONTS_HASHES[@]}")
 	$(printf 'https://storage.googleapis.com/chromeos-localmirror/secureshell/distfiles/node_modules-%s.tar.xz ' \
@@ -41,7 +45,7 @@ SRC_URI="
 "
 
 # The archives above live on Google maintained sites.
-RESTRICT="nomirror"
+RESTRICT="mirror"
 
 LICENSE="BSD-Google"
 SLOT="0/0"
@@ -50,9 +54,35 @@ IUSE=""
 
 RDEPEND="!<chromeos-base/common-assets-0.0.2"
 
+BDEPEND="
+	app-arch/unzip
+	app-arch/zip
+	sys-devel/gcc
+"
+
+PATCHES=(
+        "${FILESDIR}/0001-WhaleOS-TerminalApp-Apply-whale-style-color.patch"
+)
+
 e() {
 	echo "$@"
 	"$@" || die
+}
+
+src_prepare() {
+	default
+	# TODO(vapier): Rework this integration.
+	sed -i \
+		-e '1iconst gitDate = pkg.gitDate;' \
+		-e '1iconst version = pkg.version;' \
+		libdot/js/deps_resources.shim.js || die
+	sed -i \
+		-e '/^import .*package.json/d' \
+		-e "s|pkg.version|'${PV}'|" \
+		-e "s|pkg.gitDate|'$(date)'|" \
+		-e "s|pkg.gitCommitHash|'${CROS_WORKON_COMMIT}'|" \
+		libdot/js/deps_resources.shim.js \
+		hterm/js/deps_resources.shim.js || die
 }
 
 src_compile() {
@@ -64,4 +94,14 @@ src_install() {
 	local dir="/usr/share/chromeos-assets/crosh_builtin"
 	dodir "${dir}"
 	unzip -d "${D}${dir}" nassh/dist/crosh.zip || die
+	local pnacl="${D}${dir}/plugin/pnacl"
+	if ! use arm && ! use arm64; then
+		rm "${pnacl}/ssh_client_nl_arm.nexe"* || die
+	fi
+	if ! use x86 ; then
+		rm "${pnacl}/ssh_client_nl_x86_32.nexe"* || die
+	fi
+	if ! use amd64 ; then
+		rm "${pnacl}/ssh_client_nl_x86_64.nexe"* || die
+	fi
 }

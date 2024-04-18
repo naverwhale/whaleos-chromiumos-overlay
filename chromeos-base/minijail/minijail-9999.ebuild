@@ -1,28 +1,25 @@
-# Copyright (c) 2009 The Chromium OS Authors. All rights reserved.
+# Copyright 2009 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
 
 inherit cros-constants
 
-CROS_WORKON_MANUAL_UPREV=1
-CROS_WORKON_LOCALNAME="aosp/external/minijail"
-CROS_WORKON_PROJECT="platform/external/minijail"
-CROS_WORKON_EGIT_BRANCH="master"
-CROS_WORKON_REPO="${CROS_GIT_AOSP_URL}"
+CROS_WORKON_LOCALNAME="platform/minijail"
+CROS_WORKON_PROJECT="chromiumos/platform/minijail"
+CROS_WORKON_EGIT_BRANCH="main"
 
-PYTHON_COMPAT=( python3_{6,7} )
+PYTHON_COMPAT=( python3_{6..9} )
 
 # TODO(crbug.com/689060): Re-enable on ARM.
 CROS_COMMON_MK_NATIVE_TEST="yes"
 
 DISTUTILS_OPTIONAL=1
-DISTUTILS_SINGLE_IMPL=1
 
 inherit cros-debug cros-sanitizers cros-workon cros-common.mk toolchain-funcs distutils-r1
 
 DESCRIPTION="helper binary and library for sandboxing & restricting privs of services"
-HOMEPAGE="https://android.googlesource.com/platform/external/minijail"
+HOMEPAGE="https://google.github.io/minijail/"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
@@ -30,14 +27,19 @@ IUSE="asan cros-debug default-ret-log +seccomp test"
 
 REQUIRED_USE="default-ret-log? ( cros-debug )"
 
+BDEPEND="
+	arm64? ( app-emulation/qemu )
+	arm? ( app-emulation/qemu )
+"
 COMMON_DEPEND="sys-libs/libcap:=
-	!<chromeos-base/chromeos-minijail-1"
-RDEPEND="${COMMON_DEPEND}"
-DEPEND="${COMMON_DEPEND}
+	!<chromeos-base/chromeos-minijail-1
 	cros_host? (
 		${PYTHON_DEPS}
 		$(python_gen_cond_dep 'dev-python/setuptools[${PYTHON_USEDEP}]')
 	)
+"
+RDEPEND="${COMMON_DEPEND}"
+DEPEND="${COMMON_DEPEND}
 	test? (
 		dev-cpp/gtest:=
 	)"
@@ -51,6 +53,12 @@ src_configure() {
 	export SECCOMP_DEFAULT_RET_LOG=$(usex default-ret-log)
 	export USE_SYSTEM_GTEST=yes
 	export DEFAULT_PIVOT_ROOT=/mnt/empty
+	export BLOCK_SYMLINKS_IN_BINDMOUNT_PATHS=yes
+	export BINDMOUNT_ALLOWED_PREFIXES=/dev,/sys,/var/log/power_manager
+	export BLOCK_SYMLINKS_IN_NONINIT_MOUNTNS_TMP=yes
+	export BLOCK_NOEXEC_CONF=yes
+	export ENFORCE_ROOTFS_CONF=yes
+	use cros_host && distutils-r1_src_configure
 }
 
 # Use qemu-user to run the platform-specific dump_constants binary in order to
@@ -66,6 +74,18 @@ generate_constants_json() {
 	esac
 	echo "+" "${cmd[@]}" ">${OUT}/constants.json"
 	"${cmd[@]}" >"${OUT}"/constants.json || die
+}
+
+# Install policies for minijail default runtime environment.
+default_policy_install() {
+	local policy="v0.bin"
+
+	tools/compile_seccomp_policy.py --arch-json "${OUT}/constants.json" \
+		policies/cros_default_v0.policy "${policy}" --denylist \
+		|| die
+
+	insinto "/etc/security/minijail"
+	doins "${policy}"
 }
 
 src_compile() {
@@ -88,7 +108,7 @@ src_compile() {
 
 	cros-common.mk_src_compile "${minijail_targets[@]}"
 	if use cros_host ; then
-		BUILD_DIR="${OUT}" distutils-r1_python_compile
+		BUILD_DIR="${OUT}" distutils-r1_src_compile
 	else
 		generate_constants_json
 	fi
@@ -102,7 +122,7 @@ src_install() {
 	doman minijail0.[15]
 
 	if use cros_host ; then
-		distutils-r1_python_install
+		distutils-r1_src_install
 	else
 		insinto /build/share
 		doins "${OUT}"/constants.json
@@ -117,4 +137,8 @@ src_install() {
 	insinto "${include_dir}"
 	doins libminijail.h
 	doins scoped_minijail.h
+
+	if ! use cros_host; then
+		default_policy_install
+	fi
 }

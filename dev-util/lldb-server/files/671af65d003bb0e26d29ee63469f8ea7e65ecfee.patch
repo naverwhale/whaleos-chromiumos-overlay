@@ -1,0 +1,32 @@
+From 671af65d003bb0e26d29ee63469f8ea7e65ecfee Mon Sep 17 00:00:00 2001
+From: Jordan R Abrahams-Whitehead <ajordanr@google.com>
+Date: Fri, 22 Sep 2023 17:31:18 +0000
+Subject: [PATCH] Revert "add_tablegen: Quick fix to reflect LLVM_TABLEGEN to
+ llvm-min-tblgen"
+
+This reverts commit 95d4506dda79d49e55fdd0e4da7bf81487167aa1.
+---
+ llvm/cmake/modules/TableGen.cmake | 7 -------
+ 1 file changed, 7 deletions(-)
+
+diff --git a/llvm/cmake/modules/TableGen.cmake b/llvm/cmake/modules/TableGen.cmake
+index 7fd6628ef55d..be16127c724e 100644
+--- a/llvm/cmake/modules/TableGen.cmake
++++ b/llvm/cmake/modules/TableGen.cmake
+@@ -154,13 +154,6 @@ macro(add_tablegen target project)
+     endif()
+   endif()
+ 
+-  # FIXME: Quick fix to reflect LLVM_TABLEGEN to llvm-min-tblgen
+-  if("${target}" STREQUAL "llvm-min-tblgen"
+-      AND NOT "${LLVM_TABLEGEN}" STREQUAL ""
+-      AND NOT "${LLVM_TABLEGEN}" STREQUAL "llvm-tblgen")
+-    set(${project}_TABLEGEN_DEFAULT "${LLVM_TABLEGEN}")
+-  endif()
+-
+   if(ADD_TABLEGEN_EXPORT)
+     set(${project}_TABLEGEN "${${project}_TABLEGEN_DEFAULT}" CACHE
+       STRING "Native TableGen executable. Saves building one when cross-compiling.")
+-- 
+2.42.0.515.g380fc7ccd1-goog
+

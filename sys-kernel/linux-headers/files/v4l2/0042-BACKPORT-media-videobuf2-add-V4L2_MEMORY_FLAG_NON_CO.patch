@@ -1,0 +1,47 @@
+From cd94f906ae812095423f0113ba985ef6869bfabc Mon Sep 17 00:00:00 2001
+From: Sergey Senozhatsky <senozhatsky@chromium.org>
+Date: Thu, 9 Sep 2021 13:24:27 +0200
+Subject: [PATCH] BACKPORT: media: videobuf2: add V4L2_MEMORY_FLAG_NON_COHERENT
+ flag
+
+By setting or clearing the V4L2_MEMORY_FLAG_NON_COHERENT flag
+user-space should be able to hint vb2 that either non-coherent
+(if supported) or coherent memory should be used for the buffer
+allocation.
+
+Signed-off-by: Sergey Senozhatsky <senozhatsky@chromium.org>
+Signed-off-by: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Signed-off-by: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
+(cherry picked from commit 965c1e0bfeb66888fb000540c1fc4e8b55533d9c)
+
+Conflicts:
+   Documentation/media/uapi/v4l/buffer.rst
+   Documentation/media/uapi/v4l/vidioc-reqbufs.rst
+
+Non-uAPI changes dropped.
+
+BUG=b:278157861
+TEST=Check header
+
+Change-Id: I4e592cf0a20c0e5da927339743c4d813807c9462
+Signed-off-by: Chen-Yu Tsai <wenst@chromium.org>
+---
+ include/uapi/linux/videodev2.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index e95a5694f19c..1a70bda81a63 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -862,6 +862,8 @@ struct v4l2_requestbuffers {
+ 	__u32			reserved[1];
+ };
+ 
++#define V4L2_MEMORY_FLAG_NON_COHERENT			(1 << 0)
++
+ /* capabilities for struct v4l2_requestbuffers and v4l2_create_buffers */
+ #define V4L2_BUF_CAP_SUPPORTS_MMAP			(1 << 0)
+ #define V4L2_BUF_CAP_SUPPORTS_USERPTR			(1 << 1)
+-- 
+2.40.1.606.ga4b1b128d6-goog
+

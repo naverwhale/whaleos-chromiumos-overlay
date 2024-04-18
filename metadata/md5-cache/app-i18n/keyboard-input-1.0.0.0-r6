@@ -1,0 +1,11 @@
+DEFINED_PHASES=-
+DEPEND=!internal? ( app-i18n/chromeos-keyboards app-i18n/chromeos-xkb )
+DESCRIPTION=This is a meta package for installing keyboard IME packages
+EAPI=7
+HOMEPAGE=https://www.google.com/inputtools/
+IUSE=internal
+KEYWORDS=*
+LICENSE=metapackage
+RDEPEND=!internal? ( app-i18n/chromeos-keyboards app-i18n/chromeos-xkb )
+SLOT=0
+_md5_=02afe030db5750f779a49a51feb191ec

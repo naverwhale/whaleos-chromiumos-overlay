@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium OS Authors. All rights reserved.
+// Copyright 2019 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -41,13 +41,13 @@ func processClangFlags(builder *commandBuilder) error {
 		clangBasename = "clang++"
 	}
 
-	// GCC flags to remove from the clang command line.
-	// TODO: Once clang supports GCC compatibility mode, remove
-	// these checks.
-	//
+	// Unsupported flags to remove from the clang command line.
 	// Use of -Qunused-arguments allows this set to be small, just those
 	// that clang still warns about.
-	unsupported := make(map[string]bool)
+	unsupported := map[string]bool{
+		"-Xcompiler":     true,
+		"-avoid-version": true,
+	}
 
 	unsupportedPrefixes := []string{"-Wstrict-aliasing=", "-finline-limit="}
 
@@ -126,7 +126,7 @@ func processClangFlags(builder *commandBuilder) error {
 
 	// Specify the target for clang.
 	if !builder.cfg.isHostWrapper {
-		linkerPath := getLinkerPath(env, builder.target.target+"-ld", builder.rootPath)
+		linkerPath := getLinkerPath(env, builder.target.target+"-ld.bfd", builder.rootPath)
 		relLinkerPath, err := filepath.Rel(env.getwd(), linkerPath)
 		if err != nil {
 			return wrapErrorwithSourceLocf(err, "failed to make linker path %s relative to %s",

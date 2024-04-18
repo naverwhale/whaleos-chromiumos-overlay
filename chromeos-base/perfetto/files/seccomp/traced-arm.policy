@@ -1,6 +1,9 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
+# rseq should be first due to frequency and purpose to decrease nptl latency
+rseq: 1
 
 clock_gettime: 1
 clock_gettime64: 1
@@ -69,6 +72,8 @@ exit: 1
 exit_group: 1
 # Allow signal to self.
 kill: arg0 == 0
+# Allow raising SIGABRT
+tgkill: arg2 == SIGABRT
 
 # Linux-specific fcntl cmd: F_ADD_SEALS (1033), F_GET_SEALS (1034).
 fcntl64:  arg1 == F_GETFD || arg1 == F_SETFD || arg1 == F_GETFL || arg1 == F_SETFL || arg1 == 1033 || arg1 == 1034
@@ -83,7 +88,9 @@ prctl: 1
 clone: 1
 
 eventfd2: 1
-ioctl: arg1 == TCGETS
+# ioctl: Perfetto temporarily enables TIOCOUTQ for debugging.
+# Remove after upstream removes it.
+ioctl: arg1 == TCGETS || arg1 == TIOCOUTQ
 memfd_create: 1
 
 # Set stack limit for the thread.
@@ -99,6 +106,9 @@ timer_create: 1
 timer_delete: 1
 timer_settime: 1
 timer_settime64: 1
+timerfd_create: 1
+timerfd_settime: 1
+timerfd_settime64: 1
 
 uname: 1
 # Remove the stale socket file.

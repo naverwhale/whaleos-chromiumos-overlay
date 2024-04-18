@@ -1,7 +1,8 @@
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright 2013 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
+CROS_WORKON_LOCALNAME="platform/touch_updater"
 CROS_WORKON_PROJECT="chromiumos/platform/touch_updater"
 CROS_WORKON_SUBTREE="policies scripts"
 CROS_WORKON_OUTOFTREE_BUILD=1
@@ -32,6 +33,10 @@ IUSE="
 	input_devices_emright
 	input_devices_eps2pstiap
 	input_devices_zinitix
+	input_devices_himax
+	input_devices_nvt_ts
+	input_devices_ilitek_tddi
+	input_devices_ilitek_its
 "
 
 # Third party firmware updaters usually belong in sys-apps/.  If you just
@@ -55,10 +60,14 @@ RDEPEND="
 	input_devices_emright? ( chromeos-base/emright_fw_updater )
 	input_devices_eps2pstiap? ( chromeos-base/epstps2iap )
 	input_devices_zinitix? ( chromeos-base/zinitix_fw_updater )
+	input_devices_himax? ( chromeos-base/hx_hid_util )
+	input_devices_nvt_ts? ( chromeos-base/chromeos-nvt-touch-updater )
+	input_devices_ilitek_tddi? ( chromeos-base/ilitek_tddi_tool )
+	input_devices_ilitek_its? ( chromeos-base/ilitek_ld_tool )
 "
 
 pkg_preinst() {
-	if use input_devices_elan_i2chid || use input_devices_melfas || use input_devices_emright || use input_devices_zinitix; then
+	if use input_devices_elan_i2chid || use input_devices_melfas || use input_devices_emright || use input_devices_zinitix || use input_devices_nvt_ts || use input_devices_himax || use input_devices_ilitek_tddi || use input_devices_ilitek_its; then
 		enewgroup fwupdate-hidraw
 		enewuser fwupdate-hidraw
 	fi
@@ -86,6 +95,10 @@ pkg_preinst() {
 		enewgroup fwupdate-serio
 		enewuser fwupdate-serio
 	fi
+	if use input_devices_himax; then
+		enewgroup fwupdate-i2c
+		enewuser fwupdate-i2c
+	fi
 }
 
 src_install() {
@@ -94,6 +107,6 @@ src_install() {
 
 	if [ -d "policies/${ARCH}" ]; then
 		insinto "/opt/google/touch/policies"
-		doins policies/${ARCH}/*.policy
+		doins policies/"${ARCH}"/*.policy
 	fi
 }

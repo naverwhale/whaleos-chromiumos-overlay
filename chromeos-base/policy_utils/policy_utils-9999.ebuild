@@ -1,4 +1,4 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -14,7 +14,7 @@ PLATFORM_SUBDIR="policy_utils"
 inherit cros-workon platform
 
 DESCRIPTION="Device-policy-management library and tool for Chrome OS"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/policy_utils/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/policy_utils/"
 
 LICENSE="BSD-Google"
 SLOT="0/0"
@@ -33,6 +33,8 @@ RDEPEND="
 "
 
 src_install() {
+	platform_src_install
+
 	dosbin "${OUT}/policy"
 }
 

@@ -1,0 +1,14 @@
+BDEPEND=virtual/pkgconfig
+DEFINED_PHASES=configure install setup
+DEPEND=!net-misc/openswan gmp? ( >=dev-libs/gmp-4.1.5:= ) gcrypt? ( dev-libs/libgcrypt:0 ) caps? ( sys-libs/libcap ) curl? ( net-misc/curl ) ldap? ( net-nds/openldap ) openssl? ( >=dev-libs/openssl-0.9.8:=[-bindist(-)] ) mysql? ( dev-db/mysql-connector-c:= ) sqlite? ( >=dev-db/sqlite-3.3.1 ) systemd? ( sys-apps/systemd ) networkmanager? ( net-misc/networkmanager ) pam? ( sys-libs/pam ) strongswan_plugins_unbound? ( net-dns/unbound:= net-libs/ldns ) virtual/linux-sources sys-kernel/linux-headers sys-apps/baselayout
+DESCRIPTION=IPsec-based VPN solution, supporting IKEv1/IKEv2 and MOBIKE
+EAPI=7
+HOMEPAGE=https://www.strongswan.org/
+IUSE=+caps curl +constraints debug dhcp eap farp gcrypt +gmp ldap mysql networkmanager +non-root +openssl selinux sqlite systemd pam pkcs11 +strongswan_plugins_lookip +strongswan_plugins_systime-fix +strongswan_plugins_unity +strongswan_plugins_vici strongswan_plugins_aesni strongswan_plugins_blowfish strongswan_plugins_bypass-lan strongswan_plugins_ccm strongswan_plugins_chapoly strongswan_plugins_ctr strongswan_plugins_forecast strongswan_plugins_gcm strongswan_plugins_ha strongswan_plugins_ipseckey strongswan_plugins_newhope strongswan_plugins_ntru strongswan_plugins_padlock strongswan_plugins_rdrand strongswan_plugins_save-keys strongswan_plugins_unbound strongswan_plugins_whitelist strongswan_plugins_xauth-noauth
+KEYWORDS=*
+LICENSE=GPL-2 RSA DES
+RDEPEND=!net-misc/openswan gmp? ( >=dev-libs/gmp-4.1.5:= ) gcrypt? ( dev-libs/libgcrypt:0 ) caps? ( sys-libs/libcap ) curl? ( net-misc/curl ) ldap? ( net-nds/openldap ) openssl? ( >=dev-libs/openssl-0.9.8:=[-bindist(-)] ) mysql? ( dev-db/mysql-connector-c:= ) sqlite? ( >=dev-db/sqlite-3.3.1 ) systemd? ( sys-apps/systemd ) networkmanager? ( net-misc/networkmanager ) pam? ( sys-libs/pam ) strongswan_plugins_unbound? ( net-dns/unbound:= net-libs/ldns ) virtual/logger sys-apps/iproute2 !net-vpn/libreswan selinux? ( sec-policy/selinux-ipsec ) sys-apps/baselayout
+SLOT=0
+SRC_URI=https://download.strongswan.org/strongswan-5.9.4.tar.bz2
+_eclasses_=flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	systemd	5f4bb0758df2e483babf68cd517078ca	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	user	bb36bb02334dae8c5fd9efa0d8d2ec70
+_md5_=fea850edada55899cecf2aaece9c3333

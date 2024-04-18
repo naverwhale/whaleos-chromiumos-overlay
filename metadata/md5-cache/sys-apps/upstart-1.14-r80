@@ -1,0 +1,14 @@
+BDEPEND=sys-devel/gettext sys-libs/libnih dev-vcs/git app-misc/jq >=app-portage/elt-patches-20170815 || ( >=sys-devel/automake-1.16.5-r1:1.16 >=sys-devel/automake-1.15.1-r2:1.15 ) >=sys-devel/autoconf-2.69 >=sys-devel/libtool-2.4
+DEFINED_PHASES=compile configure info install prepare setup unpack
+DEPEND=>=dev-libs/expat-2.0.0 nls? ( sys-devel/gettext ) direncryption? ( sys-fs/e2fsprogs ) >=sys-apps/dbus-1.2.16 >=sys-libs/libnih-1.0.2 selinux? ( sys-libs/libselinux sys-libs/libsepol ) udev_bridge? ( >=virtual/libudev-146 ) direncryption? ( sys-apps/keyutils ) global_seccomp? ( chromeos-base/minijail ) dev-libs/json-c
+DESCRIPTION=An event-based replacement for the init daemon
+EAPI=7
+HOMEPAGE=http://upstart.ubuntu.com/
+IUSE=debug direncryption examples nls global_seccomp selinux udev_bridge -upstart_scripts cros_host cros_workon_tree_e06c9597eae3ed4b63e00bd4997a46a818ca897d
+KEYWORDS=*
+LICENSE=GPL-2
+PROPERTIES=live
+RDEPEND=>=sys-apps/dbus-1.2.16 >=sys-libs/libnih-1.0.2 selinux? ( sys-libs/libselinux sys-libs/libsepol ) udev_bridge? ( >=virtual/libudev-146 ) direncryption? ( sys-apps/keyutils ) global_seccomp? ( chromeos-base/minijail ) dev-libs/json-c selinux? ( chromeos-base/selinux-policy )
+SLOT=0
+_eclasses_=autotools	9adb87822e85056674b476e1090a72ae	cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	libtool	f143db5a74ccd9ca28c1234deffede96	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=6e3f0603161a6aff0e356c8a8843efdc

@@ -1,0 +1,14 @@
+BDEPEND=dev-lang/go dev-vcs/git app-misc/jq
+DEFINED_PHASES=compile info install postinst prepare setup test unpack
+DEPEND=chromeos-base/cros-config-api:= dev-go/glog:= dev-go/infra-proto:= dev-go/luci-go:= dev-go/maruel-subcommands:= dev-go/protobuf:= dev-go/protobuf-legacy-api:=
+DESCRIPTION=A tool to generate ChromeOS CoverageRule protos from SourceTestPlan protos.
+EAPI=7
+HOMEPAGE=https://chromium.googlesource.com/chromiumos/platform/dev-util/+/HEAD/src/chromiumos/test/plan
+IUSE=cros_host cros_workon_tree_a710e550a2cc72751cde81eb1fd32fa3aa92344d
+KEYWORDS=*
+LICENSE=BSD-Google
+PROPERTIES=live
+RDEPEND=chromeos-base/cros-config-api:= dev-go/glog:= dev-go/infra-proto:= dev-go/luci-go:= dev-go/maruel-subcommands:= dev-go/protobuf:= dev-go/protobuf-legacy-api:=
+SLOT=0/0.0.1-r86
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-go	77ba1c1ddf5c20dab7e47e19efeffef7	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=23fa8c85d4f6d1790ed76c358a07002b

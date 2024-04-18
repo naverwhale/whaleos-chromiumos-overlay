@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright 2011 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="7"
@@ -39,6 +39,9 @@ src_install() {
 
 	newpamd "${FILESDIR}"/include-chromeos-auth sudo
 	pamd_mimic system-auth sudo auth account session
+
+	newpamd "${FILESDIR}"/include-chromeos-auth sudo-i
+	pamd_mimic system-auth sudo-i auth account session
 
 	newpamd "${FILESDIR}"/include-chromeos-auth login
 	pamd_mimic system-local-login login auth account password session

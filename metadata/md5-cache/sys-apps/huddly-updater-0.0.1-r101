@@ -1,0 +1,15 @@
+BDEPEND=dev-vcs/git app-misc/jq virtual/pkgconfig
+DEFINED_PHASES=configure info install preinst setup test unpack
+DEPEND=chromeos-base/libbrillo:= chromeos-base/cfm-dfu-notification:= >=dev-cpp/msgpack-cxx-5:= >=dev-libs/msgpack-5:= virtual/libusb:1 virtual/libudev:0= test? ( dev-cpp/gtest:= ) >=chromeos-base/libchrome-0.0.1-r884:0=[cros-debug=] dev-cpp/gtest:= sys-apps/baselayout
+DESCRIPTION=A utility to update Huddly camera firmware
+EAPI=7
+HOMEPAGE=https://chromium.googlesource.com/chromiumos/third_party/huddly-updater
+IUSE=test cros-debug cros_host cros_workon_tree_43f6995c7723b63733bd04e034eefe362a13af92 asan cfi cfi_diag cfi_recover coverage fuzzer msan thinlto tsan ubsan
+KEYWORDS=*
+LICENSE=BSD-Google
+PROPERTIES=live
+RDEPEND=chromeos-base/libbrillo:= chromeos-base/cfm-dfu-notification:= >=dev-cpp/msgpack-cxx-5:= >=dev-libs/msgpack-5:= virtual/libusb:1 virtual/libudev:0= app-arch/unzip >=chromeos-base/libchrome-0.0.1-r884:0=[cros-debug=] sys-apps/baselayout
+REQUIRED_USE=cfi? ( thinlto ) cfi_diag? ( cfi ) cfi_recover? ( cfi_diag )
+SLOT=0/0.0.1-r101
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-debug	af551fd1f4be5284c65a5f020aa73c5c	cros-sanitizers	4504f3661db0fe02309acd3555785cf2	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	libchrome	84a911cdf2eb95f651e86cd39c89d0f7	libchrome-version	c3e83b27c95464f9fe98ff4d1016ffbb	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	udev	eec0bbab06977f1cfc5597269c1fa152	user	bb36bb02334dae8c5fd9efa0d8d2ec70
+_md5_=0048489090adf6dd9a48a34bc1355058

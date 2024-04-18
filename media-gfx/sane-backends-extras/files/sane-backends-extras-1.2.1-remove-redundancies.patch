@@ -1,0 +1,70 @@
+# Removes all the redudant files that already exists by sane-backends ebuild here:
+# https://source.corp.google.com/h/chromium/chromiumos/codesearch/+/main:src/third_party/chromiumos-overlay/media-gfx/sane-backends/
+# It prevents building of libraries, config, and object files that are already built by that ebuild.
+
+diff --git a/Makefile.am b/Makefile.am
+index c54e93921..951760bb8 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -4,7 +4,7 @@
+ ##  This file is part of the "Sane" build infra-structure.  See
+ ##  included LICENSE file for license information.
+ 
+-SUBDIRS = include lib sanei backend frontend tools doc po testsuite
++SUBDIRS = include lib sanei backend tools doc po testsuite
+ DIST_SUBDIRS = include lib sanei backend frontend tools doc po japi testsuite
+ 
+ dist_doc_DATA = AUTHORS COPYING LICENSE NEWS PROBLEMS PROJECTS \
+diff --git a/backend/Makefile.am b/backend/Makefile.am
+index 35ad206f9..cf1058d6c 100644
+--- a/backend/Makefile.am
++++ b/backend/Makefile.am
+@@ -86,7 +86,7 @@ BACKEND_CONFS= abaton.conf agfafocus.conf apple.conf artec.conf \
+ 	       st400.conf stv680.conf tamarack.conf \
+ 	       teco1.conf teco2.conf teco3.conf test.conf \
+ 	       u12.conf umax1220u.conf umax.conf umax_pp.conf v4l.conf \
+-	       xerox_mfp.conf dll.conf saned.conf
++	       xerox_mfp.conf
+ # Although ./configure sets up BACKEND_CONFS_ENABLED it does not take
+ # into account the fact that some backends don't have a configuration
+ # file.  The becfg should depend on BACKEND_CONFS.  The install-becfg
+diff --git a/tools/Makefile.am b/tools/Makefile.am
+index 3c3698872..40f4588a1 100644
+--- a/tools/Makefile.am
++++ b/tools/Makefile.am
+@@ -7,7 +7,7 @@
+ AM_CPPFLAGS += -I. -I$(srcdir) -I$(top_builddir)/include \
+  -I$(top_srcdir)/include $(USB_CFLAGS)
+ 
+-bin_PROGRAMS = sane-find-scanner gamma4scanimage
++bin_PROGRAMS =
+ noinst_PROGRAMS = sane-desc
+ if INSTALL_UMAX_PP_TOOLS
+ bin_PROGRAMS += umax_pp
+@@ -36,7 +36,7 @@ EXTRA_DIST += create-changelog.sh
+ EXTRA_DIST += update-upstreams.sh
+ EXTRA_DIST += epson2usb.pl
+ 
+-sane_find_scanner_SOURCES = sane-find-scanner.c
++sane_find_scanner_SOURCES =
+ if have_usblib
+ sane_find_scanner_SOURCES += check-usb-chip.c
+ endif
+@@ -44,7 +44,7 @@ sane_find_scanner_LDADD = ../sanei/libsanei.la ../lib/liblib.la \
+                           $(USB_LIBS) $(IEEE1284_LIBS) $(SCSI_LIBS) $(XML_LIBS) \
+ 			  ../backend/sane_strstatus.lo
+ 
+-gamma4scanimage_SOURCES = gamma4scanimage.c
++gamma4scanimage_SOURCES =
+ gamma4scanimage_LDADD = $(MATH_LIB)
+ 
+ umax_pp_SOURCES  = umax_pp.c
+@@ -59,7 +59,7 @@ EXTRA_DIST += hotplug-ng/README hotplug-ng/libsane.hotplug
+ EXTRA_DIST += openbsd/attach openbsd/detach
+ 
+ pkgconfigdir = @libdir@/pkgconfig
+-pkgconfig_DATA = sane-backends.pc
++pkgconfig_DATA = 
+ 
+ # When build directory is not same as source directory then any
+ # subdirectories that targets use must be manually created (under

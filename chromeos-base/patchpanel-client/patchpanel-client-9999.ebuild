@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -7,7 +7,7 @@ CROS_WORKON_INCREMENTAL_BUILD=1
 CROS_WORKON_LOCALNAME="platform2"
 CROS_WORKON_PROJECT="chromiumos/platform2"
 CROS_WORKON_OUTOFTREE_BUILD=1
-CROS_WORKON_SUBTREE="common-mk patchpanel .gn"
+CROS_WORKON_SUBTREE="common-mk net-base patchpanel .gn"
 
 PLATFORM_SUBDIR="patchpanel/dbus"
 
@@ -22,6 +22,7 @@ KEYWORDS="~*"
 IUSE="fuzzer"
 
 COMMON_DEPEND="
+	chromeos-base/net-base:=
 	dev-libs/protobuf:=
 "
 
@@ -35,6 +36,11 @@ RDEPEND="
 DEPEND="
 	${COMMON_DEPEND}
 	chromeos-base/system_api:=[fuzzer?]
+	chromeos-base/vboot_reference:=
+"
+
+BDEPEND="
+	chromeos-base/chromeos-dbus-bindings
 "
 
 patchpanel_client_header() {
@@ -44,6 +50,8 @@ patchpanel_client_header() {
 }
 
 src_install() {
+	platform_src_install
+
 	# Libraries.
 	dolib.so "${OUT}"/lib/libpatchpanel-client.so
 

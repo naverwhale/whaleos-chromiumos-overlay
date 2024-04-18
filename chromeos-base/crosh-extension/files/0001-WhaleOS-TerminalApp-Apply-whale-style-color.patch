@@ -1,0 +1,87 @@
+From 94a8c2bc0675ae6f167c8ff4bb42e7657cdfcc6e Mon Sep 17 00:00:00 2001
+From: Jaewon Jung <jw.jung@navercorp.com>
+Date: Thu, 19 Oct 2023 18:59:44 +0900
+Subject: [PATCH] [WhaleOS][TerminalApp] apply whale style color
+
+Change-Id: I80fa608c43f6bbaa76776073b0254604a9564474
+Signed-off-by: Jaewon Jung <jw.jung@navercorp.com>
+---
+ terminal/css/cros_styles.css | 32 ++++++++++++++++----------------
+ 1 file changed, 16 insertions(+), 16 deletions(-)
+
+diff --git a/terminal/css/cros_styles.css b/terminal/css/cros_styles.css
+index 49bca686..d11f7128 100644
+--- a/terminal/css/cros_styles.css
++++ b/terminal/css/cros_styles.css
+@@ -160,52 +160,52 @@ html:not(body) {
+   --cros-selection-outline-rgb: 0, 0, 0;
+   --cros-selection-outline: rgba(var(--cros-selection-outline-rgb), 0.1);
+ 
+-  --google-blue-50-rgb: 232, 240, 254;
++  --google-blue-50-rgb: 220, 225, 255;
+   --google-blue-50: rgb(var(--google-blue-50-rgb));
+ 
+-  --google-blue-300-rgb: 138, 180, 248;
++  --google-blue-300-rgb: 182, 196, 255;
+   --google-blue-300: rgb(var(--google-blue-300-rgb));
+ 
+-  --google-blue-400-rgb: 102, 157, 246;
++  --google-blue-400-rgb: 144, 167, 255;
+   --google-blue-400: rgb(var(--google-blue-400-rgb));
+ 
+-  --google-blue-500-rgb: 66, 133, 244;
++  --google-blue-500-rgb: 104, 137, 255;
+   --google-blue-500: rgb(var(--google-blue-500-rgb));
+ 
+-  --google-blue-600-rgb: 26, 115, 232;
++  --google-blue-600-rgb: 56, 106, 255;
+   --google-blue-600: rgb(var(--google-blue-600-rgb));
+ 
+-  --google-grey-100-rgb: 241, 243, 244;
++  --google-grey-100-rgb: 225, 226, 228;
+   --google-grey-100: rgb(var(--google-grey-100-rgb));
+ 
+-  --google-grey-200-rgb: 232, 234, 237;
++  --google-grey-200-rgb: 197, 199, 201;
+   --google-grey-200: rgb(var(--google-grey-200-rgb));
+ 
+-  --google-grey-300-rgb: 218, 220, 224;
++  --google-grey-300-rgb: 169, 171, 173;
+   --google-grey-300: rgb(var(--google-grey-300-rgb));
+ 
+-  --google-grey-400-rgb: 189, 193, 198;
++  --google-grey-400-rgb: 143, 145, 147;
+   --google-grey-400: rgb(var(--google-grey-400-rgb));
+ 
+-  --google-grey-500-rgb: 154, 160, 166;
++  --google-grey-500-rgb: 117, 119, 121;
+   --google-grey-500: rgb(var(--google-grey-500-rgb));
+ 
+-  --google-grey-600-rgb: 128, 134, 139;
++  --google-grey-600-rgb: 92, 95, 97;
+   --google-grey-600: rgb(var(--google-grey-600-rgb));
+ 
+-  --google-grey-700-rgb: 95, 99, 104;
++  --google-grey-700-rgb: 68, 71, 73;
+   --google-grey-700: rgb(var(--google-grey-700-rgb));
+ 
+-  --google-grey-800-rgb: 60, 64, 67;
++  --google-grey-800-rgb: 46, 49, 51;
+   --google-grey-800: rgb(var(--google-grey-800-rgb));
+ 
+-  --google-grey-900-rgb: 32, 33, 36;
++  --google-grey-900-rgb: 25, 28, 30;
+   --google-grey-900: rgb(var(--google-grey-900-rgb));
+ 
+-  --google-red-300-rgb: 242, 139, 130;
++  --google-red-300-rgb: 255, 137, 125;
+   --google-red-300: rgb(var(--google-red-300-rgb));
+ 
+-  --google-red-600-rgb: 217, 48, 37;
++  --google-red-600-rgb: 255, 50, 45;
+   --google-red-600: rgb(var(--google-red-600-rgb));
+ 
+   --cros-second-tone-opacity: 0.3;
+-- 
+2.17.1
+

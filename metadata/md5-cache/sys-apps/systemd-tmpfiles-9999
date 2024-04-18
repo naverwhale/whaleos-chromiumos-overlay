@@ -1,10 +1,10 @@
-BDEPEND=app-text/docbook-xml-dtd:4.2 app-text/docbook-xml-dtd:4.5 app-text/docbook-xsl-stylesheets dev-libs/libxslt:0 >=dev-util/meson-0.46 >=dev-util/intltool-0.50 >=sys-apps/coreutils-8.16 sys-devel/m4 virtual/pkgconfig test? ( || ( dev-lang/python:3.9 dev-lang/python:3.8 dev-lang/python:3.7 dev-lang/python:3.6 ) ) >=dev-util/meson-0.56.0 >=dev-util/ninja-1.8.2 dev-util/meson-format-array dev-vcs/git
+BDEPEND=app-text/docbook-xml-dtd:4.2 app-text/docbook-xml-dtd:4.5 app-text/docbook-xsl-stylesheets dev-libs/libxslt:0 dev-util/gperf >=dev-util/meson-0.46 >=dev-util/intltool-0.50 >=sys-apps/coreutils-8.16 sys-devel/m4 virtual/pkgconfig test? ( || ( dev-lang/python:3.8 dev-lang/python:3.9 dev-lang/python:3.10 dev-lang/python:3.11 ) ) !cros_host? ( chromeos-base/chromite-sdk dev-python/psutil sys-apps/iproute2 sys-apps/proot sys-libs/libcap-ng !amd64? ( !x86? ( app-emulation/qemu ) ) ) >=dev-util/meson-0.58.2-r1 >=dev-util/ninja-1.8.2 dev-util/meson-format-array dev-vcs/git app-misc/jq
 DEFINED_PHASES=compile configure info install postinst prepare setup test unpack
 DEPEND=sys-apps/acl:0= >=sys-apps/util-linux-2.30:0= >=sys-kernel/linux-headers-3.11 sys-libs/libcap:0= selinux? ( sys-libs/libselinux:0= )
 DESCRIPTION=Creates, deletes and cleans up volatile and temporary files and directories
 EAPI=7
 HOMEPAGE=https://www.freedesktop.org/wiki/Software/systemd
-IUSE=selinux test cros_host cros_workon_tree_
+IUSE=selinux test cros_host test cros_host cros_workon_tree_
 KEYWORDS=~*
 LICENSE=BSD-2 GPL-2 LGPL-2.1 MIT public-domain
 PROPERTIES=live
@@ -12,5 +12,5 @@ RDEPEND=sys-apps/acl:0= >=sys-apps/util-linux-2.30:0= >=sys-kernel/linux-headers
 RESTRICT=!test? ( test )
 SLOT=0
 SRC_URI=elibc_musl? ( https://dev.gentoo.org/~gyakovlev/distfiles/systemd-tmpfiles-9999-musl.tar.xz )
-_eclasses_=cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-credentials	4fd98ebbff6a1534ca9a89547e13dc92	cros-workon	ff100259492312ff6570e490bcb9a320	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	meson	5ec14fdbc5446b8767e87e186e3b1a52	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	ninja-utils	132cbb376048d079b5a012f5467c4e7f	python-any-r1	54a3178500786b0a7ede4a23b7f2a6ad	python-utils-r1	157a6a7a3e99c7dbdf81acc9dd4f57cd	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
-_md5_=c322fe64586dd4f2743a4a002a4b4176
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	meson	e68978cf8efc3aa7dd92a23c9df4bcf3	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	ninja-utils	578ba3585e2f3ebe63ab00c07874016e	platform2-test	f3f33a621ab5e271926bf478d21d32f8	python-any-r1	54a3178500786b0a7ede4a23b7f2a6ad	python-utils-r1	76252008070e69454f51fa80c07638c9	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=a9929dec3453ebb79fa67ce68e180fa6

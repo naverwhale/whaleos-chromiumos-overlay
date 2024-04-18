@@ -1,0 +1,39 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Metadata information for which CVEs do not affect ChromeOS or have been
+# patched in.
+#
+# For more information, see:
+#     http://go/third-party-package-remediation-playbook#special-case-back-ported-patches
+third_party {
+  security {
+    # CVE-2023-24540, CVE-2023-24539, and CVE-2023-29400 were patched in Go 1.20.4.
+    mitigated_security_patch: "CVE-2023-24540"
+    mitigated_security_patch: "CVE-2023-24539"
+    mitigated_security_patch: "CVE-2023-29400"
+    # CVE-2023-29402, CVE-2023-29403, CVE-2023-29404, and CVE-2023-29405 were patched in Go 1.20.5.
+    mitigated_security_patch: "CVE-2023-29402"
+    mitigated_security_patch: "CVE-2023-29403"
+    mitigated_security_patch: "CVE-2023-29404"
+    mitigated_security_patch: "CVE-2023-29405"
+    # Neither CVE-2023-29409 nor CVE-2023-39533 have been patched at the time of
+    # writing, but they seem unreasonable to gainfully exploit: we only use Go
+    # for non-production binaries, and the consequences of it are "crypto takes
+    # more CPU than one might expect in a super rare edge-case."
+    mitigated_security_patch: "CVE-2023-29409"
+    mitigated_security_patch: "CVE-2023-39533"
+    # Upgrade to Go 1.20.10 included mitigations for
+    # CVE-2023-29406, CVE-2023-39318, CVE-2023-39319, CVE-2023-39323, and CVE-2023-44487.
+    mitigated_security_patch: "CVE-2023-29406"
+    mitigated_security_patch: "CVE-2023-39318"
+    mitigated_security_patch: "CVE-2023-39319"
+    mitigated_security_patch: "CVE-2023-39323"
+    mitigated_security_patch: "CVE-2023-44487"
+
+    # ChromeOS > Infra > Toolchain
+    tag: "vuln_reporting:buganizer_component:1034879"
+    tag: "vuln_reporting:contact_emails:chromeos-toolchain@google.com"
+  }
+}

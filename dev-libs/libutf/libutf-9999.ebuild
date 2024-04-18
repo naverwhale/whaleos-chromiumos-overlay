@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -25,6 +25,8 @@ RDEPEND=""
 DEPEND=""
 
 src_install() {
+	platform_src_install
+
 	insinto "/usr/include/android/"
 	doins "${S}/utf.h"
 

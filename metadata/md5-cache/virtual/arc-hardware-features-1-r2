@@ -6,4 +6,4 @@ KEYWORDS=*
 LICENSE=metapackage
 RDEPEND=chromeos-base/arc-hardware-features-default
 SLOT=0
-_md5_=ef71c8ec1fe8972a83275e475a347c70
+_md5_=c312f2c3799294b3b1c10e8731510261

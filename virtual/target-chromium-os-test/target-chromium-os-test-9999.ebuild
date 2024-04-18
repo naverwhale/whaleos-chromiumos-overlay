@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="7"
@@ -21,12 +21,15 @@ KEYWORDS="~*"
 IUSE="
 	arc-camera3
 	biod
+	camera_feature_auto_framing
+	camera_feature_frame_annotator
+	camera_feature_hdrnet
 	-chromeless_tests
 	cheets
 	chromeless_tty
+	clvk
 	cr50_onboard
 	+cras
-	cros_ec
 	cros_embedded
 	dlc
 	hammerd
@@ -34,22 +37,24 @@ IUSE="
 	ml_service
 	hps
 	nnapi
+	no_factory_flow
 	ondevice_document_scanner
 	opengl
 	opengles
 	p2p
 	+perfetto
-	python_targets_python2_7
+	pvs
+	python_targets_python3_8
+	racc
 	scanner
 	+shill
+	ti50_onboard
 	+tpm
 	tpm2
 	unibuild
 	vaapi
 	vulkan
 	wifi_hostap_test
-	wifi_testbed_ap
-	+wired_8021x
 "
 
 # Packages required to support autotest images.  Dependencies here
@@ -94,11 +99,12 @@ CROS_COMMON_RDEPEND="
 	chromeos-base/chromeos-test-root
 	chromeos-base/ec-utils
 	chromeos-base/ec-utils-test
-	chromeos-base/factory-deps
+	!no_factory_flow? ( chromeos-base/factory-deps )
 	biod? (
 		virtual/chromeos-fpmcu-test
 		chromeos-base/chromeos-fpmcu-unittests
 	)
+	chromeos-base/mock-biod-test-deps
 	hammerd? ( chromeos-base/hammerd-test-utils )
 	iioservice? ( chromeos-base/iioservice_simpleclient )
 	scanner? (
@@ -115,32 +121,48 @@ CROS_COMMON_RDEPEND="
 	ondevice_document_scanner? (
 		media-libs/cros-camera-document-scanning-test
 	)
+	camera_feature_auto_framing? (
+		media-libs/cros-camera-auto-framing-tests
+	)
+	camera_feature_frame_annotator? (
+		media-libs/cros-camera-frame-annotator
+	)
+	camera_feature_hdrnet? (
+		media-libs/cros-camera-hdrnet-tests
+	)
+	racc? (
+		chromeos-base/factory_runtime_probe
+	)
 	chromeos-base/recover-duts
+	chromeos-base/libsegmentation-test
 	chromeos-base/tast-local-test-runner
 	chromeos-base/tast-local-tests
 	chromeos-base/tast-use-flags
+	chromeos-base/vboot_reference-tests
 	chromeos-base/verity
 	chromeos-base/vpd
-	cros_ec? ( chromeos-base/ec-devutils )
+	chromeos-base/ec-devutils
 	!chromeless_tty? (
 		!chromeless_tests? (
 			>=dev-cpp/gflags-2.0
 		)
 	)
-	wifi_testbed_ap? (
-		dev-python/btsocket
-	)
-	python_targets_python2_7? ( dev-lang/python:2.7 )
-	dev-lang/python:3.6
+	x86?   ( dev-go/delve )
+	amd64? ( dev-go/delve )
+	arm64? ( dev-go/delve )
+	python_targets_python3_8? ( dev-lang/python:3.8 )
 	dev-libs/opensc
 	p2p? ( dev-python/dpkt )
 	perfetto? (
 		chromeos-base/perfetto
 		chromeos-base/perfetto_simple_producer
 	)
+	pvs? ( dev-util/pvs-host )
 	cr50_onboard? ( dev-util/u2f-ref-code )
 	net-misc/rsync
 	sys-apps/memtester
+	sys-fs/fscryptctl
+	ti50_onboard? ( dev-util/u2f-ref-code )
 	virtual/autotest-capability
 	virtual/chromeos-bsp-test
 "
@@ -157,7 +179,6 @@ CROS_COMMON_RDEPEND+="
 #
 ################################################################################
 CROS_X86_RDEPEND="
-	app-benchmarks/sysbench
 	sys-apps/pciutils
 	sys-power/iasl
 	vaapi? ( media-gfx/vadumpcaps media-video/libva-utils )
@@ -178,8 +199,7 @@ CROS_RDEPEND="${CROS_RDEPEND}
 	app-benchmarks/lmbench
 	app-benchmarks/microbenchmarks
 	app-benchmarks/pjdfstest
-	app-benchmarks/xfstests
-	app-misc/ckermit
+	app-metrics/node_exporter
 	opengles? ( app-misc/eglinfo )
 	app-misc/tmux
 	app-misc/utouch-evemu
@@ -187,32 +207,44 @@ CROS_RDEPEND="${CROS_RDEPEND}
 	chromeos-base/autotest-client
 	cras? (
 		chromeos-base/audiotest
-		media-sound/cras_bench
+		dev-util/rt-tests
+		media-sound/audio_streams_conformance_test
 	)
 	chromeos-base/avtest_label_detect
 	chromeos-base/chrome-binary-tests
 	chromeos-base/cros-camera-tool
-	chromeos-base/cros-config-test
 	!chromeless_tty? ( !chromeless_tests? ( chromeos-base/drm-tests ) )
-	chromeos-base/factory-mini
+	!no_factory_flow? ( chromeos-base/factory-mini )
 	chromeos-base/glbench
+	chromeos-base/graphics-expectations
+	chromeos-base/graphics-utils
 	chromeos-base/graphics-utils-python
 	chromeos-base/libvda-gpu-tests
 	chromeos-base/modem-diagnostics
+	!chromeless_tty? ( !chromeless_tests? (
+		chromeos-base/mojo_service_manager-test
+	) )
 	chromeos-base/policy_utils
 	chromeos-base/protofiles
 	chromeos-base/pywalt
-	!chromeless_tty? ( chromeos-base/screen-capture-utils )
+	!chromeless_tty? ( chromeos-base/screen-capture-utils www-apps/novnc )
 	chromeos-base/secure-wipe
 	shill? (
 		chromeos-base/shill-test-scripts
-		wired_8021x? ( net-wireless/hostapd )
+		net-wireless/hostapd
 	)
 	!chromeless_tests? ( chromeos-base/telemetry )
 	chromeos-base/toolchain-tests
 	vulkan? (
 		chromeos-base/vkbench
+		!clvk? ( media-libs/clvk )
+		dev-libs/opencl-icd-loader
+		dev-libs/opencl-kernel-profiler
+		media-libs/clvk-test
+		media-libs/opencl-cts
+		media-libs/clpeak
 	)
+	dev-util/cros-test-ready
 	dev-embedded/dfu-programmer
 	dev-go/syzkaller
 	dev-libs/re2
@@ -221,10 +253,12 @@ CROS_RDEPEND="${CROS_RDEPEND}
 	dev-python/contextlib2
 	dev-python/dbus-python
 	dev-python/dpkt
+	dev-python/grpcio
 	dev-python/httplib2
 	dev-python/jsonrpclib
 	dev-python/mkvparse
 	dev-python/netifaces
+	dev-python/pydbus
 	dev-python/pygobject
 	dev-python/pyserial
 	dev-python/pytest
@@ -233,6 +267,7 @@ CROS_RDEPEND="${CROS_RDEPEND}
 	dev-python/pyudev
 	dev-python/pyxattr
 	dev-python/pyyaml
+	dev-python/requests
 	dev-python/selenium
 	dev-python/setproctitle
 	dev-python/setuptools
@@ -241,15 +276,19 @@ CROS_RDEPEND="${CROS_RDEPEND}
 	dev-util/stressapptest
 	dev-util/trace-cmd
 	dlc? ( sys-fs/squashfs-tools )
-	games-util/joystick
 	media-gfx/imagemagick[jpeg,png,svg,tiff]
 	media-gfx/perceptualdiff
 	media-gfx/zbar
 	arc-camera3? ( media-libs/cros-camera-libcamera_connector_test )
 	arc-camera3? ( media-libs/cros-camera-libjea_test )
 	arc-camera3? ( media-libs/cros-camera-test )
-	media-libs/cros-camera-v4l2_test
+	media-libs/cros-camera-app
+	media-libs/cros-camera-sw-privacy-switch-test
+	media-libs/cros-camera-tracing
+	media-libs/cros-camera-usb-tests
+	media-libs/libaom
 	media-libs/libexif
+	media-libs/libvmaf
 	media-libs/libvpx
 	media-libs/opencv
 	media-libs/openh264
@@ -262,6 +301,7 @@ CROS_RDEPEND="${CROS_RDEPEND}
 	opengl? ( media-libs/waffle )
 	media-sound/sox
 	net-analyzer/netperf
+	net-analyzer/netdata
 	net-dialup/minicom
 	net-dns/dnsmasq
 	net-misc/dhcp
@@ -271,15 +311,16 @@ CROS_RDEPEND="${CROS_RDEPEND}
 	net-misc/radvd
 	net-proxy/tinyproxy
 	wifi_hostap_test? ( net-wireless/hostap-test )
-	sci-geosciences/gpsd
+	sys-apps/ap_wpsr
 	sys-apps/coreutils
 	sys-apps/dtc
 	sys-apps/ethtool
 	sys-apps/file
 	sys-apps/findutils
-	sys-apps/kbd
+	!no_factory_flow? ( sys-apps/mosys )
 	sys-apps/shadow
 	sys-devel/binutils
+	sys-devel/crash
 	sys-process/iotop
 	sys-process/procps
 	sys-process/psmisc

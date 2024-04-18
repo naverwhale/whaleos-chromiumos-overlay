@@ -1,8 +1,0 @@
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
-# Use of this source code is governed by a BSD-style license that can be
-# found in the LICENSE file.
-#
-# This package causes build breakages due to redeclarations of standard library
-# functions. The fix seems trivial, but we need this fix in ASAP, so disabling
-# FORTIFY (temporarily) is the most sure path forward.
-export CPPFLAGS+=' -D_CLANG_FORTIFY_DISABLE '

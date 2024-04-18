@@ -1,4 +1,4 @@
-// Copyright 2019 The Chromium OS Authors. All rights reserved.
+// Copyright 2019 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -30,11 +30,9 @@ type config struct {
 	gccRootRelPath   string
 	// Directory to store errors that were prevented with -Wno-error.
 	newWarningsDir string
-	// Directory to store nits in when using `WITH_TIDY=tricium`.
-	triciumNitsDir string
 	// Directory to store crash artifacts in.
 	crashArtifactsDir string
-	// Version. Only used for printing via -print-cmd.
+	// Version. Only exposed via -print-config.
 	version string
 }
 
@@ -83,13 +81,13 @@ func getConfig(configName string, useCCache bool, useLlvmNext bool, version stri
 	cfg := config{}
 	switch configName {
 	case "cros.hardened":
-		cfg = *crosHardenedConfig
+		cfg = crosHardenedConfig
 	case "cros.nonhardened":
-		cfg = *crosNonHardenedConfig
+		cfg = crosNonHardenedConfig
 	case "cros.host":
-		cfg = *crosHostConfig
+		cfg = crosHostConfig
 	case "android":
-		cfg = *androidConfig
+		cfg = androidConfig
 	default:
 		return nil, newErrorwithSourceLocf("unknown config name: %s", configName)
 	}
@@ -103,9 +101,42 @@ func getConfig(configName string, useCCache bool, useLlvmNext bool, version stri
 	return &cfg, nil
 }
 
+func crosCommonClangFlags() []string {
+	// Temporarily disable tautological-*-compare chromium:778316.
+	// Temporarily add no-unknown-warning-option to deal with old clang versions.
+	// Temporarily disable Wdeprecated-declarations. b/193860318
+	// b/230345382: Temporarily disable Wimplicit-function-declaration.
+	// b/231987783: Temporarily disable Wimplicit-int.
+	return []string{
+		"-Qunused-arguments",
+		"-Werror=poison-system-directories",
+		"-Wno-compound-token-split-by-macro",
+		"-Wno-deprecated-builtins",
+		"-Wno-deprecated-declarations",
+		"-Wno-enum-constexpr-conversion",
+		"-Wno-error=implicit-function-declaration",
+		"-Wno-error=implicit-int",
+		"-Wno-final-dtor-non-final-class",
+		"-Wno-single-bit-bitfield-constant-conversion",
+		"-Wno-tautological-constant-compare",
+		"-Wno-tautological-unsigned-enum-zero-compare",
+		"-Wno-unknown-warning-option",
+		"-fdebug-default-version=5",
+		"-Wno-int-conversion",
+		"-Wno-incompatible-function-pointer-types",
+		"-D_LIBCPP_ENABLE_CXX17_REMOVED_FEATURES",
+	}
+}
+
+func crosCommonClangPostFlags() []string {
+	return []string{
+		"-Wno-unused-but-set-variable",
+	}
+}
+
 // Full hardening.
 // Temporarily disable function splitting because of chromium:434751.
-var crosHardenedConfig = &config{
+var crosHardenedConfig = config{
 	clangRootRelPath: "../..",
 	gccRootRelPath:   "../../../../..",
 	// Pass "-fcommon" till the packages are fixed to work with new clang/gcc
@@ -113,9 +144,7 @@ var crosHardenedConfig = &config{
 	commonFlags: []string{
 		"-fcommon",
 		"-fstack-protector-strong",
-		"-fPIE",
-		"-pie",
-		"-D_FORTIFY_SOURCE=2",
+		"-D_FORTIFY_SOURCE=3",
 		"-fno-omit-frame-pointer",
 	},
 	gccFlags: []string{
@@ -123,45 +152,25 @@ var crosHardenedConfig = &config{
 		"-Wno-unused-local-typedefs",
 		"-Wno-maybe-uninitialized",
 	},
-	// Temporarily disable tautological-*-compare chromium:778316.
-	// Temporarily add no-unknown-warning-option to deal with old clang versions.
 	// Temporarily disable Wsection since kernel gets a bunch of these. chromium:778867
 	// Disable "-faddrsig" since it produces object files that strip doesn't understand, chromium:915742.
 	// crbug.com/1103065: -grecord-gcc-switches pollutes the Goma cache;
 	//   removed that flag for now.
-	// Temporarily disable Wdeprecated-declarations. b/193860318
-
-	clangFlags: []string{
-		"-Qunused-arguments",
-		"-fno-addrsig",
-		"-fdebug-default-version=5",
-		"-Wno-tautological-constant-compare",
-		"-Wno-tautological-unsigned-enum-zero-compare",
-		"-Wno-unknown-warning-option",
+	clangFlags: append(
+		crosCommonClangFlags(),
+		"--unwindlib=libunwind",
 		"-Wno-section",
+		"-fno-addrsig",
 		"-fuse-ld=lld",
-		"--unwindlib=libgcc",
-		"-Wno-final-dtor-non-final-class",
-		"-Werror=poison-system-directories",
-		"-fexperimental-new-pass-manager",
-		"-Wno-compound-token-split-by-macro",
-		"-Wno-deprecated-declarations",
-	},
-
-	// Temporarily disable Wdeprecated-copy. b/191479033
-	clangPostFlags: []string{
-		"-Wno-implicit-int-float-conversion",
-		"-Wno-compound-token-split-by-space",
-		"-Wno-string-concatenation",
-		"-Wno-deprecated-copy",
-	},
-	newWarningsDir:    "/tmp/fatal_clang_warnings",
-	triciumNitsDir:    "/tmp/linting_output/clang-tidy",
+		"-ftrivial-auto-var-init=zero",
+	),
+	clangPostFlags:    crosCommonClangPostFlags(),
+	newWarningsDir:    "fatal_clang_warnings",
 	crashArtifactsDir: "/tmp/clang_crash_diagnostics",
 }
 
 // Flags to be added to non-hardened toolchain.
-var crosNonHardenedConfig = &config{
+var crosNonHardenedConfig = config{
 	clangRootRelPath: "../..",
 	gccRootRelPath:   "../../../../..",
 	commonFlags:      []string{},
@@ -171,38 +180,18 @@ var crosNonHardenedConfig = &config{
 		"-Wno-deprecated-declarations",
 		"-Wtrampolines",
 	},
-	// Temporarily disable tautological-*-compare chromium:778316.
-	// Temporarily add no-unknown-warning-option to deal with old clang versions.
 	// Temporarily disable Wsection since kernel gets a bunch of these. chromium:778867
-	// Temporarily disable Wdeprecated-declarations. b/193860318
-	clangFlags: []string{
-		"-Qunused-arguments",
-		"-fdebug-default-version=5",
-		"-Wno-tautological-constant-compare",
-		"-Wno-tautological-unsigned-enum-zero-compare",
-		"-Wno-unknown-warning-option",
+	clangFlags: append(
+		crosCommonClangFlags(),
 		"-Wno-section",
-		"-Wno-final-dtor-non-final-class",
-		"-Werror=poison-system-directories",
-		"-fexperimental-new-pass-manager",
-		"-Wno-compound-token-split-by-macro",
-		"-Wno-deprecated-declarations",
-	},
-
-	// Temporarily disable Wdeprecated-copy. b/191479033
-	clangPostFlags: []string{
-		"-Wno-implicit-int-float-conversion",
-		"-Wno-compound-token-split-by-space",
-		"-Wno-string-concatenation",
-		"-Wno-deprecated-copy",
-	},
-	newWarningsDir:    "/tmp/fatal_clang_warnings",
-	triciumNitsDir:    "/tmp/linting_output/clang-tidy",
+	),
+	clangPostFlags:    crosCommonClangPostFlags(),
+	newWarningsDir:    "fatal_clang_warnings",
 	crashArtifactsDir: "/tmp/clang_crash_diagnostics",
 }
 
 // Flags to be added to host toolchain.
-var crosHostConfig = &config{
+var crosHostConfig = config{
 	isHostWrapper:    true,
 	clangRootRelPath: "../..",
 	gccRootRelPath:   "../..",
@@ -216,40 +205,21 @@ var crosHostConfig = &config{
 		"-Wno-unused-local-typedefs",
 		"-Wno-deprecated-declarations",
 	},
-	// Temporarily disable tautological-*-compare chromium:778316.
-	// Temporarily add no-unknown-warning-option to deal with old clang versions.
 	// crbug.com/1103065: -grecord-gcc-switches pollutes the Goma cache;
 	//   removed that flag for now.
-	// Temporarily disable Wdeprecated-declarations. b/193860318
-	clangFlags: []string{
-		"-Qunused-arguments",
+	clangFlags: append(
+		crosCommonClangFlags(),
+		"-Wno-unused-local-typedefs",
 		"-fno-addrsig",
 		"-fuse-ld=lld",
-		"-fdebug-default-version=5",
-		"-Wno-unused-local-typedefs",
-		"-Wno-tautological-constant-compare",
-		"-Wno-tautological-unsigned-enum-zero-compare",
-		"-Wno-final-dtor-non-final-class",
-		"-Werror=poison-system-directories",
-		"-Wno-unknown-warning-option",
-		"-fexperimental-new-pass-manager",
-		"-Wno-compound-token-split-by-macro",
-		"-Wno-deprecated-declarations",
-	},
-
+	),
 	// Temporarily disable Wdeprecated-copy. b/191479033
-	clangPostFlags: []string{
-		"-Wno-implicit-int-float-conversion",
-		"-Wno-compound-token-split-by-space",
-		"-Wno-string-concatenation",
-		"-Wno-deprecated-copy",
-	},
-	newWarningsDir:    "/tmp/fatal_clang_warnings",
-	triciumNitsDir:    "/tmp/linting_output/clang-tidy",
+	clangPostFlags:    crosCommonClangPostFlags(),
+	newWarningsDir:    "fatal_clang_warnings",
 	crashArtifactsDir: "/tmp/clang_crash_diagnostics",
 }
 
-var androidConfig = &config{
+var androidConfig = config{
 	isHostWrapper:     false,
 	isAndroidWrapper:  true,
 	gccRootRelPath:    "./",
@@ -259,6 +229,5 @@ var androidConfig = &config{
 	clangFlags:        []string{},
 	clangPostFlags:    []string{},
 	newWarningsDir:    "",
-	triciumNitsDir:    "",
 	crashArtifactsDir: "",
 }

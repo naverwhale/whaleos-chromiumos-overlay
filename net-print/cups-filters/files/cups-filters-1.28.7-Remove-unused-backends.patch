@@ -1,0 +1,67 @@
+From a48e2465968add6d12442a95ac4a68ab53369de3 Mon Sep 17 00:00:00 2001
+From: Nathan Muggli <nmuggli@google.com>
+Date: Wed, 8 Nov 2023 17:19:41 -0700
+Subject: [PATCH] Remove unused backends
+
+beh, parallel, and implcitclass are not used on ChromeOS.
+---
+ Makefile.am | 24 +-----------------------
+ 1 file changed, 1 insertion(+), 23 deletions(-)
+
+diff --git a/Makefile.am b/Makefile.am
+index 197f157..b5e34bf 100644
+--- a/Makefile.am
++++ b/Makefile.am
+@@ -43,40 +43,19 @@ EXTRA_DIST += \
+ # Backends
+ # ========
+ pkgbackenddir = $(CUPS_SERVERBIN)/backend
+-pkgbackend_PROGRAMS = parallel serial beh implicitclass
++pkgbackend_PROGRAMS = serial
+ 
+ check_PROGRAMS = test1284
+ # We need ieee1284 up and running.
+ # Leave it to the user to run if they have the bus.
+ #TESTS = test1284
+ 
+-parallel_SOURCES = \
+-	backend/backend-private.h \
+-	backend/ieee1284.c \
+-	backend/parallel.c
+-parallel_LDADD = $(CUPS_LIBS)
+-parallel_CFLAGS = $(CUPS_CFLAGS)
+-
+ serial_SOURCES = \
+ 	backend/backend-private.h \
+ 	backend/serial.c
+ serial_LDADD = $(CUPS_LIBS)
+ serial_CFLAGS = $(CUPS_CFLAGS)
+ 
+-beh_SOURCES = \
+-	backend/backend-private.h \
+-	backend/beh.c
+-beh_LDADD = $(CUPS_LIBS)
+-beh_CFLAGS = $(CUPS_CFLAGS)
+-
+-implicitclass_SOURCES = \
+-	backend/backend-private.h \
+-	backend/implicitclass.c
+-implicitclass_LDADD = $(CUPS_LIBS)\
+-	libcupsfilters.la
+-implicitclass_CFLAGS = $(CUPS_CFLAGS)\
+-	 -I$(srcdir)/cupsfilters/
+-
+ test1284_SOURCES = \
+ 	backend/backend-private.h \
+ 	backend/ieee1284.c \
+@@ -1041,7 +1020,6 @@ if RCLINKS
+ endif
+ 	$(LN_S) -f pdf.utf-8.simple \
+ 		$(DESTDIR)$(pkgcharsetdir)/pdf.utf-8
+-	chmod 700 $(DESTDIR)/$(pkgbackenddir)/implicitclass
+ if ENABLE_BRAILLE
+ 	chmod 700 $(DESTDIR)/$(pkgbackenddir)/cups-brf
+ endif
+-- 
+2.42.0.869.gea05f2083d-goog
+

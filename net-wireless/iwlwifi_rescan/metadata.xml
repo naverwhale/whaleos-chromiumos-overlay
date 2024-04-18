@@ -3,7 +3,7 @@
 <pkgmetadata>
 <maintainer type='project'>
 	<email>chromium-os-dev@chromium.org</email>
-	<name>Maintained by The Chromium OS Authors.</name>
+	<name>Maintained by The ChromiumOS Authors</name>
 </maintainer>
 <longdescription>
 	The iwlwifi_rescan package installs scripts and executables

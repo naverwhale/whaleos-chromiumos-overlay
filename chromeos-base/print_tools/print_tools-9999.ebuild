@@ -1,4 +1,4 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -14,7 +14,7 @@ PLATFORM_SUBDIR="print_tools"
 inherit cros-workon platform
 
 DESCRIPTION="Various tools for the native printing system."
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/print_tools/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/print_tools/"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
@@ -25,6 +25,6 @@ COMMON_DEPEND="
 RDEPEND="${COMMON_DEPEND}"
 DEPEND="${COMMON_DEPEND}"
 
-src_install() {
-	dobin "${OUT}"/printer_diag
+platform_pkg_test() {
+	platform test_all
 }

@@ -1,0 +1,56 @@
+LLVM's CMake files do not provide an `all-targets` module, but llvm-config does.
+In LLVM 17, CMake with meson was broken, leading to meson always preferring
+llvm-config. In LLVM 18, CMake with meson works again, but the lack of the
+`all-targets` module leads to build failures down the line.
+
+Both llvm-config and CMake _do_ expand arch names into the right set of
+libraries, so prefer to do that.
+
+diff --git a/meson.build b/meson.build
+index d5a5446..eb9dad8 100644
+--- a/meson.build
++++ b/meson.build
+@@ -1628,6 +1628,7 @@ if dep_libudev.found()
+   pre_args += '-DHAVE_LIBUDEV'
+ endif
+ 
++llvm_include_all_targets = false
+ llvm_modules = ['bitwriter', 'engine', 'mcdisassembler', 'mcjit', 'core', 'executionengine', 'scalaropts', 'transformutils', 'instcombine']
+ llvm_optional_modules = ['coroutines']
+ if with_amd_vk or with_gallium_radeonsi or with_gallium_r600
+@@ -1641,16 +1642,18 @@ if with_gallium_opencl
+     'linker', 'coverage', 'instrumentation', 'ipo', 'irreader',
+     'lto', 'option', 'objcarcopts', 'profiledata'
+   ]
+-  # all-targets is needed to support static linking LLVM build with multiple targets
+   # windowsdriver is needded with LLVM>=15, but we don't know what LLVM verrsion we are using yet
+-  llvm_optional_modules += ['all-targets', 'frontendopenmp', 'windowsdriver']
++  llvm_optional_modules += ['frontendopenmp', 'windowsdriver']
++  # all targets are needed to support static linking LLVM build with multiple targets.
++  llvm_include_all_targets = true
+ endif
+ if with_clc
+   llvm_modules += ['coverage', 'target', 'linker', 'irreader', 'option', 'libdriver', 'lto']
+-  # all-targets is needed to support static linking LLVM build with multiple targets.
+   # windowsdriver is needded with LLVM>=15 and frontendhlsl is needed with LLVM>=16,
+   # but we don't know what LLVM version we are using yet
+-  llvm_optional_modules += ['all-targets', 'windowsdriver', 'frontendhlsl']
++  llvm_optional_modules += ['windowsdriver', 'frontendhlsl']
++  # all-targets is needed to support static linking LLVM build with multiple targets.
++  llvm_include_all_targets = true
+ endif
+ draw_with_llvm = get_option('draw-use-llvm')
+ if draw_with_llvm
+@@ -1679,6 +1682,12 @@ _llvm = get_option('llvm')
+ dep_llvm = null_dep
+ with_llvm = false
+ if _llvm.allowed()
++  if llvm_include_all_targets
++    # Include `all-targets` as a valid `llvm-config` module, and the rest as
++    # valid cmake (pseudo-)modules
++    llvm_optional_modules += ['all-targets', 'AllTargetsCodeGens', 'AllTargetsAsmParsers', 'AllTargetsDescs', 'AllTargetsDisassemblers', 'AllTargetsInfos', 'AllTargetsMCAs']
++  endif
++
+   dep_llvm = dependency(
+     'llvm',
+     version : _llvm_version,

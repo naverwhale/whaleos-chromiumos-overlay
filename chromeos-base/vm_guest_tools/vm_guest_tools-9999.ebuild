@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -38,11 +38,11 @@ PLATFORM_SUBDIR="vm_tools"
 inherit cros-go cros-workon platform user
 
 DESCRIPTION="VM guest tools for Chrome OS"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/vm_tools"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/vm_tools"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
-IUSE="kvm_guest vm-containers fuzzer vm_borealis"
+IUSE="kvm_guest vm-containers fuzzer vm_borealis vm_sludge"
 
 # This ebuild should only be used on VM guest boards.
 REQUIRED_USE="kvm_guest"
@@ -51,13 +51,18 @@ COMMON_DEPEND="
 	!!chromeos-base/vm_tools
 	chromeos-base/minijail:=
 	net-libs/grpc:=
+	dev-cpp/abseil-cpp:=
 	dev-libs/protobuf:=
+	dev-go/protobuf-legacy-api:=
+	x11-libs/libX11:=
+	dev-libs/wayland:=
 "
 
 RDEPEND="
 	${COMMON_DEPEND}
 	vm-containers? (
 		chromeos-base/crash-reporter
+		chromeos-base/crostini-metric-reporter
 	)
 	!fuzzer? (
 		chromeos-base/sommelier
@@ -98,8 +103,8 @@ src_install() {
 	platform_fuzzer_install "${S}"/OWNERS "${OUT}"/garcon_ini_parse_util_fuzzer
 	platform_fuzzer_install "${S}"/OWNERS "${OUT}"/garcon_mime_types_parser_fuzzer
 
-	into /
-	newsbin "${OUT}"/maitred init
+	dobin "${OUT}"/maitred
+	dosym /usr/bin/maitred /sbin/init
 
 	# Create a folder for process configs to be launched at VM startup.
 	dodir /etc/maitred/
@@ -112,6 +117,7 @@ src_install() {
 
 platform_pkg_test() {
 	local tests=(
+		maitred_init_test
 		maitred_service_test
 		maitred_syslog_test
 	)

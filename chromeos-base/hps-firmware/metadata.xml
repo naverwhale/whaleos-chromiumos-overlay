@@ -3,7 +3,7 @@
 <pkgmetadata>
 <maintainer type='project'>
 	<email>chromium-os-dev@chromium.org</email>
-	<name>Maintained by The Chromium OS Authors.</name>
+	<name>Maintained by The ChromiumOS Authors</name>
 </maintainer>
 <longdescription>
 	The hps-firmware package contains the source to build for the HPS board.

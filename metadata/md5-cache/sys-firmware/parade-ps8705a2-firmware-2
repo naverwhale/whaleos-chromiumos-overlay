@@ -5,4 +5,4 @@ KEYWORDS=*
 LICENSE=Google-Partners-Website
 SLOT=0
 SRC_URI=gs://chromeos-localmirror/distfiles/parade-ps8705a2-firmware-2.tar.xz
-_md5_=5cc7897253ea30f150d63a2f1bb8a18a
+_md5_=c759f00935f853d50fd17bcd85d76155

@@ -1,0 +1,15 @@
+BDEPEND=virtual/pkgconfig >=app-portage/elt-patches-20170815 || ( >=sys-devel/automake-1.16.5-r1:1.16 >=sys-devel/automake-1.15.1-r2:1.15 ) >=sys-devel/autoconf-2.69 >=sys-devel/libtool-2.4 dev-vcs/git app-misc/jq
+DEFINED_PHASES=configure info install prepare setup unpack
+DEPEND=>=dev-libs/glib-2.6 sys-apps/hwdata virtual/libudev:= tcpd? ( sys-apps/tcp-wrappers )
+DESCRIPTION=Userspace utilities for a general USB device sharing system over IP networks
+EAPI=7
+HOMEPAGE=https://www.kernel.org/
+IUSE=static-libs tcpd cros_host cros_workon_tree_f3a0a0009d4cfe0cd2783cefc1c92f3c79fef691 asan cfi cfi_diag cfi_recover coverage fuzzer msan thinlto tsan ubsan
+KEYWORDS=*
+LICENSE=GPL-2
+PROPERTIES=live
+RDEPEND=>=dev-libs/glib-2.6 sys-apps/hwdata virtual/libudev:= tcpd? ( sys-apps/tcp-wrappers )
+REQUIRED_USE=cfi? ( thinlto ) cfi_diag? ( cfi ) cfi_recover? ( cfi_diag )
+SLOT=0
+_eclasses_=autotools	9adb87822e85056674b476e1090a72ae	cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-sanitizers	4504f3661db0fe02309acd3555785cf2	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	libtool	f143db5a74ccd9ca28c1234deffede96	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=6f0fb48bde2f7a73b100cb0a270d00d2

@@ -1,0 +1,44 @@
+From 6054d27fb5c2d810cb97702a716c9aee0ebe2d5b Mon Sep 17 00:00:00 2001
+From: Sviatoslav Peleshko <sviatoslav.peleshko@globallogic.com>
+Date: Thu, 25 May 2023 20:53:51 +0300
+Subject: [PATCH] Add missing src buffer flush and dst buffer invalidation
+
+We allocate and map src/dst buffers, write data to src, and read it from
+dst. But we don't flush src buffer after writing or invalidate dst
+buffer before reading. So if we allocate those buffers from
+non-host-coherent memory, the data may be corrupted at both of those steps.
+
+Components: Vulkan
+
+Affected tests:
+dEQP-VK.image.queue_transfer.*
+
+Signed-off-by: Sviatoslav Peleshko <sviatoslav.peleshko@globallogic.com>
+Change-Id: Ia41a3b3264fee4d1970a0e9ea45a9a7f85433023
+---
+ external/vulkancts/modules/vulkan/image/vktImageTransfer.cpp | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/external/vulkancts/modules/vulkan/image/vktImageTransfer.cpp b/external/vulkancts/modules/vulkan/image/vktImageTransfer.cpp
+index 3c5a88689..63e4aa071 100644
+--- a/external/vulkancts/modules/vulkan/image/vktImageTransfer.cpp
++++ b/external/vulkancts/modules/vulkan/image/vktImageTransfer.cpp
+@@ -192,6 +192,7 @@ tcu::TestStatus TransferQueueInstance::iterate (void)
+ 		fillRandomNoNaN(&randomGen, generatedData.data(), (deUint32)generatedData.size(), m_params.imageFormat);
+ 		const Allocation& alloc = srcBuffer.getAllocation();
+ 		deMemcpy(alloc.getHostPtr(), generatedData.data(), generatedData.size());
++		flushAlloc(vk, device, alloc);
+ 	}
+ 
+ 	beginCommandBuffer(vk, *m_cmdBuffer);
+@@ -252,6 +253,7 @@ tcu::TestStatus TransferQueueInstance::iterate (void)
+ 	{
+ 		std::vector<deUint8> resultData(pixelDataSize);
+ 		const Allocation& alloc = dstBuffer.getAllocation();
++		invalidateAlloc(vk, device, alloc);
+ 		deMemcpy(resultData.data(), alloc.getHostPtr(), resultData.size());
+ 
+ 		for (uint32_t i = 0; i < pixelDataSize; ++i) {
+-- 
+2.39.2
+

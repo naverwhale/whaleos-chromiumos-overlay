@@ -1,9 +1,10 @@
 # Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=6
+EAPI=7
 
-PYTHON_COMPAT=( python3_6 )
+PYTHON_COMPAT=( python3_{6..9} )
+
 inherit cmake-multilib python-single-r1
 
 DESCRIPTION="Tool for tracing, analyzing, and debugging graphics APIs"
@@ -43,10 +44,11 @@ PATCHES=(
 	"${FILESDIR}"/${PN}-8.0-snappy-license.patch
 	"${FILESDIR}"/0001-Fallback-to-NULL-platform-if-no-X.patch
 	"${FILESDIR}"/${PN}-9.0-egl-environment.patch
+	"${FILESDIR}"/${P}-libc-dlopen-glibc-2.34.patch
 )
 
 src_prepare() {
-	cmake-utils_src_prepare
+	cmake_src_prepare
 
 	# The apitrace code grubs around in the internal zlib structures.
 	# We have to extract this header and clean it up to keep that working.
@@ -77,7 +79,7 @@ src_configure() {
 				-DENABLE_GUI=OFF
 			)
 		fi
-		cmake-utils_src_configure
+		cmake_src_configure
 	}
 
 	multilib_parallel_foreach_abi my_configure

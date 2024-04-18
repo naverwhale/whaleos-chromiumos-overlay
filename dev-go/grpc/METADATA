@@ -1,0 +1,13 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Package metadata for CVEs tracking.
+
+third_party {
+  identifiers {
+    type: "Go"
+    value: "google.golang.org/grpc"
+    version: "v1.42.0"
+  }
+}

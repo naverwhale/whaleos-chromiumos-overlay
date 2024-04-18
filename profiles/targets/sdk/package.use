@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -6,10 +6,12 @@
 # link this to avoid library mismatch errors.  http://crosbug.com/32519
 app-arch/bzip2 static-libs
 app-arch/lbzip2 static
-app-arch/pbzip2 static
 # Same for pigz.
 app-arch/pigz static
 sys-libs/zlib static-libs
+
+# We do not use the tpm with gnupg
+app-crypt/gnupg -tpm
 
 # Drop this once we audit code to make sure we aren't using `echo -n` or `echo -e`.
 app-shells/dash	vanilla
@@ -18,32 +20,26 @@ net-misc/openssh kerberos hpn
 sys-apps/flashrom dediprog ft2232_spi serprog
 dev-lang/python gdbm
 sys-apps/smartmontools	-daemon
-sys-fs/lvm2 -udev
+sys-fs/lvm2 -udev thin lvm
+
+<=sys-devel/llvm-17.0_pre498229-r3 video_cards_radeon
+>=sys-devel/llvm-17.0_pre498229-r7 spirv-translator
 
 # Use pcre2 rather than pcre as everything else has moved.
 sys-libs/libselinux pcre2
 
-# qemu is statically linked with glib when compiled for the host and thus
-# requires glib (and transitively, libpcre) to be compiled with static-libs.
-# See http://crosbug.com/35162 for details.
-dev-libs/glib static-libs
-dev-libs/libpcre static-libs
-net-libs/nghttp2 static-libs
-sys-apps/attr static-libs
-
 # mksquashfs used in build_image requires lzo/lz4/zstd support.
 # Also include lzma compressor for flexibility.
-# For SELinux context labeling it also needs selinux.
-sys-fs/squashfs-tools lzo lz4 lzma selinux zstd
+sys-fs/squashfs-tools lzo lz4 lzma zstd
 
 # some prebuilt binaries created on Ubuntu like to link against libtinfo.
 sys-libs/ncurses tinfo
 
 # We don't need this, so don't bother enabling.
 dev-libs/libxslt -python
-# icedtea-bin still has some linking issues when built without USE=cups. See
-# https://bugs.gentoo.org/486042 and https://crbug.com/656717
-dev-java/icedtea-bin cups -gtk headless-awt -multilib -webstart
+# We don't need Java cups support.
+dev-java/icedtea-bin -cups -gtk headless-awt -multilib -webstart
+dev-java/openjdk-bin -cups
 # We don't want cups-filters to pull in ghostscript.
 net-print/cups-filters -postscript
 # We don't use python features in cups.
@@ -52,6 +48,8 @@ net-print/cups -python
 sys-apps/usbutils	-python
 # We don't use any of the python files this package installs.
 dev-util/boost-build	-python
+# We don't use libfdti's Python bindings.
+dev-embedded/libftdi -python
 # USE=doc is needed for basic `perf --help` output.
 # USE=coresight enables Arm's CoreSight trace decoding.
 dev-util/perf	audit coresight doc -python tui -unwind
@@ -67,11 +65,8 @@ sys-libs/libcxxabi abi_x86_32
 sys-libs/libcxx abi_x86_32
 sys-libs/llvm-libunwind abi_x86_32
 
-# Disable libgcc_s.so creation for host builds.
-sys-libs/llvm-libunwind -synth_libgcc
-
-# vaapi is not used through ffmpeg on ChromiumOS, avoid dependency for sdk
-media-video/ffmpeg -vaapi
+# We're not removing libgcc_s.so from GCC yet.
+sys-devel/gcc -llvm_libgcc
 
 # Enable XML in GDB
 sys-devel/gdb	xml
@@ -80,34 +75,19 @@ cross-arm-none-eabi/gdb	xml
 cross-armv6j-cros-linux-gnueabi/gdb	xml
 cross-armv7a-cros-linux-gnueabi/gdb	xml
 cross-armv7a-cros-linux-gnueabihf/gdb	xml
-cross-i686-pc-linux-gnu/gdb	xml
+cross-i686-cros-linux-gnu/gdb	xml
 cross-mipsel-cros-linux-gnu/gdb	xml
 cross-x86_64-cros-linux-gnu/gdb	xml
 
 # Build qemu's userland helpers statically so we can copy them into sysroots
 # and run unittests standalone.  Build qemu's softmmu helpers statically so
 # we can run vms outside of the chroot.
-app-emulation/qemu	-pin-upstream-blobs -seccomp static-user usb virtfs
+app-emulation/qemu	-doc -pin-upstream-blobs seccomp static-user usb virtfs
 dev-libs/glib		static-libs
-dev-libs/libaio		static-libs
-dev-libs/libpcre	static-libs
-dev-libs/libusb		static-libs
-dev-libs/libxml2	static-libs
-dev-libs/openssl	static-libs
-media-libs/jpeg		static-libs
-media-libs/libjpeg-turbo	static-libs
-media-libs/libpng	static-libs
-net-libs/libslirp	static-libs
-net-misc/curl		static-libs
+# fdupes requires libpcre2 with pcre32.
+dev-libs/libpcre2	pcre32 static-libs
 sys-apps/attr		static-libs
-sys-apps/dtc		static-libs
-sys-libs/libcap		static-libs
-sys-libs/libcap-ng	static-libs
-sys-libs/ncurses	static-libs unicode
-virtual/jpeg		static-libs
-virtual/libusb		static-libs
-x11-libs/libxkbcommon	static-libs
-x11-libs/pixman		static-libs
+sys-libs/zlib		static-libs
 
 # Enable building shellcheck statically so we can make it available to tricium
 # and developer workstations.
@@ -135,91 +115,48 @@ dev-libs/boost -python
 # dependencies.
 dev-python/pygobject -cairo
 
-# Freeze Python 2.7 versions for all existing packages.  We'll slowly trim this
-# list down as packages don't need them.  New packages should *not* be added
-# here as new code should be using Python 3.
-# TODO(crbug.com/1007152): Trim this entirely!
-chromeos-base/chromite-sdk python_targets_python2_7
-dev-python/btsocket python_targets_python2_7
-dev-python/certifi python_targets_python2_7
-dev-python/cffi python_targets_python2_7
-dev-python/chardet python_targets_python2_7
-dev-python/cheroot python_targets_python2_7
-dev-python/cherrypy python_targets_python2_7
-dev-python/contextlib2 python_targets_python2_7
-dev-python/cryptography python_targets_python2_7
-dev-python/cycler python_targets_python2_7
-dev-python/cython python_targets_python2_7
-dev-python/dbus-python python_targets_python2_7
-dev-python/django python_targets_python2_7
-dev-python/dpkt python_targets_python2_7
-dev-python/grpcio python_targets_python2_7
-dev-python/grpcio-tools python_targets_python2_7
-dev-python/idna python_targets_python2_7
-dev-python/imaging python_targets_python2_7
-dev-python/jaraco-functools python_targets_python2_7
-# TODO(b/146155010): Used by assistant.
-dev-python/jinja python_targets_python2_7
-dev-python/kiwisolver python_targets_python2_7
-dev-python/linecache2 python_targets_python2_7
-dev-python/logbook python_targets_python2_7
-dev-python/lxml python_targets_python2_7
-dev-python/markupsafe python_targets_python2_7
-dev-python/mock python_targets_python2_7
-dev-python/more-itertools python_targets_python2_7
-dev-python/mysqlclient python_targets_python2_7
-dev-python/namespace-google python_targets_python2_7
-dev-python/namespace-jaraco python_targets_python2_7
-dev-python/numpy python_targets_python2_7
-dev-python/pbr python_targets_python2_7
-dev-python/pexpect python_targets_python2_7
-dev-python/ply python_targets_python2_7
-dev-python/portend python_targets_python2_7
-dev-python/protobuf-python python_targets_python2_7
-dev-python/psutil python_targets_python2_7
-dev-python/ptyprocess python_targets_python2_7
-dev-python/py python_targets_python2_7
-dev-python/pycparser python_targets_python2_7
-dev-python/pygobject python_targets_python2_7
-dev-python/pyopenssl python_targets_python2_7
-dev-python/pyparsing python_targets_python2_7
-dev-python/pyshark python_targets_python2_7
-dev-python/PySocks python_targets_python2_7
-dev-python/python-dateutil python_targets_python2_7
-dev-python/pytz python_targets_python2_7
-dev-python/pyudev python_targets_python2_7
-dev-python/pyusb python_targets_python2_7
-dev-python/pyxattr python_targets_python2_7
-dev-python/pyyaml python_targets_python2_7
-dev-python/redis-py python_targets_python2_7
-dev-python/requests python_targets_python2_7
-dev-python/selenium python_targets_python2_7
-dev-python/setuptools python_targets_python2_7
-dev-python/setuptools_scm python_targets_python2_7
-dev-python/six python_targets_python2_7
-dev-python/tempora python_targets_python2_7
-dev-python/traceback2 python_targets_python2_7
-dev-python/trollius python_targets_python2_7
-dev-python/unittest2 python_targets_python2_7
-dev-python/urllib3 python_targets_python2_7
-dev-python/versioneer python_targets_python2_7
-dev-python/zc-lockfile python_targets_python2_7
+# Disable crypt for vim so sodium is not used.
+app-editors/vim -crypt
 
-# Needed by attrs which is needed by pytest.
-dev-python/zope-interface python_targets_python2_7
-dev-python/namespace-zope python_targets_python2_7
+# cbindgen expects to be able to unwind panics rather than immediately abort.
+# This behavior is not compatible with the -Cpanic=abort flag normally
+# added by cros-rust eclass. Disable this flag for cbindgen.
+dev-rust/cbindgen -panic-abort
 
-# These packages only support Python 2.7.  They aren't needed in Python 3.6+.
-# TODO(crbug.com/1007152): Trim this entirely!
-dev-python/backports-functools-lru-cache python_targets_python2_7 -python_targets_python3_6
-dev-python/enum34 python_targets_python2_7 -python_targets_python3_6
-dev-python/funcsigs python_targets_python2_7
-dev-python/functools32 python_targets_python2_7 -python_targets_python3_6
-dev-python/futures python_targets_python2_7 -python_targets_python3_6
-dev-python/ipaddress python_targets_python2_7 -python_targets_python3_6
-dev-python/mox python_targets_python2_7 -python_targets_python3_6
-dev-python/pathlib python_targets_python2_7 -python_targets_python3_6
-dev-python/subprocess32 python_targets_python2_7 -python_targets_python3_6
-virtual/python-enum34 python_targets_python2_7
-virtual/python-funcsigs python_targets_python2_7
-virtual/python-futures python_targets_python2_7
+# We don't need translated man pages.  b/248739853
+sys-apps/man-db -nls
+# Or any other translated messages.
+app-arch/xz-utils -nls
+app-crypt/mit-krb5 -nls
+app-crypt/rhash -nls
+app-editors/vim -nls
+app-editors/vim-core -nls
+dev-vcs/git -nls
+sys-apps/help2man -nls
+sys-apps/net-tools -nls
+sys-libs/binutils-libs -nls
+sys-power/cpupower -nls
+
+# We don't need any of these binaries provided by wireshark. We're only looking
+# for tshark.
+net-analyzer/wireshark -capinfos -captype -dftest -dumpcap -editcap -mergecap
+net-analyzer/wireshark -randpkt -randpktdump -reordercap -sharkd -text2pcap
+
+# Disable unneeded features in SDK.
+net-misc/curl -adns -imap -pop3 -smtp -tftp
+
+# We don't need or want su in the SDK. Use sudo instead.
+sys-apps/util-linux -su
+
+# Set minimal for perl and major packages.
+dev-lang/perl minimal
+dev-perl/libintl-perl minimal
+dev-perl/Try-Tiny minimal
+dev-perl/Net-HTTP minimal
+dev-perl/File-ShareDir minimal
+
+# Enable rustc-demangle on the sdk side for dump_syms.
+chromeos-base/google-breakpad rustc-demangle
+
+# Enable internal-glib to avoid pkgconfig <-> glib circular dependency issues. b/303430830
+dev-util/pkgconfig internal-glib

@@ -1,0 +1,56 @@
+From fbb9e066fb36c1ce08f1896c0152ffaa4143c94c Mon Sep 17 00:00:00 2001
+From: Adrian Ratiu <adrian.ratiu@collabora.com>
+Date: Tue, 25 Jul 2023 19:10:15 +0300
+Subject: [PATCH] configure.ac: disable pidfd_* functions
+
+CrOS does not have the pidfd_* syscalls introduced in
+newer Linux because it's using linux-headers 4.14.
+
+This started causing a build failure after upgrading to
+glibc >= 2.36 which added pidfd_* function wrappers.
+
+The new wrappers confuse the lxcfs v4 configure step in
+thinking pidfd_* are available:
+
+checking for pidfd_open... yes
+checking for pidfd_send_signal... yes
+
+Starting with lxcfs v5, the project is using meson as
+its build system which properly detects pidfd_* absence
+on glibc >= 2.36:
+
+Checking for function "pidfd_send_signal" : NO
+Checking for function "pidfd_open" : NO
+
+There is no patch to backport because the old autotools
+just got removed in favor of meson by upstream, so we
+just hardcode HAVE_PIDFD_* to 0 in configure.ac.
+
+This patch should be dropped when lxcfs v4 is not needed
+anymore. v5 already works.
+---
+ configure.ac | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index 07ac0c9..d4b3100 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -216,12 +216,12 @@ AC_CHECK_FUNCS([strlcat],
+ 
+ AC_CHECK_FUNCS([pidfd_open],
+ 	AM_CONDITIONAL(HAVE_PIDFD_OPEN, true)
+-	AC_DEFINE(HAVE_PIDFD_OPEN,1,[Supports pidfd_open]),
++	AC_DEFINE(HAVE_PIDFD_OPEN,0,[Supports pidfd_open]),
+ 	AM_CONDITIONAL(HAVE_PIDFD_OPEN, false))
+ 
+ AC_CHECK_FUNCS([pidfd_send_signal],
+ 	AM_CONDITIONAL(HAVE_PIDFD_SEND_SIGNAL, true)
+-	AC_DEFINE(HAVE_PIDFD_SEND_SIGNAL,1,[Supports pidfd_send_signal]),
++	AC_DEFINE(HAVE_PIDFD_SEND_SIGNAL,0,[Supports pidfd_send_signal]),
+ 	AM_CONDITIONAL(HAVE_PIDFD_SEND_SIGNAL, false))
+ 
+ AX_CHECK_COMPILE_FLAG([-fdiagnostics-color], [CFLAGS="$CFLAGS -fdiagnostics-color"],,[-Werror])
+-- 
+2.41.0
+

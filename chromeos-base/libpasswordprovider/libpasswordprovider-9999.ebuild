@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -14,7 +14,7 @@ PLATFORM_SUBDIR="libpasswordprovider"
 inherit cros-workon platform
 
 DESCRIPTION="Library for storing and retrieving user password"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/libpasswordprovider"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/libpasswordprovider"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
@@ -26,6 +26,8 @@ RDEPEND="
 DEPEND="${RDEPEND}"
 
 src_install() {
+	platform_src_install
+
 	dolib.so "${OUT}/lib/libpasswordprovider.so"
 
 	insinto "/usr/$(get_libdir)/pkgconfig"

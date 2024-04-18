@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 import re
 import sys
+from typing import List, Optional, Tuple, Union
 
 
 # Extract the license name & text from a section like:
@@ -57,24 +58,28 @@ KNOWN_LICENSES = ATTRIBUTION_LICENSES | {
 }
 
 
-def line_iscomment(line):
+def line_iscomment(line: str) -> bool:
     """Whether |line| is a roff comment."""
     # A variety of possible formats here.  This should get cleaned up in newer
     # versions, but we have to deal with it in current releases.
     # \" ...
     # .\" ...
     # '\" ...
-    return re.match(r'''^[.']?\\"''', line)
+    # .
+    # We can't use triple double quotes here because it'll be invalid syntax,
+    # so we're forced to use triple single quotes instead.
+    # pylint: disable=invalid-triple-quote
+    return re.match(r'''^(\.$|[.']?\\")''', line)
 
 
-def extract_license(page):
+def extract_license(page: Path) -> Union[None, Tuple[str, str]]:
     """Extract the license from |page|."""
     with open(page, encoding='utf-8') as fp:
         data = fp.read()
 
         # Ignore stub pointer files.
         if data.startswith('.so '):
-            return
+            return None
 
         # Find the name of the license to do high level checks.
         matches = list(EXTRACT_LICENSE.finditer(data))
@@ -96,28 +101,36 @@ def extract_license(page):
                     if not line_iscomment(line) or '%%%LICENSE_' in line:
                         break
                     lines.insert(0, line[3:].strip())
-                assert len(lines) > 1, header
+                assert lines, f'{page}: invalid header:\n{header}'
                 # Trim a weird leading line pending upstream cleanup.
                 if lines[0] == 't':
                     lines.pop(0)
                 copyright_text = '\n'.join(lines).strip()
 
                 # Format the license text.
+                license_text = ''
+                # First remove the different comment styles.
                 lines = [x[3:].strip()
                          for x in match.group(2).strip().splitlines()]
-                license_text = '\n'.join(lines).strip()
+                # Then merge sentences.
+                for i, line in enumerate(lines):
+                    line = line.strip()
+                    if i == 0:
+                        license_text = line + ' '
+                    else:
+                        if not line:
+                            license_text = license_text.strip() + '\n\n'
+                        else:
+                            license_text += line + ' '
+                license_text = license_text.strip()
 
-                yield f'{page.name}\n{copyright_text}\n\n{license_text}\n'
-                break
+                return (license_text, copyright_text)
+
+    # No licenses were found that required attribution.
+    return None
 
 
-def find_licenses(srcdir):
-    """Walk |srcdir| looking for man page licenses."""
-    for page in srcdir.glob('man[0-9]/*.[0-9]'):
-        yield from extract_license(page)
-
-
-def get_parser():
+def get_parser() -> argparse.ArgumentParser:
     """Get CLI parser."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('-o', '--output', type=Path,
@@ -125,21 +138,49 @@ def get_parser():
     parser.add_argument('-d', '--srcdir', type=Path,
                         default=os.environ.get('S'),
                         help='Source dir to walk (e.g. $S)')
+    parser.add_argument('files', nargs='*', default=[],
+                        help='Source files (overrides --srcdir)')
     return parser
 
 
-def main(argv):
+def main(argv: Optional[List[str]] = None) -> Optional[int]:
     """The main entry point for scripts."""
     parser = get_parser()
     opts = parser.parse_args(argv)
 
-    if not opts.srcdir:
+    if not opts.srcdir and not opts.files:
         parser.error('--srcdir is required')
-    if not opts.srcdir.is_dir():
-        parser.error(f'{opts.srcdir}: --srcdir does not exist')
+    elif opts.srcdir and opts.files:
+        parser.error('--srcdir and files are mutually exclusive')
+    elif opts.srcdir:
+        if not opts.srcdir.is_dir():
+            parser.error(f'{opts.srcdir}: --srcdir is missing or is not a dir')
 
-    licenses = find_licenses(opts.srcdir)
-    data = '\n'.join(licenses)
+        files = opts.srcdir.glob('man[0-9]/*.[0-9]')
+    else:
+        files = [Path(x) for x in opts.files]
+
+    # Merge pages with same licenses into one to avoid duplication.
+    licenses = {}
+    for file in files:
+        result = extract_license(file)
+        if result:
+            license_text, copyright_text = result
+            licenses.setdefault(license_text, []).append(
+                (file.name, copyright_text))
+
+    # Then produce the final notice lines.
+    lines = []
+    for license_text, pages in sorted(licenses.items()):
+        for page, copyright_text in pages:
+            lines += [page, copyright_text]
+        lines += ['', license_text]
+        lines += ['-' * 80]
+    # Remove the last ~ banner since we don't need it at the end of the file.
+    lines.pop()
+
+    # Then write it all out.
+    data = '\n'.join(lines).strip() + '\n'
     if opts.output:
         with open(opts.output, 'w', encoding='utf-8') as fp:
             fp.write(data)

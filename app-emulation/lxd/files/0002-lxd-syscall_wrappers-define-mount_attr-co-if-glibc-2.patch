@@ -1,0 +1,84 @@
+From 69bcced7c55f0e065d04dad1e53f1e980ee3c701 Mon Sep 17 00:00:00 2001
+From: Adrian Ratiu <adrian.ratiu@collabora.com>
+Date: Tue, 8 Aug 2023 20:17:57 +0300
+Subject: [PATCH] lxd: syscall_wrappers: define mount_attr & co if glibc <=
+ 2.35
+
+This fixes a syscall wrapper build conflict with a
+struct and functions which are defined in glibc
+starting with >= v2.36
+
+This patch is not necessary in lxc v5 and can be
+dropped when lxd v4 is not necessary anymore.
+---
+ lxd/include/syscall_wrappers.h | 6 ++++--
+ lxd/main_nsexec.go             | 2 +-
+ shared/idmap/shift_linux.go    | 2 +-
+ 3 files changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/lxd/include/syscall_wrappers.h b/lxd/include/syscall_wrappers.h
+index 4405a622b..df44b28fb 100644
+--- a/lxd/include/syscall_wrappers.h
++++ b/lxd/include/syscall_wrappers.h
+@@ -21,6 +21,7 @@ static inline int close_range(unsigned int fd, unsigned int max_fd, unsigned int
+ 	return syscall(__NR_close_range, fd, max_fd, flags);
+ }
+ 
++#if !__GLIBC_PREREQ(2, 36)
+ static inline int open_tree(int dfd, const char *filename, unsigned int flags)
+ {
+ 	return syscall(__NR_open_tree, dfd, filename, flags);
+@@ -29,7 +30,7 @@ static inline int open_tree(int dfd, const char *filename, unsigned int flags)
+ /*
+  * mount_setattr()
+  */
+-struct lxc_mount_attr {
++struct mount_attr {
+ 	__u64 attr_set;
+ 	__u64 attr_clr;
+ 	__u64 propagation;
+@@ -37,7 +38,7 @@ struct lxc_mount_attr {
+ };
+ 
+ static inline int mount_setattr(int dfd, const char *path, unsigned int flags,
+-				struct lxc_mount_attr *attr, size_t size)
++				struct mount_attr *attr, size_t size)
+ {
+ 	return syscall(__NR_mount_setattr, dfd, path, flags, attr, size);
+ }
+@@ -48,5 +49,6 @@ static inline int move_mount(int from_dfd, const char *from_pathname, int to_dfd
+ 	return syscall(__NR_move_mount, from_dfd, from_pathname, to_dfd,
+ 		       to_pathname, flags);
+ }
++#endif
+ 
+ #endif /* __LXD_SYSCALL_WRAPPER_H */
+diff --git a/lxd/main_nsexec.go b/lxd/main_nsexec.go
+index e35bf7412..5bd9501a6 100644
+--- a/lxd/main_nsexec.go
++++ b/lxd/main_nsexec.go
+@@ -319,7 +319,7 @@ static char *file_to_buf(char *path, ssize_t *length)
+ int mount_detach_idmap(const char *path, int fd_userns)
+ {
+ 	__do_close int fd_tree = -EBADF;
+-	struct lxc_mount_attr attr = {
++	struct mount_attr attr = {
+ 	    .attr_set		= MOUNT_ATTR_IDMAP,
+ 
+ 	};
+diff --git a/shared/idmap/shift_linux.go b/shared/idmap/shift_linux.go
+index d2b3f605f..1ade18429 100644
+--- a/shared/idmap/shift_linux.go
++++ b/shared/idmap/shift_linux.go
+@@ -314,7 +314,7 @@ static int get_userns_fd(void)
+ static int create_detached_idmapped_mount(const char *path)
+ {
+ 	__do_close int fd_tree = -EBADF, fd_userns = -EBADF;
+-	struct lxc_mount_attr attr = {
++	struct mount_attr attr = {
+ 	    .attr_set		= MOUNT_ATTR_IDMAP,
+ 	    .propagation	= MS_SLAVE,
+ 
+-- 
+2.41.0
+

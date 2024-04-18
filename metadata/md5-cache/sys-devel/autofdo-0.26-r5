@@ -1,0 +1,13 @@
+BDEPEND=>=app-portage/elt-patches-20170815 || ( >=sys-devel/automake-1.16.5-r1:1.16 >=sys-devel/automake-1.15.1-r2:1.15 ) >=sys-devel/autoconf-2.69 >=sys-devel/libtool-2.4 >=dev-util/ninja-1.8.2 >=dev-util/cmake-3.20.5
+DEFINED_PHASES=compile configure install prepare test unpack
+DEPEND=dev-cpp/abseil-cpp:= dev-cpp/gflags dev-libs/openssl:0= dev-libs/protobuf:= dev-libs/libffi sys-devel/llvm sys-libs/ncurses:0= sys-libs/zlib
+DESCRIPTION=Utility for generating AFDO profiles
+EAPI=7
+HOMEPAGE=http://gcc.gnu.org/wiki/AutoFDO
+KEYWORDS=*
+LICENSE=Apache-2.0
+RDEPEND=dev-cpp/abseil-cpp:= dev-cpp/gflags dev-libs/openssl:0= dev-libs/protobuf:= dev-libs/libffi sys-devel/llvm sys-libs/ncurses:0= sys-libs/zlib
+SLOT=0
+SRC_URI=https://github.com/google/autofdo/archive/0.26.tar.xz -> autofdo-0.26.tar.xz
+_eclasses_=autotools	9adb87822e85056674b476e1090a72ae	cmake	34502c2b638b59994575d53ba3805d7b	flag-o-matic	ad475baa777c9978fa035216c8264a10	libtool	f143db5a74ccd9ca28c1234deffede96	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	ninja-utils	578ba3585e2f3ebe63ab00c07874016e	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	xdg-utils	ff2ff954e6b17929574eee4efc5152ba
+_md5_=0738c517d64d4e301c692c7ece47ecba

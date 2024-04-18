@@ -1,4 +1,4 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI="7"
@@ -21,13 +21,15 @@ KEYWORDS="~*"
 # Please see https://crrev.com/c/2776455 as an example instead.
 IUSE="
 	asan
-	arc-camera1
 	arc-camera3
 	biod
 	bluetooth
 	bootchart
-	buffet
+	cecservice
 	cellular
+	bootsplash
+	chrome_internal
+	clvk
 	compupdates
 	containers
 	cr50_onboard
@@ -38,6 +40,7 @@ IUSE="
 	cups
 	+debugd
 	diagnostics
+	diagnostics-minidiag
 	dlc
 	dlc_test
 	dlp
@@ -46,22 +49,25 @@ IUSE="
 	eclog
 	factory_branch
 	featured
-	federated_service
+	flex_bluetooth
 	floss
 	+fonts
 	fpstudy
+	fusebox
 	fuzzer
 	fwupd
+	gl3590
 	hammerd
 	iioservice
 	ime
 	input_devices_evdev
 	intel_lpe
 	iwlwifi_rescan
+	kdump
 	kerberos_daemon
 	kvm_host
 	lacros_rootfs
-	manatee
+	lvm_stateful_partition
 	media_perception
 	memd
 	missive
@@ -74,7 +80,7 @@ IUSE="
 	hps
 	mtd
 	+network_time
-	nfc
+	ondevice_handwriting
 	os_install_service
 	pam
 	pciguard
@@ -82,27 +88,32 @@ IUSE="
 	postscript
 	+power_management
 	+profile
+	printscanmgr
+	private_computing
 	racc
 	+readahead
 	resourced
+	rgbkbd
 	rmad
 	scanner
+	secagent
 	selinux
 	+shill
-	sirenia
 	smbprovider
-	+spaced
+	spaced
+	swap_management
 	+syslog
 	+system_locales
 	system_proxy
+	system_wide_scudo
 	systemd
 	ti50_onboard
-	touchview
 	+tpm
 	-tpm2
 	+trim_supported
 	typecd
 	ubsan
+	ufs
 	usb_bouncer
 	usbguard
 	+vpn
@@ -172,8 +183,8 @@ REQUIRED_USE="
 # Per Package Comments:
 # --------------------
 # Please add any comments specific to why certain packages are
-# pulled into the dependecy here. This is optional and required only when
-# the dependency isn't obvious
+# pulled into the dependency here. This is optional and required only when
+# the dependency isn't obvious.
 #
 ################################################################################
 
@@ -191,23 +202,105 @@ RDEPEND="
 		chromeos-base/bootid-logger
 	)
 	biod? ( chromeos-base/biod )
+	bootsplash? ( chromeos-base/bootsplash )
 	fpstudy? ( chromeos-base/fingerprint_study )
 	compupdates? ( chromeos-base/imageloader )
-	dlc? ( chromeos-base/dlcservice )
-	dlc_test? (
+	dlc? (
+		app-accessibility/pumpkin
+		app-accessibility/screen-ai
+		chromeos-base/dlcservice
 		chromeos-base/sample-dlc
-		chromeos-base/test-dlc
+		chromeos-base/prebuilt-sample-dlc
+		chromeos-base/scaled-dlc
+		chromeos-languagepacks/tts-bn-bd
+		chromeos-languagepacks/tts-cs-cz
+		chromeos-languagepacks/tts-da-dk
+		chromeos-languagepacks/tts-de-de
+		chromeos-languagepacks/tts-el-gr
+		chromeos-languagepacks/tts-en-au
+		chromeos-languagepacks/tts-en-gb
+		chromeos-languagepacks/tts-en-us
+		chromeos-languagepacks/tts-es-es
+		chromeos-languagepacks/tts-es-us
+		chromeos-languagepacks/tts-fi-fi
+		chromeos-languagepacks/tts-fil-ph
+		chromeos-languagepacks/tts-fr-fr
+		chromeos-languagepacks/tts-hi-in
+		chromeos-languagepacks/tts-hu-hu
+		chromeos-languagepacks/tts-id-id
+		chromeos-languagepacks/tts-it-it
+		chromeos-languagepacks/tts-ja-jp
+		chromeos-languagepacks/tts-km-kh
+		chromeos-languagepacks/tts-ko-kr
+		chromeos-languagepacks/tts-nb-no
+		chromeos-languagepacks/tts-ne-np
+		chromeos-languagepacks/tts-nl-nl
+		chromeos-languagepacks/tts-pl-pl
+		chromeos-languagepacks/tts-pt-br
+		chromeos-languagepacks/tts-si-lk
+		chromeos-languagepacks/tts-sk-sk
+		chromeos-languagepacks/tts-sv-se
+		chromeos-languagepacks/tts-th-th
+		chromeos-languagepacks/tts-tr-tr
+		chromeos-languagepacks/tts-uk-ua
+		chromeos-languagepacks/tts-vi-vn
+		chromeos-languagepacks/tts-yue-hk
+		chromeos-languagepacks/tts-bn-bd-b
+		chromeos-languagepacks/tts-cs-cz-b
+		chromeos-languagepacks/tts-da-dk-b
+		chromeos-languagepacks/tts-de-de-b
+		chromeos-languagepacks/tts-el-gr-b
+		chromeos-languagepacks/tts-en-au-b
+		chromeos-languagepacks/tts-en-gb-b
+		chromeos-languagepacks/tts-en-us-b
+		chromeos-languagepacks/tts-es-es-b
+		chromeos-languagepacks/tts-es-us-b
+		chromeos-languagepacks/tts-fi-fi-b
+		chromeos-languagepacks/tts-fil-ph-b
+		chromeos-languagepacks/tts-fr-fr-b
+		chromeos-languagepacks/tts-hi-in-b
+		chromeos-languagepacks/tts-hu-hu-b
+		chromeos-languagepacks/tts-id-id-b
+		chromeos-languagepacks/tts-it-it-b
+		chromeos-languagepacks/tts-ja-jp-b
+		chromeos-languagepacks/tts-km-kh-b
+		chromeos-languagepacks/tts-ko-kr-b
+		chromeos-languagepacks/tts-nb-no-b
+		chromeos-languagepacks/tts-ne-np-b
+		chromeos-languagepacks/tts-nl-nl-b
+		chromeos-languagepacks/tts-pl-pl-b
+		chromeos-languagepacks/tts-pt-br-b
+		chromeos-languagepacks/tts-si-lk-b
+		chromeos-languagepacks/tts-sk-sk-b
+		chromeos-languagepacks/tts-sv-se-b
+		chromeos-languagepacks/tts-th-th-b
+		chromeos-languagepacks/tts-tr-tr-b
+		chromeos-languagepacks/tts-uk-ua-b
+		chromeos-languagepacks/tts-vi-vn-b
+		chromeos-languagepacks/tts-yue-hk-b
+		chrome_internal? (
+			chromeos-base/assistant-dlc
+		)
 	)
 	bluetooth? ( net-wireless/bluez )
-	floss? ( net-wireless/floss )
+	floss? (
+		!asan? (
+			!ubsan? (
+				net-wireless/floss
+				flex_bluetooth? ( chromeos-base/flex_bluetooth )
+			)
+		)
+	)
 	bootchart? ( app-benchmarks/bootchart )
 	tpm? (
 		app-crypt/trousers
 		chromeos-base/chaps
 	)
-	tpm2? ( chromeos-base/trunks )
+	tpm2? (
+		chromeos-base/trunks
+		chromeos-base/vtpm
+	)
 	pam? ( virtual/chromeos-auth-config )
-	federated_service? ( chromeos-base/federated-service )
 	fonts? ( chromeos-base/chromeos-fonts )
 	chromeos-base/chromeos-installer
 	chromeos-base/dev-install
@@ -217,17 +310,87 @@ RDEPEND="
 	missive? ( chromeos-base/missive )
 	mist? ( chromeos-base/mist )
 	modemfwd? ( chromeos-base/modemfwd )
-	buffet? ( chromeos-base/buffet )
 	containers? ( chromeos-base/run_oci )
 	cros_disks? ( chromeos-base/cros-disks )
 	debugd? ( chromeos-base/debugd )
 	diagnostics? ( chromeos-base/diagnostics )
+	diagnostics-minidiag? ( chromeos-base/diagnostics-minidiag )
 	dlp? ( chromeos-base/dlp )
+	kdump? ( sys-boot/kdump-init )
 	kerberos_daemon? ( chromeos-base/kerberos )
 	scanner? ( chromeos-base/lorgnette )
 	ml_service? ( chromeos-base/ml )
+	ondevice_handwriting? (
+		chromeos-languagepacks/handwriting-base
+		chromeos-languagepacks/handwriting-am
+		chromeos-languagepacks/handwriting-ar
+		chromeos-languagepacks/handwriting-be
+		chromeos-languagepacks/handwriting-bg
+		chromeos-languagepacks/handwriting-bn
+		chromeos-languagepacks/handwriting-ca
+		chromeos-languagepacks/handwriting-cs
+		chromeos-languagepacks/handwriting-da
+		chromeos-languagepacks/handwriting-de
+		chromeos-languagepacks/handwriting-el
+		chromeos-languagepacks/handwriting-es
+		chromeos-languagepacks/handwriting-et
+		chromeos-languagepacks/handwriting-fa
+		chromeos-languagepacks/handwriting-fi
+		chromeos-languagepacks/handwriting-fil
+		chromeos-languagepacks/handwriting-fr
+		chromeos-languagepacks/handwriting-ga
+		chromeos-languagepacks/handwriting-gu
+		chromeos-languagepacks/handwriting-hi
+		chromeos-languagepacks/handwriting-hr
+		chromeos-languagepacks/handwriting-hu
+		chromeos-languagepacks/handwriting-hy
+		chromeos-languagepacks/handwriting-id
+		chromeos-languagepacks/handwriting-is
+		chromeos-languagepacks/handwriting-it
+		chromeos-languagepacks/handwriting-iw
+		chromeos-languagepacks/handwriting-ja
+		chromeos-languagepacks/handwriting-ka
+		chromeos-languagepacks/handwriting-kk
+		chromeos-languagepacks/handwriting-km
+		chromeos-languagepacks/handwriting-kn
+		chromeos-languagepacks/handwriting-ko
+		chromeos-languagepacks/handwriting-lo
+		chromeos-languagepacks/handwriting-lt
+		chromeos-languagepacks/handwriting-lv
+		chromeos-languagepacks/handwriting-ml
+		chromeos-languagepacks/handwriting-mn
+		chromeos-languagepacks/handwriting-mr
+		chromeos-languagepacks/handwriting-ms
+		chromeos-languagepacks/handwriting-mt
+		chromeos-languagepacks/handwriting-my
+		chromeos-languagepacks/handwriting-ne
+		chromeos-languagepacks/handwriting-nl
+		chromeos-languagepacks/handwriting-no
+		chromeos-languagepacks/handwriting-or
+		chromeos-languagepacks/handwriting-pa
+		chromeos-languagepacks/handwriting-pl
+		chromeos-languagepacks/handwriting-pt
+		chromeos-languagepacks/handwriting-ro
+		chromeos-languagepacks/handwriting-ru
+		chromeos-languagepacks/handwriting-si
+		chromeos-languagepacks/handwriting-sk
+		chromeos-languagepacks/handwriting-sl
+		chromeos-languagepacks/handwriting-sr
+		chromeos-languagepacks/handwriting-sv
+		chromeos-languagepacks/handwriting-ta
+		chromeos-languagepacks/handwriting-te
+		chromeos-languagepacks/handwriting-th
+		chromeos-languagepacks/handwriting-ti
+		chromeos-languagepacks/handwriting-tr
+		chromeos-languagepacks/handwriting-uk
+		chromeos-languagepacks/handwriting-ur
+		chromeos-languagepacks/handwriting-vi
+		chromeos-languagepacks/handwriting-zh
+		chromeos-languagepacks/handwriting-zh-HK
+	)
 	hps? (
 		chromeos-base/hpsd
+		chromeos-base/hps-firmware-images
 		!asan? (
 			!ubsan? ( chromeos-base/hps-firmware )
 		)
@@ -237,50 +400,51 @@ RDEPEND="
 		chromeos-base/hardware_verifier
 		chromeos-base/runtime_probe
 	)
+	rgbkbd? ( chromeos-base/rgbkbd )
 	rmad? ( chromeos-base/rmad )
 	iioservice? ( chromeos-base/iioservice )
-	media_perception? ( chromeos-base/mri_package )
 	memd? ( chromeos-base/memd )
 	power_management? ( chromeos-base/power_manager )
+	private_computing? ( chromeos-base/private_computing )
 	!chromeos-base/platform2
 	profile? ( chromeos-base/quipper )
 	resourced? ( chromeos-base/resourced )
+	secagent? ( virtual/secagentd )
 	selinux? ( chromeos-base/selinux-policy )
 	shill? ( >=chromeos-base/shill-0.0.1-r2205 )
-	manatee? ( chromeos-base/sirenia )
-	sirenia? ( chromeos-base/sirenia )
 	spaced? ( chromeos-base/spaced )
 	usb_bouncer? ( chromeos-base/usb_bouncer )
 	chromeos-base/update_engine
-	vpn? ( chromeos-base/vpn-manager )
+	clvk? ( media-libs/clvk )
 	cras? (
 		media-sound/adhd
-		media-sound/cras_tests
+		media-sound/cras-client
 	)
 	trim_supported? ( chromeos-base/chromeos-trim )
 	network_time? ( net-misc/tlsdate )
 	iwlwifi_rescan? ( net-wireless/iwlwifi_rescan )
-	nfc? ( net-wireless/neard chromeos-base/neard-configs )
 	readahead? ( sys-apps/ureadahead )
 	pam? ( sys-auth/pam_pwdfile )
 	watchdog? ( sys-apps/daisydog )
 	mtd? ( sys-fs/mtd-utils )
 	cups? ( virtual/chromium-os-printing )
-	touchview? (
-		!iioservice? ( chromeos-base/chromeos-accelerometer-init )
-	)
+	swap_management? ( chromeos-base/swap_management )
 	system_locales? ( chromeos-base/system-locales )
 	system_proxy? ( chromeos-base/system-proxy )
 	eclog? ( chromeos-base/timberslide )
 	chromeos-base/chromeos-machine-id-regen
 	systemd? ( sys-apps/systemd )
-	!systemd? ( sys-apps/systemd-tmpfiles )
+	!systemd? ( sys-apps/systemd-utils )
 	usbguard? ( sys-apps/usbguard )
 	kvm_host? (
 		chromeos-base/crosdns
 		chromeos-base/crostini_client
 		chromeos-base/vm_host_tools
 		chromeos-base/termina-dlc
+		chromeos-base/termina-tools-dlc
+		amd64? (
+			chromeos-base/edk2-ovmf-dlc
+		)
 	)
 	sys-kernel/linux-firmware
 	virtual/chromeos-bsp
@@ -290,16 +454,13 @@ RDEPEND="
 	virtual/chromeos-regions
 	virtual/implicit-system
 	virtual/linux-sources
-	virtual/modutils
+	sys-apps/kmod[tools]
 	virtual/service-manager
-	cr50_onboard? (
-		chromeos-base/chromeos-cr50
-		chromeos-base/u2fd
-	)
-	ti50_onboard? (
-		chromeos-base/chromeos-ti50
-		chromeos-base/u2fd
-	)
+	cr50_onboard? ( chromeos-base/chromeos-cr50 )
+	ti50_onboard? ( chromeos-base/chromeos-ti50 )
+	chromeos-base/u2fd
+	chromeos-base/bootlockbox
+	chromeos-base/device_management
 	ime? (
 		app-i18n/chinese-input
 		app-i18n/keyboard-input
@@ -308,11 +469,13 @@ RDEPEND="
 	)
 	fuzzer? ( virtual/target-fuzzers )
 	!dev-python/socksipy
-	arc-camera1? ( chromeos-base/cros-camera )
 	arc-camera3? ( chromeos-base/cros-camera )
 	fwupd? (
 		sys-apps/fwupd
+		sys-firmware/fwupd-peripherals
+		sys-firmware/fwupd-storage
 		mmc? ( sys-firmware/mmc-firmware )
+		gl3590? ( sys-firmware/gl3590-firmware )
 	)
 	smbprovider? (
 		chromeos-base/smbfs
@@ -325,6 +488,15 @@ RDEPEND="
 	lacros_rootfs? ( chromeos-base/chromeos-lacros )
 	dns-proxy? ( chromeos-base/dns-proxy )
 	featured? ( chromeos-base/featured )
+	fusebox? ( chromeos-base/fusebox )
+	lvm_stateful_partition? ( chromeos-base/lvmd )
+	ufs? (
+		chromeos-base/discod
+		chromeos-base/factory_ufs
+	)
+	system_wide_scudo? ( sys-libs/scudo )
+	cecservice? ( sys-apps/cecservice )
+	printscanmgr? ( chromeos-base/printscanmgr )
 "
 
 ################################################################################
@@ -333,7 +505,7 @@ RDEPEND="
 #
 # Comments on individual packages:
 # --------------------------------
-# app-editors/vim:
+# app-editors/neatvi:
 # Specifically include the editor we want to appear in chromeos images, so that
 # it is deterministic which editor is chosen by 'virtual/editor' dependencies
 # (such as in the 'sudo' package).  See crosbug.com/5777.
@@ -358,7 +530,7 @@ CROS_RDEPEND="
 # New packages usually should be behind a USE flag.
 CROS_RDEPEND="${CROS_RDEPEND}
 	app-arch/tar
-	app-editors/vim
+	app-editors/neatvi
 	app-shells/bash
 	chromeos-base/common-assets
 	chromeos-base/chromeos-imageburner
@@ -382,5 +554,20 @@ CROS_RDEPEND="${CROS_RDEPEND}
 	virtual/udev
 "
 
-RDEPEND+="!cros_embedded? ( ${CROS_RDEPEND} )"
+# Add android runtime for WhaleOS
+CROS_RDEPEND="${CROS_RDEPEND}
+	virtual/andruntime-dlc
+"
 
+# Add whaleos-angl-init for WhaleOS
+CROS_RDEPEND="${CROS_RDEPEND}
+	chromeos-base/whaleos-angl-init
+"
+
+# TODO(toolchain): Remove this libxcrypt dep after all packages directly depend
+# on it and it is not installed as a system library anymore
+CROS_RDEPEND="${CROS_RDEPEND}
+	sys-libs/libxcrypt
+"
+
+RDEPEND+="!cros_embedded? ( ${CROS_RDEPEND} )"

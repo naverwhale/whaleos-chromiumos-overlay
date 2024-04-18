@@ -1,5 +1,5 @@
 #!/bin/bash -eu
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
@@ -17,27 +17,17 @@ if [[ -z "${python_version}" ]]; then
 	exit 1
 fi
 
-python_ebuild="$(equery w "=dev-lang/${python_version}")"
+python_ebuild="$(equery w "~dev-lang/${python_version}")"
 if [[ -z "${python_ebuild}" ]]; then
 	echo "Failed to locate Python ebuild; quit" >&2
 	exit 1
 fi
 
-tempfile="$(mktemp)"
-trap 'rm "${tempfile}"' EXIT
-
-# Note that we *very* intentionally ignore the success of this `ebuild`
-# command. It breaks sandbox constraints in a few ways during Python's
-# extensive "test everything," phase. As long as the phrase that tells us most
-# tests passed is present, be content. A side-benefit of disabling the sandbox
-# is that it won't influence our profiles in any way.
-FEATURES=-sandbox USE='-pgo_use pgo_generate' \
-	ebuild "${python_ebuild}" clean compile |& tee "${tempfile}"
-
-if ! grep -qF "Full build with profile completed successfully." "${tempfile}"; then
-	echo "Seems that ebuild-ing python failed somehow?" >&2
-	exit 1
-fi
+# The sandbox has historically broken some tests; disable it since it provides
+# no value in this instance.
+FEATURES=-sandbox \
+	USE='-pgo_use pgo_generate' \
+	ebuild "${python_ebuild}" clean compile
 
 # ...Now fish out the profile that's being used. Python always places it
 # at ${S}/code.profclangd.
@@ -51,6 +41,9 @@ if [[ "${#profile_locations[@]}" -ne 1 ]]; then
 	echo "Maybe rm -rf /var/tmp/portage and try again?" >&2
 	exit 1
 fi
+
+tempfile="$(mktemp)"
+trap 'rm "${tempfile}"' EXIT
 
 profile_location="${profile_locations[0]}"
 profile_target="${tempfile}.tar"

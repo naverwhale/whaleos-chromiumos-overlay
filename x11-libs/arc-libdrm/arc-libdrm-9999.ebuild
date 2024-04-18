@@ -4,8 +4,8 @@
 EAPI="7"
 EGIT_REPO_URI="https://gitlab.freedesktop.org/mesa/drm.git"
 if [[ ${PV} != *9999* ]]; then
-	CROS_WORKON_COMMIT="9cef5dee3cd817728c83aeb3c2010c1954e4c402"
-	CROS_WORKON_TREE="25ac2f44628d93835f86f30b10d797a652f34cea"
+	CROS_WORKON_COMMIT="56f81e6776c1c100c3f627b2c1feb9dcae2aad3c"
+	CROS_WORKON_TREE="f2dad5f135f56bf9e56b44d5b9637ffb59d38f23"
 fi
 CROS_WORKON_PROJECT="chromiumos/third_party/libdrm"
 CROS_WORKON_LOCALNAME="libdrm"
@@ -64,10 +64,10 @@ multilib_src_configure() {
 	local emesonargs=(
 		-Dinstall-test-programs=false
 		$(meson_use video_cards_amdgpu amdgpu)
-		$(meson_use video_cards_exynos exynos-experimental-api)
+		$(meson_use video_cards_exynos exynos)
 		$(meson_use video_cards_freedreno freedreno)
 		$(meson_use video_cards_nouveau nouveau)
-		$(meson_use video_cards_omap omap-experimental-api)
+		$(meson_use video_cards_omap omap)
 		$(meson_use video_cards_radeon radeon)
 		$(meson_use video_cards_vc4 vc4)
 		$(meson_use video_cards_vmware vmwgfx)

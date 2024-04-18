@@ -1,18 +1,20 @@
-# Copyright 2012 The Chromium OS Authors.
+# Copyright 2012 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
 CROS_WORKON_PROJECT=(
 	"chromiumos/platform/depthcharge"
 	"chromiumos/platform/vboot_reference"
+	"chromiumos/third_party/coreboot"
 )
 
 DESCRIPTION="coreboot's depthcharge payload"
 HOMEPAGE="http://www.coreboot.org"
 LICENSE="GPL-2"
 KEYWORDS="~*"
-IUSE="detachable fwconsole mocktpm pd_sync unibuild verbose debug
-	physical_presence_power physical_presence_recovery"
+IUSE="fwconsole mocktpm pd_sync unibuild verbose debug
+	physical_presence_power physical_presence_recovery test
+	intel-compliance-test-mode"
 
 # No pre-unibuild boards build firmware on ToT anymore.  Assume
 # unibuild to keep ebuild clean.
@@ -36,16 +38,41 @@ RDEPEND="${DEPEND}"
 
 BDEPEND="
 	dev-python/kconfiglib
+	!test? (
+		dev-util/cmake
+		dev-util/cmocka
+	)
 "
 
-CROS_WORKON_LOCALNAME=("../platform/depthcharge" "../platform/vboot_reference")
+CROS_WORKON_LOCALNAME=(
+	"../platform/depthcharge"
+	"../platform/vboot_reference"
+	"../third_party/coreboot"
+)
 VBOOT_REFERENCE_DESTDIR="${S}/vboot_reference"
-CROS_WORKON_DESTDIR=("${S}/depthcharge" "${VBOOT_REFERENCE_DESTDIR}")
+COREBOOT_DESTDIR="${S}/coreboot"
+CROS_WORKON_DESTDIR=(
+	"${S}/depthcharge"
+	"${VBOOT_REFERENCE_DESTDIR}"
+	"${COREBOOT_DESTDIR}"
+)
 
-# Don't strip to ease remote GDB use (cbfstool strips final binaries anyway)
-STRIP_MASK="*"
+CROS_WORKON_OPTIONAL_CHECKOUT=(
+	""
+	""
+	"use test"
+)
 
-inherit cros-workon cros-unibuild
+# Disable binary checks for PIE and relative relocatons.
+# Don't strip to ease remote GDB use (cbfstool strips final binaries anyway).
+# This is only okay because this ebuild only installs files into
+# ${SYSROOT}/firmware, which is not copied to the final system image.
+RESTRICT="binchecks strip"
+
+# Disable warnings for executable stack.
+QA_EXECSTACK="*"
+
+inherit cros-workon cros-unibuild cros-sanitizers
 
 # Build depthcharge with common options.
 # Usage example: dc_make dev "${BUILD_DIR}" "${LIBPAYLOAD_DIR}"
@@ -63,8 +90,6 @@ dc_make() {
 
 	local OPTS=(
 		"EC_HEADERS=${SYSROOT}/usr/include/chromeos/ec"
-		"VB_SOURCE=${VBOOT_REFERENCE_DESTDIR}"
-		"PD_SYNC=$(usev pd_sync)"
 		"LIBPAYLOAD_DIR=${libpayload}/libpayload"
 		"obj=${builddir}"
 	)
@@ -88,10 +113,14 @@ dc_make() {
 #   $1: board to build for.
 #   $2: build directory
 #   $3: libpayload dir
+#   $4: recovery input method
+#   $5: detachable ui enabled status ("True" for enabled)
 make_depthcharge() {
 	local board="$1"
 	local builddir="$2"
 	local libpayload="$3"
+	local recovery_input="$4"
+	local config_detachable="$5"
 	local base_defconfig="board/${board}/defconfig"
 	local defconfig="${T}/${board}-defconfig"
 	local config="${builddir}/depthcharge.config"
@@ -108,16 +137,35 @@ make_depthcharge() {
 	if use mocktpm ; then
 		echo "CONFIG_MOCK_TPM=y" >> "${defconfig}"
 	fi
-	if use fwconsole ; then
-		echo "CONFIG_CLI=y" >> "${defconfig}"
+	if use intel-compliance-test-mode; then
+		echo "CONFIG_FIRMWARE_SHELL_ENTER_IMMEDIATELY=y" >> "${defconfig}"
 		echo "CONFIG_SYS_PROMPT=\"${board}: \"" >> "${defconfig}"
 	fi
-	if use detachable ; then
+
+	if [[ "${config_detachable}" == "True" ]] ; then
 		echo "CONFIG_DETACHABLE=y" >> "${defconfig}"
 	fi
 
-	if use physical_presence_power || use physical_presence_recovery ; then
+	if [[ -z "${recovery_input}" ]] ; then
+		# TODO(b/229906790) Remove this once USE flag support not longer needed
+		einfo "Recovery input method not found in config. Reverting to deprecated USE flags"
+		if use physical_presence_power ; then
+			die "physical_presence_power is not supported in firmware UI"
+		elif use physical_presence_recovery ; then
+			recovery_input="RECOVERY_BUTTON"
+		else
+			recovery_input="KEYBOARD"
+		fi
+	fi
+	if [[ "${recovery_input}" == "KEYBOARD" ]] ; then
+		# PHYSICAL_PRESENCE_KEYBOARD=y by default
+		:
+	elif [[ "${recovery_input}" == "RECOVERY_BUTTON" ]] ; then
 		echo "CONFIG_PHYSICAL_PRESENCE_KEYBOARD=n" >> "${defconfig}"
+	elif [[ "${recovery_input}" == "POWER_BUTTON" ]] ; then
+		die "Recovery input POWER_BUTTON is not supported in firmware UI"
+	else
+		die "Unknown recovery_input ${recovery_input}"
 	fi
 
 	dc_make defconfig "${builddir}" "${libpayload}" \
@@ -148,18 +196,14 @@ _copy_fwconfig() {
 	fi
 }
 
+src_configure() {
+	sanitizers-setup-env
+	default
+}
+
 src_compile() {
 	local builddir
 	local libpayload
-
-	# Firmware related binaries are compiled with a 32-bit toolchain
-	# on 64-bit platforms
-	if use amd64 ; then
-		export CROSS_COMPILE="i686-pc-linux-gnu-"
-		export CC="${CROSS_COMPILE}gcc"
-	else
-		export CROSS_COMPILE=${CHOST}-
-	fi
 
 	pushd depthcharge >/dev/null || \
 		die "Failed to change into ${PWD}/depthcharge"
@@ -173,7 +217,15 @@ src_compile() {
 		mkdir -p "${builddir}"
 
 		_copy_fwconfig "${libpayload}" "${builddir}"
-		make_depthcharge "${depthcharge}" "${builddir}" "${libpayload}"
+
+		recovery_input="$(cros_config_host get-firmware-recovery-input depthcharge "${depthcharge}")" || \
+			die "Unable to determine recovery input for ${depthcharge}"
+		config_detachable="$(cros_config_host get-key-value \
+			/firmware/build-targets depthcharge "${depthcharge}" \
+			/firmware detachable-ui --ignore-unset)" || \
+			die "Unable to detachable ui config for ${depthcharge}"
+
+		make_depthcharge "${depthcharge}" "${builddir}" "${libpayload}" "${recovery_input}" "${config_detachable}"
 	done < <(cros_config_host get-firmware-build-combinations depthcharge)
 
 	popd >/dev/null || die
@@ -186,7 +238,7 @@ do_install() {
 
 	if [[ -n "${build_target}" ]]; then
 		dstdir+="/${build_target}"
-		einfo "Installing depthcharge ${build_target} into ${dest_dir}"
+		einfo "Installing depthcharge ${build_target} into ${dstdir}"
 	fi
 	insinto "${dstdir}"
 
@@ -214,4 +266,36 @@ src_install() {
 
 		do_install "${build_target}" "${builddir}"
 	done
+}
+
+make_unittests() {
+	local builddir="$1"
+
+	local OPTS=(
+		"EC_HEADERS=${SYSROOT}/usr/include/chromeos/ec"
+		"CB_SOURCE=${COREBOOT_DESTDIR}"
+		"LP_SOURCE=${COREBOOT_DESTDIR}/payloads/libpayload"
+		"VB_SOURCE=${VBOOT_REFERENCE_DESTDIR}"
+		"obj=${builddir}"
+		"HOSTCC=$(tc-getBUILD_CC)"
+		"HOSTCXX=$(tc-getBUILD_CXX)"
+		"HOSTAR=$(tc-getBUILD_AR)"
+		"HOSTAS=$(tc-getBUILD_AS)"
+		"OBJCOPY=$(tc-getBUILD_OBJCOPY)"
+		"OBJDUMP=$(tc-getBUILD_OBJDUMP)"
+	)
+
+	use verbose && OPTS+=( "V=1" )
+	emake "${OPTS[@]}" "unit-tests"
+	emake "${OPTS[@]}" "test-screenshot"
+}
+
+src_test() {
+	local builddir="$(cros-workon_get_build_dir)/depthcharge.tests"
+
+	pushd depthcharge >/dev/null || \
+		die "Failed to change into ${PWD}/depthcharge"
+
+	mkdir -p "${builddir}"
+	make_unittests "${builddir}"
 }

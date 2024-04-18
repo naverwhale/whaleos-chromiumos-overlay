@@ -1,0 +1,13 @@
+BDEPEND=dev-libs/libgcrypt virtual/pkgconfig >=app-portage/elt-patches-20170815 || ( >=sys-devel/automake-1.16.5-r1:1.16 >=sys-devel/automake-1.15.1-r2:1.15 ) >=sys-devel/autoconf-2.69 >=sys-devel/libtool-2.4
+DEFINED_PHASES=configure install prepare
+DEPEND=sys-fs/fuse sys-apps/attr
+DESCRIPTION=Open source read-write NTFS driver that runs under FUSE
+EAPI=7
+HOMEPAGE=https://github.com/tuxera/ntfs-3g
+KEYWORDS=*
+LICENSE=GPL-2
+RDEPEND=sys-fs/fuse
+SLOT=0/89
+SRC_URI=https://download.tuxera.com/opensource/ntfs-3g_ntfsprogs-2022.10.3.tgz
+_eclasses_=autotools	9adb87822e85056674b476e1090a72ae	flag-o-matic	ad475baa777c9978fa035216c8264a10	libtool	f143db5a74ccd9ca28c1234deffede96	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=a00e94283c4b56ff590b2eff9e01a7c7

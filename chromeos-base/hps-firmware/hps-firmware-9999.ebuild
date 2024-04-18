@@ -1,13 +1,18 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
-
-inherit cros-workon cros-rust
-
-CROS_WORKON_INCREMENTAL_BUILD=1
 CROS_WORKON_PROJECT="chromiumos/platform/hps-firmware"
 CROS_WORKON_LOCALNAME="platform/hps-firmware2"
+CROS_WORKON_USE_VCSID=1
+PYTHON_COMPAT=( python3_{8..11} )
+
+# We're using a custom toolchain, so we shouldn't allow for code coverage here.
+# This is used by cros-rust.eclass, so disable 'unused' complaints.
+# shellcheck disable=SC2034
+CROS_RUST_COVERAGE_DISABLED=1
+
+inherit cros-workon cros-rust toolchain-funcs python-any-r1
 
 DESCRIPTION="HPS firmware and tooling"
 HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform/hps-firmware"
@@ -15,40 +20,45 @@ HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform/hps-firmware"
 LICENSE="BSD-Google"
 KEYWORDS="~*"
 
-# Add these for hps-mon / hps-util:
-	#>=dev-rust/argh-0.1.4:= <dev-rust/argh-0.2.0
-	#=dev-rust/ftd2xx-embedded-hal-0.7*:=
-	#>=dev-rust/serialport-4.0.1:= <dev-rust/serialport-5.0.0
-
-DEPEND="
-	>=dev-rust/anyhow-1.0.38:= <dev-rust/anyhow-2.0.0
-	>=dev-rust/bitflags-1.2.1:= <dev-rust/bitflags-2.0.0
-	=dev-rust/clap-3*:=
-	>=dev-rust/cortex-m-0.7.1:= <dev-rust/cortex-m-0.8.0
-	>=dev-rust/cortex-m-rt-0.6.13:= <dev-rust/cortex-m-rt-0.7.0
-	>=dev-rust/cortex-m-rtic-0.5.5:= <dev-rust/cortex-m-rtic-0.6.0
-	=dev-rust/crc-2*:=
-	>=dev-rust/defmt-0.2.1:= <dev-rust/defmt-0.3.0
-	=dev-rust/defmt-rtt-0.2*:=
-	>=dev-rust/ed25519-compact-0.1.9:= <dev-rust/ed25519-compact-0.2.0
-	>=dev-rust/embedded-hal-0.2.4:= <dev-rust/embedded-hal-0.3.0
-	=dev-rust/embedded-hal-mock-0.8*:=
-	>=dev-rust/git-version-0.3.4:= <dev-rust/git-version-0.4.0
-	>=dev-rust/hmac-sha256-0.1.6:= <dev-rust/hmac-sha256-0.2.0
-	>=dev-rust/num_enum-0.5.1:= <dev-rust/num_enum-0.6.0
-	=dev-rust/panic-halt-0.2*:=
-	=dev-rust/panic-reset-0.1*:=
-	>=dev-rust/spi-memory-0.2.0:= <dev-rust/spi-memory-0.3.0
-	=dev-rust/stm32g0xx-hal-0.1*:=
-	=dev-rust/ufmt-0.1*:=
-	=dev-rust/ufmt-write-0.1*:=
-	>=dev-rust/panic-rtt-target-0.1.2:= <dev-rust/panic-rtt-target-0.2.0
-	>=dev-rust/rtt-target-0.3.1:= <dev-rust/rtt-target-0.4.0
+BDEPEND="
+	chromeos-base/hps-sign-rom
+	dev-embedded/hps-sdk
+	dev-rust/svd2rust:=
+	sci-electronics/amaranth
+	>=sci-electronics/nextpnr-0.1_p20220210
+	sci-electronics/prjoxide
+	sci-electronics/yosys
+	sci-electronics/yosys-f4pga-plugins
+	$(python_gen_any_dep '
+		sci-electronics/litespi[${PYTHON_USEDEP}]
+		sci-electronics/litex[${PYTHON_USEDEP}]
+		sci-electronics/pythondata-cpu-vexriscv[${PYTHON_USEDEP}]
+	')
 "
 
-# Integer overflow checks introduce panicking paths into the firmware,
-# which bloats the size of the images with extra strings in .rodata.
-CROS_RUST_OVERFLOW_CHECKS=0
+python_check_deps() {
+	has_version -b "sci-electronics/litespi[${PYTHON_USEDEP}]" &&
+		has_version -b "sci-electronics/litex[${PYTHON_USEDEP}]" &&
+		has_version -b "sci-electronics/pythondata-cpu-vexriscv[${PYTHON_USEDEP}]"
+}
+
+DEPEND="
+	dev-rust/third-party-crates-src:=
+	dev-embedded/libftdi:=
+	virtual/libusb:1
+"
+
+# /usr/lib/firmware/hps/fpga_bitstream.bin and
+# /usr/lib/firmware/hps/fpga_application.bin
+# moved from hps-firmware-images to here
+RDEPEND="
+	!<chromeos-base/hps-firmware-images-0.0.1-r17
+"
+
+pkg_setup() {
+	cros-rust_pkg_setup
+	python-any-r1_pkg_setup
+}
 
 src_unpack() {
 	cros-workon_src_unpack
@@ -59,60 +69,130 @@ src_prepare() {
 	# Not using cros-rust_src_prepare because it wrongly assumes Cargo.toml is
 	# in the root of ${S} and we don't need its manipulations anyway.
 
-	# We need to hide some crates from cargo because they still have
-	# unsatisfied dependencies, they can be added later.
-	sed -i -e '/hps-util/d' -e '/hps-mon/d' -e '/factory_tester_mcu/d' -e '/mcp2221/d' mcu_rom/Cargo.toml
+	# config.toml is intended for use when running `cargo` directly but would
+	# mess with the ebuild if we didn't delete it.
+	rm -f rust/.cargo/config.toml
 
 	default
 }
 
 src_configure() {
+	# Use Python helper modules from CFU-Playground. These are developed
+	# upstream but are intimately tied to the HPS accelerator code.
+	export PYTHONPATH="${S}/third_party/python/CFU-Playground"
+
+	# Use Rust and GCC from hps-sdk, since the main Chrome OS compilers
+	# do not yet support RISC-V.
+	export PATH="/opt/hps-sdk/bin:${PATH}"
+
 	# CROS_BASE_RUSTFLAGS are for the AP, they are not applicable to
 	# HPS firmware, which is cross-compiled for STM32
 	unset CROS_BASE_RUSTFLAGS
 	cros-rust_configure_cargo
 
 	# Override some unwanted rustflags configured by cros-rust_configure_cargo.
+	# For our Cortex-M0 target, we need "fat" LTO and opt-level=z (smallest) to
+	# make everything small enough to fit. Debug assertions and
+	# integer overflow checks introduce panicking paths into the firmware,
+	# which bloats the size of the images with extra strings in .rodata.
 	# TODO(dcallagh): tidy this up properly in cros-rust.eclass.
 	# CROS_BASE_RUSTFLAGS are the same problem.
 	# asan and ubsan are also the same problem.
+	# shellcheck disable=SC2154 # ECARGO_HOME is defined in cros-rust.eclass
 	cat <<- EOF >> "${ECARGO_HOME}/config"
 	[target.'cfg(all(target_arch = "arm", target_os = "none"))']
-	rustflags = [ "-Clto=yes", "-Copt-level=z" ]
+	rustflags = [
+		"-Clto=yes",
+		"-Copt-level=z",
+		"-Coverflow-checks=off",
+		"-Cdebug-assertions=off",
+		"-Ccodegen-units=1",
+	]
 	EOF
+
+	# cros-rust_update_cargo_lock tries to handle Cargo.lock but it assumes
+	# there is only one Cargo.lock in the root of the source tree, which is not
+	# true for hps-firmware. For now just delete the ones we have.
+	rm rust/Cargo.lock rust/mcu/Cargo.lock rust/riscv/Cargo.lock
 }
 
 src_compile() {
-	# Build userspace tools
-	for tool in sign-rom ; do (
-		cd mcu_rom/${tool} || die
-		einfo "Building ${tool}"
-		ecargo_build
-	) done
+	# Build FPGA bitstream
+	einfo "Building FPGA bitstream"
+	python -m soc.hps_soc --no-compile-software || die
+
+	# Build FPGA application
+	einfo "Building FPGA application"
+	(
+		cd rust/riscv/fpga_rom || die
+		ecargo build --release
+	)
+	# shellcheck disable=SC2154 # CARGO_TARGET_DIR is defined in cros-rust.eclass
+	llvm-objcopy -O binary \
+		"${CARGO_TARGET_DIR}/riscv32i-unknown-none-elf/release/fpga_rom" \
+		"${S}/build/hps_platform/fpga_rom.bin" || die
 
 	# Build MCU firmware
 	for crate in stage0 stage1_app ; do (
 		einfo "Building MCU firmware ${crate}"
-		cd mcu_rom/${crate} || die
-		ecargo build \
+		cd rust/mcu/${crate} || die
+		HPS_SPI_BIT="${S}/build/hps_platform/gateware/hps_platform.bit" \
+			HPS_SPI_BIN="${S}/build/hps_platform/fpga_rom.bin" \
+			ecargo build \
 			--target="thumbv6m-none-eabi" \
 			--release
-		einfo "Flatting MCU firmware image ${crate}"
+		einfo "Flattening MCU firmware image ${crate}"
+		# shellcheck disable=SC2154 # CARGO_TARGET_DIR is defined in cros-rust.eclass
 		llvm-objcopy -O binary \
 			"${CARGO_TARGET_DIR}/thumbv6m-none-eabi/release/${crate}" \
-			"${CARGO_TARGET_DIR}/thumbv6m-none-eabi/release/${crate}.bin"
+			"${CARGO_TARGET_DIR}/thumbv6m-none-eabi/release/${crate}.bin" || die
 	) done
+
+	# Sign MCU stage1 firmware with dev key
+	# shellcheck disable=SC2154 # CARGO_TARGET_DIR is defined in cros-rust.eclass
+	hps-sign-rom \
+		--input "${CARGO_TARGET_DIR}/thumbv6m-none-eabi/release/stage1_app.bin" \
+		--output "${CARGO_TARGET_DIR}/thumbv6m-none-eabi/release/stage1_app.bin.signed" \
+		--use-insecure-dev-key \
+		|| die
 }
 
 src_test() {
-	# TODO invoke ecargo_test once we have complete workspace deps satisfied
-	:
+	einfo "Running gateware unit tests"
+	python -m unittest discover -v || die
+
+	einfo "Running Rust tests"
+	cd rust || die
+	RUST_BACKTRACE=1 ecargo_test
 }
 
 src_install() {
-	newbin "$(cros-rust_get_build_dir)/sign-rom" hps-sign-rom
+	# Extract stage1 version (currently this is just the first 4 bytes of the
+	# stage1 signature).
+	# shellcheck disable=SC2154 # CARGO_TARGET_DIR is defined in cros-rust.eclass
+	python3 -c "with open('${CARGO_TARGET_DIR}/thumbv6m-none-eabi/release/stage1_app.bin.signed', 'rb') as f:
+		f.seek(20);
+		print(int.from_bytes(f.read(4), 'big'))" \
+		>mcu_stage1.version.txt || die
 
+	# install build metadata for use by:
+	# https://source.corp.google.com/chromeos_internal/src/platform/tast-tests-private/src/chromiumos/tast/local/bundles/crosint/hps/fpga_gateware_stats.go
 	insinto "/usr/lib/firmware/hps"
+	doins build/hps_platform/gateware/hps_platform_build.metadata
+
+	# Generate and install the build manifest.
+	# shellcheck disable=SC2154 # VCSID is supplied by cros-workon.eclass
+	echo "${VCSID}" > manifest.txt
+	cat models/manifest.txt >> manifest.txt
+
+	# install into /firmware as part of signing process
+	# signed release firmware is installed by hps-firmware-images ebuild
+	insinto "/firmware/hps"
+	# shellcheck disable=SC2154 # CARGO_TARGET_DIR is defined in cros-rust.eclass
 	newins "${CARGO_TARGET_DIR}/thumbv6m-none-eabi/release/stage0.bin" "mcu_stage0.bin"
-	newins "${CARGO_TARGET_DIR}/thumbv6m-none-eabi/release/stage1_app.bin" "mcu_stage1.bin"
+	newins "${CARGO_TARGET_DIR}/thumbv6m-none-eabi/release/stage1_app.bin.signed" "mcu_stage1.bin"
+	doins mcu_stage1.version.txt
+	doins manifest.txt
+	newins build/hps_platform/gateware/hps_platform.bit fpga_bitstream.bin
+	newins build/hps_platform/fpga_rom.bin fpga_application.bin
 }

@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -14,7 +14,7 @@ PLATFORM_SUBDIR="secure_erase_file"
 inherit cros-workon platform
 
 DESCRIPTION="Secure file erasure for Chrome OS"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/secure_erase_file/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/secure_erase_file/"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
@@ -25,11 +25,3 @@ DEPEND="
 
 RDEPEND="
 "
-
-src_install() {
-	dobin "${OUT}/secure_erase_file"
-	dolib.so "${OUT}/lib/libsecure_erase_file.so"
-
-	insinto /usr/include/chromeos/secure_erase_file
-	doins secure_erase_file.h
-}

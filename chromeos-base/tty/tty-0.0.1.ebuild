@@ -1,7 +1,7 @@
-# Copyright 2014 The Chromium OS Authors. All rights reserved.
+# Copyright 2014 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=4
+EAPI=7
 
 DESCRIPTION="Init script to run agetty on selected terminals."
 
@@ -71,7 +71,7 @@ src_install() {
 					dosym  "../chromeos-tty@.service" \
 						"${unit_dir}/boot-services.target.wants/chromeos-tty@${port}.service"
 				fi
-        		done
+			done
 		else
 			insinto /etc/init
 			doins console-*.conf

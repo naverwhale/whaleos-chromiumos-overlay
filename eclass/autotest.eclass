@@ -1,14 +1,18 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright 2010 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 #
-# Original Author: The Chromium OS Authors <chromium-os-dev@chromium.org>
+# Original Author: The ChromiumOS Authors <chromium-os-dev@chromium.org>
 # Purpose: Eclass for handling autotest test packages
 #
 
-inherit cros-constants toolchain-funcs
+PYTHON_COMPAT=( python3_{8..11} )
+
+inherit cros-constants toolchain-funcs python-any-r1
 
 RDEPEND="autotest? ( chromeos-base/autotest )"
+DEPEND="${RDEPEND}"
+BDEPEND="dev-python/chardet"
 
 IUSE="+buildcheck autotest opengles"
 
@@ -43,10 +47,6 @@ export AUTOTEST_WORKDIR="${WORKDIR}/autotest-work"
 # @DESCRIPTION:
 # The list of 'find' expressions to find in the resulting image and delete
 : ${AUTOTEST_FILE_MASK:=}
-
-fast_cp() {
-	cp -l "$@" || cp "$@"
-}
 
 get_test_list() {
 	if [ -n "${AUTOTEST_FORCE_TEST_LIST}" ]; then
@@ -222,7 +222,7 @@ autotest_src_prepare() {
 		# test does have this directory
 		for test in ${TEST_LIST}; do
 			if [ -d "${srcdir}/${test}" ]; then
-				fast_cp -fpr "${srcdir}/${test}" "${AUTOTEST_WORKDIR}/${l1}/${l2}"/ || die
+				cp -fpr "${srcdir}/${test}" "${AUTOTEST_WORKDIR}/${l1}/${l2}"/ || die
 			fi
 		done
 	done
@@ -238,10 +238,11 @@ autotest_src_prepare() {
 			eval deplist=\${AUTOTEST_${l2^^*}_LIST}
 
 			if [ "${deplist}" = "*" ]; then
-				fast_cp -fpr * "${AUTOTEST_WORKDIR}/client/${l2}"
+				cp -fpr * "${AUTOTEST_WORKDIR}/client/${l2}"
 			else
 				for dir in ${deplist}; do
-					fast_cp -fpr "${dir}" "${AUTOTEST_WORKDIR}/client/${l2}"/ || die
+					cp -fpr "${dir}" "${AUTOTEST_WORKDIR}/client/${l2}"/ \
+						|| die "Failed copying autotest deps"
 				done
 			fi
 			popd 1> /dev/null
@@ -311,7 +312,7 @@ autotest_src_compile() {
 		# Call autotest to prebuild all test cases.
 		# Parse output through a colorifying sed script
 		( GRAPHICS_BACKEND="$graphics_backend" LOGNAME=${SUDO_USER} \
-				client/bin/autotest_client --quiet \
+				"${EPYTHON}" client/bin/autotest_client --quiet \
 			--client_test_setup=$(pythonify_test_list ${TESTS}) \
 			|| ! use buildcheck || die "Tests failed to build."
 		) | sed -e "s/\(INFO:root:setup\)/${GREEN}* \1${NORMAL}/" \
@@ -443,12 +444,12 @@ autotest_pkg_postinst() {
 	if [ -n "${test_opt}" -o -n "${dep_opt}" -o -n "${prof_opt}" ]; then
 		einfo "Running packager with options ${test_opt} ${dep_opt} ${prof_opt}"
 		local logfile=${root_autotest_dir}/packages/${CATEGORY}_${PN}.log
-		flock "${root_autotest_dir}/packages" \
-			-c "PYTHONDONTWRITEBYTECODE=1 ${root_autotest_dir}/utils/packager.py \
-				-r ${root_autotest_dir}/packages \
-				${test_opt} ${dep_opt} ${prof_opt} -a upload && \
-				echo ${CATEGORY}/${PN} > ${logfile} && \
-				echo ${test_opt} ${dep_opt} ${prof_opt} >> ${logfile}" || die
+		PYTHONDONTWRITEBYTECODE=1 flock "${root_autotest_dir}/packages" \
+			"${EPYTHON}" "${root_autotest_dir}/utils/packager.py" \
+			-r "${root_autotest_dir}/packages" \
+			${test_opt} ${dep_opt} ${prof_opt} -a upload && \
+			echo "${CATEGORY}/${PN}" > "${logfile}" && \
+			echo ${test_opt} ${dep_opt} ${prof_opt} >> "${logfile}" || die
 	else
 		einfo "Packager not run as nothing was found to package."
 	fi

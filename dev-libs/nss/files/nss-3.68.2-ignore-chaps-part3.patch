@@ -1,0 +1,456 @@
+From de7a0d310634c54fa69017cb056d4f7656250e53 Mon Sep 17 00:00:00 2001
+From: Jun Ishiguro <junis@google.com>
+Date: Tue, 19 Sep 2023 16:42:02 +0900
+Subject: [PATCH 3/3] Part3: another path
+
+---
+ lib/pki/pki.h         |  6 +++++
+ lib/pki/pki3hack.c    | 40 +++++++++++++++++++++++++-------
+ lib/pki/pki3hack.h    |  9 ++++++++
+ lib/pki/pkibase.c     | 53 ++++++++++++++++++++++++++++++++++---------
+ lib/pki/pkim.h        | 15 ++++++++++++
+ lib/pki/tdcache.c     | 21 +++++++++++++----
+ lib/pki/trustdomain.c | 27 ++++++++++++++++++----
+ 7 files changed, 142 insertions(+), 29 deletions(-)
+
+diff --git a/lib/pki/pki.h b/lib/pki/pki.h
+index aaad24e..87b954a 100644
+--- a/lib/pki/pki.h
++++ b/lib/pki/pki.h
+@@ -46,6 +46,12 @@ nssTrustDomain_FindTrustForCertificate(
+     NSSTrustDomain *td,
+     NSSCertificate *c);
+ 
++NSS_EXTERN NSSTrust *
++nssTrustDomain_FindTrustForCertificateForChromium(
++    NSSTrustDomain *td,
++    NSSCertificate *c,
++    PRBool ignoreChaps);
++
+ NSS_EXTERN NSSCertificate *
+ nssCertificate_AddRef(NSSCertificate *c);
+ 
+diff --git a/lib/pki/pki3hack.c b/lib/pki/pki3hack.c
+index 7fe9113..c3db424 100644
+--- a/lib/pki/pki3hack.c
++++ b/lib/pki/pki3hack.c
+@@ -606,11 +606,17 @@ cert_trust_from_stan_trust(NSSTrust *t, PLArenaPool *arena)
+ 
+ CERTCertTrust *
+ nssTrust_GetCERTCertTrustForCert(NSSCertificate *c, CERTCertificate *cc)
++{
++    return nssTrust_GetCERTCertTrustForCertForChromium(c, cc, PR_FALSE);
++}
++
++CERTCertTrust *
++nssTrust_GetCERTCertTrustForCertForChromium(NSSCertificate *c, CERTCertificate *cc, PRBool ignoreChaps)
+ {
+     CERTCertTrust *rvTrust = NULL;
+     NSSTrustDomain *td = STAN_GetDefaultTrustDomain();
+     NSSTrust *t;
+-    t = nssTrustDomain_FindTrustForCertificate(td, c);
++    t = nssTrustDomain_FindTrustForCertificateForChromium(td, c, ignoreChaps);
+     if (t) {
+         rvTrust = cert_trust_from_stan_trust(t, cc->arena);
+         if (!rvTrust) {
+@@ -722,7 +728,7 @@ STAN_GetCERTCertificateName(PLArenaPool *arenaOpt, NSSCertificate *c)
+ }
+ 
+ static void
+-fill_CERTCertificateFields(NSSCertificate *c, CERTCertificate *cc, PRBool forced)
++fill_CERTCertificateFieldsForChromium(NSSCertificate *c, CERTCertificate *cc, PRBool forced, PRBool ignoreChaps)
+ {
+     CERTCertTrust *trust = NULL;
+     NSSTrust *nssTrust;
+@@ -790,7 +796,7 @@ fill_CERTCertificateFields(NSSCertificate *c, CERTCertificate *cc, PRBool forced
+             c->issuer.size = cc->derIssuer.len;
+             c->serial.data = cc->serialNumber.data;
+             c->serial.size = cc->serialNumber.len;
+-            nssTrust = nssTrustDomain_FindTrustForCertificate(context->td, c);
++            nssTrust = nssTrustDomain_FindTrustForCertificateForChromium(context->td, c, ignoreChaps);
+         }
+         if (nssTrust) {
+             trust = cert_trust_from_stan_trust(nssTrust, cc->arena);
+@@ -816,7 +822,7 @@ fill_CERTCertificateFields(NSSCertificate *c, CERTCertificate *cc, PRBool forced
+         /* pkcs11ID */
+         cc->pkcs11ID = instance->handle;
+         /* trust */
+-        trust = nssTrust_GetCERTCertTrustForCert(c, cc);
++        trust = nssTrust_GetCERTCertTrustForCertForChromium(c, cc, ignoreChaps);
+         if (trust) {
+             /* we should destroy cc->trust before replacing it, but it's
+                allocated in cc->arena, so memory growth will occur on each
+@@ -880,7 +886,7 @@ fill_CERTCertificateFields(NSSCertificate *c, CERTCertificate *cc, PRBool forced
+ }
+ 
+ static CERTCertificate *
+-stan_GetCERTCertificate(NSSCertificate *c, PRBool forceUpdate)
++stan_GetCERTCertificateForChromium(NSSCertificate *c, PRBool forceUpdate, PRBool ignoreChaps)
+ {
+     nssDecodedCert *dc = NULL;
+     CERTCertificate *cc = NULL;
+@@ -923,7 +929,7 @@ stan_GetCERTCertificate(NSSCertificate *c, PRBool forceUpdate)
+     NSSCertificate *nssCert = cc->nssCertificate;
+     CERT_UnlockCertTempPerm(cc);
+     if (!nssCert || forceUpdate) {
+-        fill_CERTCertificateFields(c, cc, forceUpdate);
++        fill_CERTCertificateFieldsForChromium(c, cc, forceUpdate, ignoreChaps);
+     } else if (CERT_GetCertTrust(cc, &certTrust) != SECSuccess) {
+         CERTCertTrust *trust;
+         if (!c->object.cryptoContext) {
+@@ -958,11 +964,23 @@ loser:
+     return cc;
+ }
+ 
++static CERTCertificate *
++stan_GetCERTCertificate(NSSCertificate *c, PRBool forceUpdate)
++{
++    return stan_GetCERTCertificateForChromium(c, forceUpdate, PR_FALSE);
++}
++
+ NSS_IMPLEMENT CERTCertificate *
+ STAN_ForceCERTCertificateUpdate(NSSCertificate *c)
++{
++    return STAN_ForceCERTCertificateUpdateForChromium(c, PR_FALSE);
++}
++
++NSS_IMPLEMENT CERTCertificate *
++STAN_ForceCERTCertificateUpdateForChromium(NSSCertificate *c, PRBool ignoreChaps)
+ {
+     if (c->decoding) {
+-        return stan_GetCERTCertificate(c, PR_TRUE);
++        return stan_GetCERTCertificateForChromium(c, PR_TRUE, ignoreChaps);
+     }
+     return NULL;
+ }
+@@ -970,7 +988,13 @@ STAN_ForceCERTCertificateUpdate(NSSCertificate *c)
+ NSS_IMPLEMENT CERTCertificate *
+ STAN_GetCERTCertificate(NSSCertificate *c)
+ {
+-    return stan_GetCERTCertificate(c, PR_FALSE);
++    return STAN_GetCERTCertificateForChromium(c, PR_FALSE);
++}
++
++NSS_IMPLEMENT CERTCertificate *
++STAN_GetCERTCertificateForChromium(NSSCertificate *c, PRBool ignoreChaps)
++{
++    return stan_GetCERTCertificateForChromium(c, PR_FALSE, ignoreChaps);
+ }
+ /*
+  * many callers of STAN_GetCERTCertificate() intend that
+diff --git a/lib/pki/pki3hack.h b/lib/pki/pki3hack.h
+index 818872a..933d63c 100644
+--- a/lib/pki/pki3hack.h
++++ b/lib/pki/pki3hack.h
+@@ -58,9 +58,15 @@ STAN_RemoveModuleFromDefaultTrustDomain(SECMODModule *module);
+ NSS_EXTERN CERTCertificate *
+ STAN_ForceCERTCertificateUpdate(NSSCertificate *c);
+ 
++NSS_EXTERN CERTCertificate *
++STAN_ForceCERTCertificateUpdateForChromium(NSSCertificate *c, PRBool ignoreChaps);
++
+ NSS_EXTERN CERTCertificate *
+ STAN_GetCERTCertificate(NSSCertificate *c);
+ 
++NSS_EXTERN CERTCertificate *
++STAN_GetCERTCertificateForChromium(NSSCertificate *c, PRBool ignoreChaps);
++
+ NSS_EXTERN CERTCertificate *
+ STAN_GetCERTCertificateOrRelease(NSSCertificate *c);
+ 
+@@ -70,6 +76,9 @@ STAN_GetNSSCertificate(CERTCertificate *c);
+ NSS_EXTERN CERTCertTrust *
+ nssTrust_GetCERTCertTrustForCert(NSSCertificate *c, CERTCertificate *cc);
+ 
++NSS_EXTERN CERTCertTrust *
++nssTrust_GetCERTCertTrustForCertForChromium(NSSCertificate *c, CERTCertificate *cc, PRBool ignoreChaps);
++
+ NSS_EXTERN PRStatus
+ STAN_DeleteCertTrustMatchingSlot(NSSCertificate *c);
+ 
+diff --git a/lib/pki/pkibase.c b/lib/pki/pkibase.c
+index f58a262..d829196 100644
+--- a/lib/pki/pkibase.c
++++ b/lib/pki/pkibase.c
+@@ -601,6 +601,7 @@ struct nssPKIObjectCollectionStr {
+     PRStatus (*getUIDFromInstance)(nssCryptokiObject *co, NSSItem *uid,
+                                    NSSArena *arena);
+     nssPKIObject *(*createObject)(nssPKIObject *o);
++    nssPKIObject *(*createObjectForChromium)(nssPKIObject *o, PRBool ignoreChaps);
+     nssPKILockType lockType; /* type of lock to use for new proto-objects */
+ };
+ 
+@@ -837,10 +838,11 @@ nssPKIObjectCollection_RemoveNode(
+ }
+ 
+ static PRStatus
+-nssPKIObjectCollection_GetObjects(
++nssPKIObjectCollection_GetObjectsForChromium(
+     nssPKIObjectCollection *collection,
+     nssPKIObject **rvObjects,
+-    PRUint32 rvSize)
++    PRUint32 rvSize,
++    PRBool ignoreChaps)
+ {
+     PRUint32 i = 0;
+     PRCList *link = PR_NEXT_LINK(&collection->head);
+@@ -850,7 +852,11 @@ nssPKIObjectCollection_GetObjects(
+         node = (pkiObjectCollectionNode *)link;
+         if (!node->haveObject) {
+             /* Convert the proto-object to an object */
+-            node->object = (*collection->createObject)(node->object);
++            if (ignoreChaps && collection->createObjectForChromium) {
++                node->object = (*collection->createObjectForChromium)(node->object, PR_TRUE);
++            } else {
++                node->object = (*collection->createObject)(node->object);
++            }
+             if (!node->object) {
+                 link = PR_NEXT_LINK(link);
+                 /*remove bogus object from list*/
+@@ -1006,7 +1012,7 @@ cert_getUIDFromInstance(nssCryptokiObject *instance, NSSItem *uid,
+ }
+ 
+ static nssPKIObject *
+-cert_createObject(nssPKIObject *o)
++cert_createObjectForChromium(nssPKIObject *o, PRBool ignoreChaps)
+ {
+     NSSCertificate *cert;
+     cert = nssCertificate_Create(o);
+@@ -1020,11 +1026,17 @@ cert_createObject(nssPKIObject *o)
+      */
+     {
+         NSSTrustDomain *td = o->trustDomain;
+-        nssTrustDomain_AddCertsToCache(td, &cert, 1);
++        nssTrustDomain_AddCertsToCacheForChromium(td, &cert, 1, ignoreChaps);
+     }
+     return (nssPKIObject *)cert;
+ }
+ 
++static nssPKIObject *
++cert_createObject(nssPKIObject *o)
++{
++    return cert_createObjectForChromium(o, PR_FALSE);
++}
++
+ NSS_IMPLEMENT nssPKIObjectCollection *
+ nssCertificateCollection_Create(
+     NSSTrustDomain *td,
+@@ -1040,6 +1052,7 @@ nssCertificateCollection_Create(
+     collection->getUIDFromObject = cert_getUIDFromObject;
+     collection->getUIDFromInstance = cert_getUIDFromInstance;
+     collection->createObject = cert_createObject;
++    collection->createObjectForChromium = cert_createObjectForChromium;
+     if (certsOpt) {
+         for (; *certsOpt; certsOpt++) {
+             nssPKIObject *object = (nssPKIObject *)(*certsOpt);
+@@ -1055,6 +1068,21 @@ nssPKIObjectCollection_GetCertificates(
+     NSSCertificate **rvOpt,
+     PRUint32 maximumOpt,
+     NSSArena *arenaOpt)
++{
++    return nssPKIObjectCollection_GetCertificatesForChromium(collection,
++                                                             rvOpt,
++                                                             maximumOpt,
++                                                             arenaOpt,
++                                                             PR_FALSE);
++}
++
++NSS_IMPLEMENT NSSCertificate **
++nssPKIObjectCollection_GetCertificatesForChromium(
++    nssPKIObjectCollection *collection,
++    NSSCertificate **rvOpt,
++    PRUint32 maximumOpt,
++    NSSArena *arenaOpt,
++    PRBool ignoreChaps)
+ {
+     PRStatus status;
+     PRUint32 rvSize;
+@@ -1074,9 +1102,10 @@ nssPKIObjectCollection_GetCertificates(
+         }
+         allocated = PR_TRUE;
+     }
+-    status = nssPKIObjectCollection_GetObjects(collection,
+-                                               (nssPKIObject **)rvOpt,
+-                                               rvSize);
++    status = nssPKIObjectCollection_GetObjectsForChromium(collection,
++                                                          (nssPKIObject **)rvOpt,
++                                                          rvSize,
++                                                          ignoreChaps);
+     if (status != PR_SUCCESS) {
+         if (allocated) {
+             nss_ZFreeIf(rvOpt);
+@@ -1148,6 +1177,7 @@ nssCRLCollection_Create(
+     collection->getUIDFromObject = crl_getUIDFromObject;
+     collection->getUIDFromInstance = crl_getUIDFromInstance;
+     collection->createObject = crl_createObject;
++    collection->createObjectForChromium = NULL;
+     if (crlsOpt) {
+         for (; *crlsOpt; crlsOpt++) {
+             nssPKIObject *object = (nssPKIObject *)(*crlsOpt);
+@@ -1182,9 +1212,10 @@ nssPKIObjectCollection_GetCRLs(
+         }
+         allocated = PR_TRUE;
+     }
+-    status = nssPKIObjectCollection_GetObjects(collection,
+-                                               (nssPKIObject **)rvOpt,
+-                                               rvSize);
++    status = nssPKIObjectCollection_GetObjectsForChromium(collection,
++                                                          (nssPKIObject **)rvOpt,
++                                                          rvSize,
++                                                          PR_FALSE);
+     if (status != PR_SUCCESS) {
+         if (allocated) {
+             nss_ZFreeIf(rvOpt);
+diff --git a/lib/pki/pkim.h b/lib/pki/pkim.h
+index 3be3337..24edb2e 100644
+--- a/lib/pki/pkim.h
++++ b/lib/pki/pkim.h
+@@ -400,6 +400,14 @@ nssPKIObjectCollection_GetCertificates(
+     PRUint32 maximumOpt,
+     NSSArena *arenaOpt);
+ 
++NSS_EXTERN NSSCertificate **
++nssPKIObjectCollection_GetCertificatesForChromium(
++    nssPKIObjectCollection *collection,
++    NSSCertificate **rvOpt,
++    PRUint32 maximumOpt,
++    NSSArena *arenaOpt,
++    PRBool ignoreChaps);
++
+ NSS_EXTERN NSSCRL **
+ nssPKIObjectCollection_GetCRLs(
+     nssPKIObjectCollection *collection,
+@@ -451,6 +459,13 @@ nssTrustDomain_AddCertsToCache(
+     NSSCertificate **certs,
+     PRUint32 numCerts);
+ 
++NSS_EXTERN PRStatus
++nssTrustDomain_AddCertsToCacheForChromium(
++    NSSTrustDomain *td,
++    NSSCertificate **certs,
++    PRUint32 numCerts,
++    PRBool ignoreChaps);
++
+ NSS_EXTERN void
+ nssTrustDomain_RemoveCertFromCacheLOCKED(
+     NSSTrustDomain *td,
+diff --git a/lib/pki/tdcache.c b/lib/pki/tdcache.c
+index 8fb263b..00041fa 100644
+--- a/lib/pki/tdcache.c
++++ b/lib/pki/tdcache.c
+@@ -701,9 +701,10 @@ merge_object_instances(
+ }
+ 
+ static NSSCertificate *
+-add_cert_to_cache(
++add_cert_to_cache_for_chromium(
+     NSSTrustDomain *td,
+-    NSSCertificate *cert)
++    NSSCertificate *cert,
++    PRBool ignoreChaps)
+ {
+     NSSArena *arena = NULL;
+     nssList *subjectList = NULL;
+@@ -718,7 +719,7 @@ add_cert_to_cache(
+      * nssSlot_IsTokenPresent, which must not occur while the cache lock
+      * is held. See bugs 1625791 and 1651564 for details. */
+     if (cert->type == NSSCertificateType_PKIX) {
+-        (void)STAN_GetCERTCertificate(cert);
++        (void)STAN_GetCERTCertificateForChromium(cert, ignoreChaps);
+     }
+ 
+     PZ_Lock(td->cache->lock);
+@@ -741,7 +742,7 @@ add_cert_to_cache(
+             nssCertificate_Destroy(rvCert);
+             return NULL;
+         }
+-        STAN_ForceCERTCertificateUpdate(rvCert);
++        STAN_ForceCERTCertificateUpdateForChromium(rvCert, ignoreChaps);
+         nssCertificate_Destroy(cert);
+         return rvCert;
+     }
+@@ -842,11 +843,21 @@ nssTrustDomain_AddCertsToCache(
+     NSSTrustDomain *td,
+     NSSCertificate **certs,
+     PRUint32 numCerts)
++{
++    return nssTrustDomain_AddCertsToCacheForChromium(td, certs, numCerts, PR_FALSE);
++}
++
++NSS_IMPLEMENT PRStatus
++nssTrustDomain_AddCertsToCacheForChromium(
++    NSSTrustDomain *td,
++    NSSCertificate **certs,
++    PRUint32 numCerts,
++    PRBool ignoreChaps)
+ {
+     PRUint32 i;
+     NSSCertificate *c;
+     for (i = 0; i < numCerts && certs[i]; i++) {
+-        c = add_cert_to_cache(td, certs[i]);
++        c = add_cert_to_cache_for_chromium(td, certs[i], ignoreChaps);
+         if (c == NULL) {
+             return PR_FAILURE;
+         } else {
+diff --git a/lib/pki/trustdomain.c b/lib/pki/trustdomain.c
+index cf7546d..912d01d 100644
+--- a/lib/pki/trustdomain.c
++++ b/lib/pki/trustdomain.c
+@@ -668,9 +668,10 @@ nssTrustDomain_FindCertificatesBySubjectForChromium(
+     }
+     if (!collectionCount && errors)
+         goto loser;
+-    rvCerts = nssPKIObjectCollection_GetCertificates(collection,
+-                                                     rvOpt, maximumOpt,
+-                                                     arenaOpt);
++    rvCerts = nssPKIObjectCollection_GetCertificatesForChromium(collection,
++                                                                rvOpt, maximumOpt,
++                                                                arenaOpt,
++                                                                ignoreChaps);
+     nssPKIObjectCollection_Destroy(collection);
+     nssSlotArray_Destroy(slots);
+     return rvCerts;
+@@ -865,8 +866,8 @@ nssTrustDomain_FindCertificateByIssuerAndSerialNumberForChromium(
+                 status = nssPKIObjectCollection_AddInstances(collection,
+                                                              &instance, 1);
+                 if (status == PR_SUCCESS) {
+-                    (void)nssPKIObjectCollection_GetCertificates(
+-                        collection, &rvCert, 1, NULL);
++                    (void)nssPKIObjectCollection_GetCertificatesForChromium(
++                        collection, &rvCert, 1, NULL, ignoreChaps);
+                 }
+                 if (rvCert) {
+                     break; /* found one cert, all done */
+@@ -1142,6 +1143,15 @@ NSS_IMPLEMENT NSSTrust *
+ nssTrustDomain_FindTrustForCertificate(
+     NSSTrustDomain *td,
+     NSSCertificate *c)
++{
++    return nssTrustDomain_FindTrustForCertificateForChromium(td, c, PR_FALSE);
++}
++
++NSS_IMPLEMENT NSSTrust *
++nssTrustDomain_FindTrustForCertificateForChromium(
++    NSSTrustDomain *td,
++    NSSCertificate *c,
++    PRBool ignoreChaps)
+ {
+     NSSSlot **slots;
+     NSSSlot **slotp;
+@@ -1154,6 +1164,13 @@ nssTrustDomain_FindTrustForCertificate(
+         return (NSSTrust *)NULL;
+     }
+     for (slotp = slots; *slotp; slotp++) {
++        if (ignoreChaps) {
++            SECMODModule* pk11_module = PK11_GetModule((*slotp)->pk11slot);
++            if (pk11_module && strcmp(pk11_module->commonName, "Chaps") == 0) {
++                continue;
++            }
++        }
++
+         NSSToken *token = nssSlot_GetToken(*slotp);
+ 
+         if (token) {
+-- 
+2.42.0.582.g8ccd20d70d-goog
+

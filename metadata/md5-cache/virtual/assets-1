@@ -6,4 +6,4 @@ KEYWORDS=*
 LICENSE=metapackage
 RDEPEND=chromeos-base/chromiumos-assets
 SLOT=0
-_md5_=526faa72aa64235a4fe12b8f6d1ae8cd
+_md5_=f127ad8cb4a98fcf7782b477c9cfc5fc

@@ -1,0 +1,14 @@
+BDEPEND=>=app-portage/elt-patches-20170815 || ( >=sys-devel/automake-1.16.5-r1:1.16 >=sys-devel/automake-1.15.1-r2:1.15 ) >=sys-devel/autoconf-2.69
+DEFINED_PHASES=configure install prepare test unpack
+DEPEND=sys-devel/gnuconfig >=sys-devel/autoconf-2.69 >=sys-devel/automake-1.13 dev-libs/libltdl:0 !<sys-apps/sandbox-2.10-r4 app-arch/xz-utils >=app-portage/elt-patches-20170317
+DESCRIPTION=A shared library tool for developers
+EAPI=7
+HOMEPAGE=https://www.gnu.org/software/libtool/
+IUSE=vanilla
+KEYWORDS=*
+LICENSE=GPL-2
+RDEPEND=sys-devel/gnuconfig >=sys-devel/autoconf-2.69 >=sys-devel/automake-1.13 dev-libs/libltdl:0 !<sys-apps/sandbox-2.10-r4
+SLOT=2
+SRC_URI=mirror://gnu/libtool/libtool-2.4.6.tar.xz
+_eclasses_=autotools	9adb87822e85056674b476e1090a72ae	epunt-cxx	e99babeaa7d98c1caaa6a61a79902210	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	ad475baa777c9978fa035216c8264a10	libtool	f143db5a74ccd9ca28c1234deffede96	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	prefix	e51c7882b7b721e54e684f7eb143cbfe	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	unpacker	aa6a4e924009232d8b78b31e932c30b5
+_md5_=c3f2765a286089999144782298568ee0

@@ -1,4 +1,4 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 if [[ -z ${_ARC_BUILD_CONSTANTS_ECLASS} ]]; then
@@ -7,12 +7,14 @@ _ARC_BUILD_CONSTANTS_ECLASS=1
 # USE flags corresponding to different container versions.
 ANDROID_CONTAINER_VERS=(
 	android-container-pi
+	android-container-rvc
 )
 
 # USE flags corresponding to different VM versions.
 ANDROID_VM_VERS=(
 	android-vm-rvc
 	android-vm-sc
+	android-vm-tm
 	android-vm-master
 )
 

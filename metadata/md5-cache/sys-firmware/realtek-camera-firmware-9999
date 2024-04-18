@@ -1,0 +1,15 @@
+BDEPEND=dev-vcs/git app-misc/jq virtual/pkgconfig app-arch/cabextract
+DEFINED_PHASES=info install setup unpack
+DESCRIPTION=Installs Realtek camera firmware files used by fwupd.
+EAPI=7
+HOMEPAGE=http://www.realtek.com
+IUSE=cros_host cros_workon_tree_ remote
+KEYWORDS=~*
+LICENSE=LVFS-Vendor-Agreement-v1
+PROPERTIES=live
+RDEPEND=sys-apps/fwupd
+RESTRICT=mirror
+SLOT=0/9999
+SRC_URI=gs://chromeos-localmirror/lvfs//303bef0da8ff6acd8590bfcebdbdbc8e13bfebd63ca81df5bb6796b8b68c45d5-20230724_YHVA-3_RTS5856_OV2740_Chrome_acerR1-15_cache.cab
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-fwupd	9c47d58c7d130a7e9cb1de0bedff93dd	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	udev	eec0bbab06977f1cfc5597269c1fa152
+_md5_=e6e6824c6c441f0a2455d3e45ab230f8

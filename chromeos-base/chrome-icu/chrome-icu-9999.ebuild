@@ -1,4 +1,4 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -21,10 +21,9 @@
 #
 # The GN output folder is named as "out_icu_${BOARD}".
 
-EAPI=5
+EAPI=7
 
-# TODO(crbug.com/984182): We force Python 2 because depot_tools doesn't support Python 3.
-PYTHON_COMPAT=( python2_7 )
+PYTHON_COMPAT=( python3_{8..11} )
 inherit binutils-funcs chromium-source cros-constants cros-sanitizers flag-o-matic multilib toolchain-funcs python-any-r1 multiprocessing
 
 DESCRIPTION="The ICU library copied from chrome/third_party"
@@ -100,9 +99,7 @@ DEPEND="
 	x11-libs/libdrm
 "
 
-# [Mod] NaCl utilities are removed.
-
-usetf()  { usex $1 true false ; }
+usetf()  { usex "$1" true false ; }
 
 set_build_args() {
 	# [Mod] 1. Add a new arg "icu_disable_thin_archive=true".
@@ -129,7 +126,6 @@ set_build_args() {
 		"use_debug_fission=false"
 		"enable_remoting=false"
 		"enable_nacl=false"
-		"enable_nacl=false"
 		"icu_use_data_file=true"
 		# Add this to make xkbcommon handling identical with chromeos-chrome.
 		# This will make it more likely to catch potential xkbcommon related
@@ -145,16 +141,15 @@ set_build_args() {
 		"use_system_libsync=false"
 		"use_cups=$(usetf cups)"
 		"use_bundled_fontconfig=false"
+		# Do not build the package using Chrome's custom libc++.
+		# See crbug.com/1335422.
+		"use_custom_libcxx=false"
 
 		# Clang features.
 		"is_asan=$(usetf asan)"
 		"is_msan=$(usetf msan)"
 		"is_ubsan=$(usetf ubsan)"
-		"is_clang=true"
-		"cros_host_is_clang=true"
-		"clang_use_chrome_plugins=false"
 		"use_thin_lto=$(usetf thinlto)"
-		"clang_use_chrome_plugins=false"
 		"is_cfi=false"
 		"use_cfi_cast=false"
 		"use_cras=false"
@@ -203,28 +198,6 @@ set_build_args() {
 		;;
 	amd64)
 		BUILD_STRING_ARGS+=( "target_cpu=x64" )
-		;;
-	mips)
-		local mips_arch target_arch
-
-		mips_arch="$($(tc-getCPP) ${CFLAGS} ${CPPFLAGS} -E -P - <<<_MIPS_ARCH)"
-		# Strip away any enclosing quotes.
-		mips_arch="${mips_arch//\"}"
-		# TODO(benchan): Use tc-endian from toolchain-func to determine endianess
-		# when Chrome later cares about big-endian.
-		case "${mips_arch}" in
-		mips64*)
-			target_arch=mips64el
-			;;
-		*)
-			target_arch=mipsel
-			;;
-		esac
-
-		BUILD_STRING_ARGS+=(
-			"target_cpu=${target_arch}"
-			"mips_arch_variant=${mips_arch}"
-		)
 		;;
 	*)
 		die "Unsupported architecture: ${ARCH}"
@@ -289,7 +262,7 @@ sandboxless_ensure_directory() {
 			# We need root access to create these directories, so we need to
 			# use sudo. This implicitly disables the sandbox.
 			sudo mkdir -p "${dir}" || die
-			sudo chown "${PORTAGE_USERNAME}:portage" "${dir}" || die
+			sudo chown "${PORTAGE_USERNAME}:${PORTAGE_GRPNAME}" "${dir}" || die
 			sudo chmod 0755 "${dir}" || die
 		fi
 	done
@@ -328,7 +301,7 @@ src_unpack() {
 	# support it.
 	case "${CHROME_ORIGIN}" in
 	LOCAL_SOURCE|SERVER_SOURCE)
-		elog "CHROME_ORIGIN VALUE is ${CHROME_ORIGIN}"
+		einfo "CHROME_ORIGIN VALUE is ${CHROME_ORIGIN}"
 		;;
 	*)
 		die "CHROME_ORIGIN not one of LOCAL_SOURCE, SERVER_SOURCE"
@@ -385,6 +358,9 @@ src_unpack() {
 # services; 2) we exclude the case CHROME_ORIGIN=LOCAL_BINARY and 3) we do
 # not need patches.
 src_prepare() {
+	# Must call eapply_user in EAPI 7, but this function is a no-op here.
+	eapply_user
+
 	cd "${CHROME_ROOT}/src" || die "Cannot chdir to ${CHROME_ROOT}"
 	mkdir -p "${CHROME_CACHE_DIR}/src/${BUILD_OUT}"
 	if [[ -n "${BUILD_OUT_SYM}" ]]; then
@@ -416,43 +392,18 @@ setup_compile_flags() {
 	EBUILD_CXXFLAGS=()
 	EBUILD_LDFLAGS=()
 
-	# LLVM needs this when parsing profiles.
-	# See README on https://github.com/google/autofdo
-	# For ARM, we do not need this flag because we don't get profiles
-	# from ARM machines. And it triggers an llvm assertion when thinlto
-	# and debug fission is used together.
-	# See https://bugs.llvm.org/show_bug.cgi?id=37255
-	use arm || append-flags -fdebug-info-for-profiling
-
 	if use thinlto; then
-		# We need to change the default value of import-instr-limit in
-		# LLVM to limit the text size increase. The default value is
-		# 100, and we change it to 30 to reduce the text size increase
-		# from 25% to 10%. The performance number of page_cycler is the
-		# same on two of the thinLTO configurations, we got 1% slowdown
-		# on speedometer when changing import-instr-limit from 100 to 30.
-		# We need to further reduce it to 20 for arm to limit the size
-		# increase to 10%.
-		local thinlto_ldflag="-Wl,-plugin-opt,-import-instr-limit=30"
-		if use arm; then
-			thinlto_ldflag="-Wl,-plugin-opt,-import-instr-limit=20"
-			EBUILD_LDFLAGS+=( -gsplit-dwarf )
-		fi
-		EBUILD_LDFLAGS+=( "${thinlto_ldflag}" )
 		# if using thinlto, we need to pass the equivalent of
 		# -fdebug-types-section to the backend, to prevent out-of-range
 		# relocations (see
 		# https://bugs.chromium.org/p/chromium/issues/detail?id=1032159).
 		append-ldflags -Wl,-mllvm
 		append-ldflags -Wl,-generate-type-units
+	else
+		# Non-ThinLTO builds with symbol_level=2 may have out-of-range
+		# relocations, too: crbug.com/1050819.
+		append-flags -fdebug-types-section
 	fi
-
-	# [Mod] Configurations related to orderfile_generate USE flag are removed.
-
-	# Turn off call graph profile sort (C3), when new pass manager is enabled.
-	# Only allow it when we want to generate orderfile.
-	# This is a temporary option and will need to be removed once orderfile is on.
-	EBUILD_LDFLAGS+=( "-Wl,--no-call-graph-profile-sort" )
 
 	# Enable std::vector []-operator bounds checking.
 	append-cxxflags -D__google_stl_debug_vector=1
@@ -523,10 +474,6 @@ src_configure() {
 	export PATH=${PATH}:${DEPOT_TOOLS}
 
 	export DEPOT_TOOLS_GSUTIL_BIN_DIR="${CHROME_CACHE_DIR}/gsutil_bin"
-	# The venv logic seems to misbehave when cross-compiling.  Since our SDK
-	# should include all the necessary modules, just disable it (for now).
-	# https://crbug.com/808434
-	export VPYTHON_BYPASS="manually managed python not supported by chrome operations"
 
 	# TODO(rcui): crosbug.com/20435. Investigate removal of runhooks
 	# useflag when chrome build switches to Ninja inside the chroot.
@@ -605,8 +552,6 @@ chrome_make() {
 	[[ "${ret}" -eq 0 ]] || die
 }
 
-# [Mod] src_compile() is simplied because 1) the case CHROME_LOCAL=LOCAL_BINARY
-# is excluded. 2) we do not need nacl or tests.
 src_compile() {
 	cd "${CHROME_ROOT}"/src || die "Cannot chdir to ${CHROME_ROOT}/src"
 
@@ -624,74 +569,20 @@ src_install() {
 	# Install to chrome folder to make chrome work.
 	insinto "${CHROME_DIR}"
 	doins "${build_dir}/icudtl.dat"
+	doins "${build_dir}/icudtl.dat.hash"
 
-	# Install icu header to /usr/include/icu${CHROME_ICU_POSTFIX}/.
-	local icu_headers=(
-		"common/unicode/appendable.h"
-		"common/unicode/brkiter.h"
-		"common/unicode/bytestream.h"
-		"common/unicode/char16ptr.h"
-		"common/unicode/chariter.h"
-		"common/unicode/errorcode.h"
-		"common/unicode/localpointer.h"
-		"common/unicode/locid.h"
-		"common/unicode/parseerr.h"
-		"common/unicode/platform.h"
-		"common/unicode/ptypes.h"
-		"common/unicode/putil.h"
-		"common/unicode/rep.h"
-		"common/unicode/schriter.h"
-		"common/unicode/std_string.h"
-		"common/unicode/strenum.h"
-		"common/unicode/stringoptions.h"
-		"common/unicode/stringpiece.h"
-		"common/unicode/ubrk.h"
-		"common/unicode/uchar.h"
-		"common/unicode/uchriter.h"
-		"common/unicode/uclean.h"
-		"common/unicode/ucnv.h"
-		"common/unicode/ucnv_err.h"
-		"common/unicode/uconfig.h"
-		"common/unicode/ucpmap.h"
-		"common/unicode/ucurr.h"
-		"common/unicode/udata.h"
-		"common/unicode/udisplaycontext.h"
-		"common/unicode/uenum.h"
-		"common/unicode/uloc.h"
-		"common/unicode/umachine.h"
-		"common/unicode/umisc.h"
-		"common/unicode/unifilt.h"
-		"common/unicode/unifunct.h"
-		"common/unicode/unimatch.h"
-		"common/unicode/uniset.h"
-		"common/unicode/unistr.h"
-		"common/unicode/uobject.h"
-		"common/unicode/urename.h"
-		"common/unicode/ures.h"
-		"common/unicode/uscript.h"
-		"common/unicode/uset.h"
-		"common/unicode/utext.h"
-		"common/unicode/utf.h"
-		"common/unicode/utf16.h"
-		"common/unicode/utf8.h"
-		"common/unicode/utf_old.h"
-		"common/unicode/utypes.h"
-		"common/unicode/uvernum.h"
-		"common/unicode/uversion.h"
-		"i18n/unicode/calendar.h"
-		"i18n/unicode/gregocal.h"
-		"i18n/unicode/regex.h"
-		"i18n/unicode/timezone.h"
-		"i18n/unicode/ucal.h"
-		"i18n/unicode/ucsdet.h"
-		"i18n/unicode/ufieldpositer.h"
-		"i18n/unicode/uformattable.h"
-		"i18n/unicode/unum.h"
-		"i18n/unicode/uregex.h"
-	)
-	local f
-	for f in "${icu_headers[@]}"; do
-		insinto "/usr/include/icu${CHROME_ICU_POSTFIX}/${f%/*}"
-		doins "${CHROME_ROOT}/src/third_party/icu/source/${f}"
-	done
+	# Install all icu headers to avoid potential breakage in icu upgrades.
+	local icu_header_dir="${D}/usr/include/icu${CHROME_ICU_POSTFIX}/"
+	# Recursively copy the headers from chromium/icu into sysroot include.
+	# -rpm Copy directories recursively, remove empty directories, set permissions
+	# --chmod=D755,F644 set directories to 755, files to 644
+	# --mkpath create destination's missing path components
+	# --delete remove stale files from destination
+	# --include="*.h" Don't exclude files ending in .h.
+	# --include="*/" Include all subdirs.
+	# --exclude="*" exclude anything not matching previous two include rules
+	rsync -rpm --chmod=D755,F644 --mkpath --delete     \
+		--include="*.h" --include="*/" --exclude="*" \
+		"${CHROME_ROOT}/src/third_party/icu/source/" \
+		"${icu_header_dir}" || die
 }

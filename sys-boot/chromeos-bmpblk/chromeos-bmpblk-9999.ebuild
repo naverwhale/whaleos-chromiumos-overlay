@@ -1,24 +1,24 @@
-# Copyright 2015 The Chromium OS Authors. All rights reserved.
+# Copyright 2015 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
 CROS_WORKON_PROJECT="chromiumos/platform/bmpblk"
 CROS_WORKON_LOCALNAME="../platform/bmpblk"
 CROS_WORKON_OUTOFTREE_BUILD="1"
-CROS_WORKON_USE_VCSID="1"
 
-PYTHON_COMPAT=( python3_{6..8} )
-inherit cros-workon python-any-r1
+PYTHON_COMPAT=( python3_{6..9} )
+inherit cros-workon python-r1 cros-unibuild
 
 DESCRIPTION="Chrome OS Firmware Bitmap Block"
 HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform/bmpblk/"
 SRC_URI=""
 LICENSE="BSD-Google"
 KEYWORDS="~*"
-IUSE="detachable physical_presence_power physical_presence_recovery unibuild"
+IUSE="physical_presence_power physical_presence_recovery unibuild"
 REQUIRED_USE="unibuild"
 
-BDEPEND="${PYTHON_DEPS}"
+BDEPEND="${PYTHON_DEPS}
+	dev-python/pillow[${PYTHON_USEDEP}]"
 DEPEND="chromeos-base/chromeos-config:="
 
 BMPBLK_BUILD_NAMES=()
@@ -37,8 +37,6 @@ src_prepare() {
 		BMPBLK_BUILD_TARGETS+=("${bmpblk_target}")
 	done < <(cros_config_host get-firmware-build-combinations bmpblk)
 
-	export VCSID
-
 	default
 
 	# if fontconfig's cache is empty, prepare single use cache.
@@ -50,16 +48,16 @@ src_prepare() {
 		return
 	fi
 
-	TMPCACHE=$(mktemp -d)
-	cat > $TMPCACHE/local-conf.xml <<-EOF
+	local tmpcache=$(emktemp -d)
+	cat > "${tmpcache}"/local-conf.xml <<-EOF
 		<?xml version="1.0"?>
 		<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
 		<fontconfig>
-		<cachedir>$TMPCACHE</cachedir>
+		<cachedir>${tmpcache}</cachedir>
 		<include>/etc/fonts/fonts.conf</include>
 		</fontconfig>
 	EOF
-	export FONTCONFIG_FILE=$TMPCACHE/local-conf.xml
+	export FONTCONFIG_FILE=${tmpcache}/local-conf.xml
 	fc-cache -v
 }
 
@@ -68,16 +66,35 @@ src_prepare() {
 compile_bmpblk() {
 	local build_target="$1"
 
-	if use detachable ; then
+	config_detachable="$(cros_config_host get-key-value \
+		/firmware/build-targets bmpblk "${build_target}" \
+		/firmware detachable-ui --ignore-unset)" || \
+		die "Unable to determine detachable ui config for ${build_target}"
+	if [[ "${config_detachable}" == "True" ]] ; then
 		export DETACHABLE=1
 	fi
 
-	if use physical_presence_power ; then
-		export PHYSICAL_PRESENCE="power"
-	elif use physical_presence_recovery ; then
-		export PHYSICAL_PRESENCE="recovery"
+	recovery_input="$(cros_config_host get-firmware-recovery-input bmpblk "${build_target}")" || \
+		die "Unable to determine recovery input for ${build_target}"
+	if [[ -n "${recovery_input}" ]] ; then
+		einfo "Using cros_config_host to configure recovery"
+		if [[ "${recovery_input}" == "POWER_BUTTON" ]] ; then
+			export PHYSICAL_PRESENCE="power"
+		elif [[ "${recovery_input}" == "RECOVERY_BUTTON" ]] ; then
+			export PHYSICAL_PRESENCE="recovery"
+		else
+			export PHYSICAL_PRESENCE="keyboard"
+		fi
 	else
-		export PHYSICAL_PRESENCE="keyboard"
+		# TODO(b/229906790) Remove this once USE flag support not longer needed
+		einfo "Recovery input method not found in config. Reverting to deprecated use flags"
+		if use physical_presence_power ; then
+			export PHYSICAL_PRESENCE="power"
+		elif use physical_presence_recovery ; then
+			export PHYSICAL_PRESENCE="recovery"
+		else
+			export PHYSICAL_PRESENCE="keyboard"
+		fi
 	fi
 
 	emake OUTPUT="${WORKDIR}" BOARD="${build_target}" || \

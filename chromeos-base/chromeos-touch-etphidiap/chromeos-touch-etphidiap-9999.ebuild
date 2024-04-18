@@ -1,9 +1,9 @@
-# Copyright (c) 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the BSD license.
 
 EAPI=7
 CROS_WORKON_PROJECT="chromiumos/platform/touch_updater"
-CROS_WORKON_LOCALNAME="touch_updater"
+CROS_WORKON_LOCALNAME="platform/touch_updater"
 CROS_WORKON_SUBTREE="etphidiap"
 CROS_WORKON_OUTOFTREE_BUILD=1
 

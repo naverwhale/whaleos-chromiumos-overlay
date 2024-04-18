@@ -1,0 +1,9 @@
+DEFINED_PHASES=-
+DESCRIPTION=Camera support library for Linux virtual package
+EAPI=7
+IUSE=libcamera-mtkisp7
+KEYWORDS=*
+LICENSE=LGPL-2.1+
+RDEPEND=libcamera-mtkisp7? ( media-libs/libcamera-mtkisp7 ) !libcamera-mtkisp7? ( media-libs/libcamera-upstream )
+SLOT=0
+_md5_=13a5a520fe8a6c99341f5490ee137e61

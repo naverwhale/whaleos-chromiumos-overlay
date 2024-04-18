@@ -1,0 +1,48 @@
+From 899fe06ab65460efe5ae61fe215a9e3f949c6886 Mon Sep 17 00:00:00 2001
+From: Ming Qian <ming.qian@nxp.com>
+Date: Tue, 17 Jan 2023 02:31:54 +0000
+Subject: [PATCH] BACKPORT: media: add RealVideo format RV30 and RV40
+
+RealVideo, or also spelled as Real Video, is a suite of proprietary
+video compression formats developed by RealNetworks -
+the specific format changes with the version.
+RealVideo codecs are identified by four-character codes.
+RV30 and RV40 are RealNetworks' proprietary H.264-based codecs.
+
+Reviewed-by: Nicolas Dufresne <nicolas.dufresne@collabora.com>
+Signed-off-by: Ming Qian <ming.qian@nxp.com>
+Signed-off-by: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Signed-off-by: Mauro Carvalho Chehab <mchehab@kernel.org>
+(cherry picked from commit ec9aa62a1e4d151e9f14b7bda0b13438a901f904)
+
+Conflicts:
+   Documentation/userspace-api/media/v4l/pixfmt-compressed.rst
+   drivers/media/v4l2-core/v4l2-ioctl.c
+
+Non-uAPI changes dropped.
+
+BUG=b:278157861
+TEST=Check header
+
+Change-Id: I54b39f212a2803c82f66eaa582accdeac4f1ac27
+Signed-off-by: Chen-Yu Tsai <wenst@chromium.org>
+---
+ include/uapi/linux/videodev2.h | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index 5a4d7f28a0d9..5e91d2e7ab4b 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -645,6 +645,8 @@ struct v4l2_pix_format {
+ #define V4L2_PIX_FMT_H264_SLICE v4l2_fourcc('S', '2', '6', '4') /* H264 parsed slices */
+ #define V4L2_PIX_FMT_HEVC_SLICE v4l2_fourcc('S', '2', '6', '5') /* HEVC parsed slices */
+ #define V4L2_PIX_FMT_SPK      v4l2_fourcc('S', 'P', 'K', '0') /* Sorenson Spark */
++#define V4L2_PIX_FMT_RV30     v4l2_fourcc('R', 'V', '3', '0') /* RealVideo 8 */
++#define V4L2_PIX_FMT_RV40     v4l2_fourcc('R', 'V', '4', '0') /* RealVideo 9 & 10 */
+ 
+ /*  Vendor-specific formats   */
+ #define V4L2_PIX_FMT_CPIA1    v4l2_fourcc('C', 'P', 'I', 'A') /* cpia1 YUV */
+-- 
+2.39.2
+

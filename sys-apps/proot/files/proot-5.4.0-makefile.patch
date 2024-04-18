@@ -1,0 +1,11 @@
+--- a/src/GNUmakefile	2023-05-13 16:08:11.000000000 +0900
++++ b/src/GNUmakefile	2023-07-13 16:11:42.445758731 +0900
+@@ -21,7 +21,7 @@
+ HAS_PYTHON_CONFIG := $(shell ${PYTHON}-config --ldflags ${PYTHON_EMBED} 2>/dev/null)
+
+ CPPFLAGS += -D_FILE_OFFSET_BITS=64 -D_GNU_SOURCE -I. -I$(VPATH) -I$(VPATH)/../lib/uthash/include
+-CFLAGS   += -g -Wall -Wextra -O2
++CFLAGS   += -Wall -Wextra
+ CFLAGS   += $(shell pkg-config --cflags talloc)
+ LDFLAGS  += -Wl,-z,noexecstack
+ LDFLAGS  += $(shell pkg-config --libs talloc)

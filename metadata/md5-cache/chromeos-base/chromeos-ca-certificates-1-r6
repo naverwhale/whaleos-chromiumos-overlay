@@ -1,8 +1,0 @@
-DEFINED_PHASES=compile install
-DESCRIPTION=Chrome OS restricted set of certificates
-EAPI=7
-HOMEPAGE=https://chromium.googlesource.com/chromiumos/docs/+/HEAD/ca_certs.md
-KEYWORDS=*
-LICENSE=BSD-Google
-SLOT=0
-_md5_=41aeff82b33a462f998190ca90c4ea27

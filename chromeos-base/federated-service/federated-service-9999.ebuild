@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -17,13 +17,18 @@ HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/federate
 LICENSE="BSD-Google"
 SLOT="0"
 KEYWORDS="~*"
-IUSE=""
+IUSE="local-federated-server fuzzer"
 
 RDEPEND="
 	dev-db/sqlite:=
 	chromeos-base/dlcservice-client:=
+	chromeos-base/metrics:=
 	chromeos-base/session_manager-client:=
-	chromeos-base/system_api:=
+	chromeos-base/shill-dbus-client:=
+	chromeos-base/system_api:=[fuzzer?]
+	dev-cpp/abseil-cpp:=
+	dev-libs/protobuf:=
+	dev-libs/re2:=
 	sys-cluster/fcp:=
 "
 
@@ -40,23 +45,7 @@ pkg_setup() {
 }
 
 src_install() {
-	dobin "${OUT}"/federated_service
-
-	# Install upstart configuration.
-	insinto /etc/init
-	doins init/*.conf
-
-	# Install seccomp policy file.
-	insinto /usr/share/policy
-	newins "seccomp/federated_service-seccomp-${ARCH}.policy" federated_service-seccomp.policy
-
-	# Install D-Bus configuration file.
-	insinto /etc/dbus-1/system.d
-	doins dbus/org.chromium.Federated.conf
-
-	# Install D-Bus service activation configuration.
-	insinto /usr/share/dbus-1/system-services
-	doins dbus/org.chromium.Federated.service
+	platform_src_install
 
 	# Storage path for examples, will be mounted as
 	# /run/daemon-store/federated/<user_hash> after user logs in.
@@ -64,8 +53,14 @@ src_install() {
 	dodir "${daemon_store}"
 	fperms 0700 "${daemon_store}"
 	fowners federated-service:federated-service "${daemon_store}"
+
+	local fuzzer_component_id="1176098"
+	for fuzzer in "${OUT}"/*_fuzzer; do
+		platform_fuzzer_install "${S}"/OWNERS "${fuzzer}" \
+			--comp "${fuzzer_component_id}"
+	done
 }
 
 platform_pkg_test() {
-	platform_test "run" "${OUT}/federated_service_test"
+	platform test_all
 }

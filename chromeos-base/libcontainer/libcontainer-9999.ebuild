@@ -1,4 +1,4 @@
-# Copyright 2016 The Chromium OS Authors. All rights reserved.
+# Copyright 2016 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -14,7 +14,7 @@ PLATFORM_SUBDIR="libcontainer"
 inherit cros-workon platform user
 
 DESCRIPTION="Library to run jailed containers on Chrome OS"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/libcontainer/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/libcontainer/"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
@@ -26,6 +26,8 @@ RDEPEND="chromeos-base/minijail:=
 DEPEND="${RDEPEND}"
 
 src_install() {
+	platform_src_install
+
 	into /
 	dolib.so "${OUT}"/lib/libcontainer.so
 

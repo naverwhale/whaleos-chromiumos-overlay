@@ -1,0 +1,10 @@
+BDEPEND=|| ( dev-lang/python:3.8 dev-lang/python:3.9 dev-lang/python:3.10 dev-lang/python:3.11 )
+DEFINED_PHASES=install setup
+DESCRIPTION=PS8815-A2 Application Firmware Binary
+EAPI=7
+KEYWORDS=*
+LICENSE=Google-Partners-Website
+SLOT=0
+SRC_URI=gs://chromeos-localmirror/distfiles/parade-ps8815a2-app-firmware-36.tar.xz
+_eclasses_=flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	python-any-r1	54a3178500786b0a7ede4a23b7f2a6ad	python-utils-r1	76252008070e69454f51fa80c07638c9	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=36e7b50bd08ae1db5680aa9fc7251f3e

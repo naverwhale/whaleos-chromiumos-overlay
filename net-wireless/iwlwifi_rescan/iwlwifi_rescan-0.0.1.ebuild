@@ -1,7 +1,7 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=5
+EAPI="7"
 
 inherit udev
 
@@ -36,5 +36,5 @@ src_install() {
 
 	# Set the iwlwifi module parameters.
 	insinto "/etc/modprobe.d"
-	doins "${FILESDIR}/modprobe.d/iwlwifi.conf"
+	doins "${FILESDIR}/modprobe.d/iwlwifi_remove_when_gone.conf"
 }

@@ -15,14 +15,15 @@ USE_EXPAND_VALUES_USERLAND="BSD GNU"
 
 # Env vars to expand into USE vars.  Modifying this requires prior
 # discussion on gentoo-dev@lists.gentoo.org.
-USE_EXPAND="ABI_ARM ABI_MIPS ABI_PPC ABI_S390 ABI_X86 ALSA_CARDS APACHE2_MODULES APACHE2_MPMS CALLIGRA_FEATURES CAMERAS COLLECTD_PLUGINS CPU_FLAGS_X86 CROSSCOMPILE_OPTS CURL_SSL DRACUT_MODULES DVB_CARDS ELIBC ENLIGHTENMENT_MODULES FCDSL_CARDS FFTOOLS FOO2ZJS_DEVICES FRITZCAPI_CARDS GPSD_PROTOCOLS GRUB_PLATFORMS INPUT_DEVICES KERNEL LCD_DEVICES LIBREOFFICE_EXTENSIONS LINGUAS LIRC_DEVICES LLVM_TARGETS MONKEYD_PLUGINS NETBEANS_MODULES NGINX_MODULES_HTTP NGINX_MODULES_MAIL NGINX_MODULES_STREAM OFED_DRIVERS OFFICE_IMPLEMENTATION OPENMPI_FABRICS OPENMPI_OFED_FEATURES OPENMPI_RM PHP_TARGETS PYTHON_SINGLE_TARGET PYTHON_TARGETS QEMU_SOFTMMU_TARGETS QEMU_USER_TARGETS RUBY_TARGETS SANE_BACKENDS USERLAND UWSGI_PLUGINS VIDEO_CARDS VOICEMAIL_STORAGE XFCE_PLUGINS XTABLES_ADDONS ROS_MESSAGES"
+USE_EXPAND="ABI_ARM ABI_MIPS ABI_PPC ABI_S390 ABI_X86 ALSA_CARDS APACHE2_MODULES APACHE2_MPMS CALLIGRA_FEATURES CAMERAS COLLECTD_PLUGINS CPU_FLAGS_X86 CROSSCOMPILE_OPTS CURL_SSL DRACUT_MODULES DVB_CARDS ELIBC ENLIGHTENMENT_MODULES FCDSL_CARDS FFTOOLS FOO2ZJS_DEVICES FRITZCAPI_CARDS GPSD_PROTOCOLS GRUB_PLATFORMS INPUT_DEVICES KERNEL LCD_DEVICES LIBREOFFICE_EXTENSIONS LINGUAS LIRC_DEVICES LLVM_TARGETS MONKEYD_PLUGINS NETBEANS_MODULES NGINX_MODULES_HTTP NGINX_MODULES_MAIL NGINX_MODULES_STREAM OFED_DRIVERS OFFICE_IMPLEMENTATION OPENMPI_FABRICS OPENMPI_OFED_FEATURES OPENMPI_RM PHP_TARGETS PYTHON_SINGLE_TARGET PYTHON_TARGETS QEMU_SOFTMMU_TARGETS QEMU_USER_TARGETS RUBY_TARGETS SANE_BACKENDS USERLAND UWSGI_PLUGINS VIDEO_CARDS VOICEMAIL_STORAGE XFCE_PLUGINS XTABLES_ADDONS ROS_MESSAGES CPU_FLAGS_ARM"
 
 # USE_EXPAND variables whose contents are not shown in package manager
 # output. Changes need discussion on gentoo-dev.
 USE_EXPAND_HIDDEN="USERLAND KERNEL ELIBC ABI_ARM ABI_MIPS ABI_PPC ABI_S390 ABI_X86 CPU_FLAGS_X86"
 
 # Basic CONFIG_PROTECT is defined by portage make.globals in /usr/share. That is really bad, kill it here.
-CONFIG_PROTECT="-/etc"
+# Leave one (fake) path in to avoid portage warning the value is empty.
+CONFIG_PROTECT="-/etc /fake-file"
 CONFIG_PROTECT_MASK="/etc/env.d /etc/gconf"
 
 # Variables that are set exclusively by the profile
@@ -63,10 +64,6 @@ PHP_TARGETS="php5-5"
 # Andreas K. Huettel <dilfridge@gentoo.org> (28 Sep 2010)
 # Small default list of enabled plugins for collectd
 COLLECTD_PLUGINS="df interface irq load memory rrdtool swap syslog"
-
-# Tomáš Chvátal <scarabeus@gentoo.org> (26 Oct 2010)
-# By default enable all protocols for average GPS user
-GPSD_PROTOCOLS="ashtech aivdm earthmate evermore fv18 garmin garmintxt gpsclock itrax mtk3301 nmea ntrip navcom oceanserver oldstyle oncore rtcm104v2 rtcm104v3 sirf superstar2 timing tsip tripmate tnt ublox ubx"
 
 # Benedikt Böhm <hollow@gentoo.org> (27 Nov 2007)
 # Sane defaults for built-in apache modules
@@ -145,15 +142,12 @@ LC_MESSAGES="C"
 
 # ChromeOS-specific: BOARD_USE for accessing board value in cros-board.eclass
 #                    CROS_WORKON_TREE for cros-workon
+#                    CHROMEOS_KERNEL_FAMILY for kernel config family
+#                    FPMCU_FIRMWARE for compiling the fingerprint firmware
+#                    LINUX_FIRMWARE for selecting upstream firmware components
 #                    TESTS USE_EXPAND for autotest
 #                    TTY_CONSOLE for enabling tty consoles
 #                    U_BOOT_CONFIG_USE for selecting U-Boot config
-#                    U_BOOT_FDT_USE for selecting U-Boot device tree
-#                    LINUX_FIRMWARE for selecting upstream firmware components
-#                    OZONE_PLATFORM for platforms to build into chrome
-#                    EC_FIRMWARE for compiling the main EC image
-#                    EC_FIRMWARE_EXTRA for compiling other needed EC images
-#                    FPMCU_FIRMWARE for compiling the fingerprint firmware
 #
 # When you add a variable to USE_EXPAND, it means that if portage encounters
 # the specified variable in make.defaults it will expand it into a USE variable
@@ -168,7 +162,17 @@ LC_MESSAGES="C"
 #
 #   fpmcu_firmware_bloonchipper
 #   fpmcu_firmware_dartmonkey
-USE_EXPAND="${USE_EXPAND} BOARD_USE CROS_WORKON_TREE TESTS TTY_CONSOLE U_BOOT_CONFIG_USE U_BOOT_FDT_USE LINUX_FIRMWARE OZONE_PLATFORM OZONE_PLATFORM_DEFAULT EC_FIRMWARE EC_FIRMWARE_EXTRA FPMCU_FIRMWARE"
+USE_EXPAND="
+	${USE_EXPAND}
+	BOARD_USE
+	CROS_WORKON_TREE
+	CHROMEOS_KERNEL_FAMILY
+	FPMCU_FIRMWARE
+	LINUX_FIRMWARE
+	TESTS
+	TTY_CONSOLE
+	U_BOOT_CONFIG_USE
+"
 USE_EXPAND_HIDDEN="${USE_EXPAND_HIDDEN} CROS_WORKON_TREE"
 
 # Default licenses that are accepted for ChromiumOS builds.
@@ -186,3 +190,7 @@ CROS_WORKON_TREE=""
 # We don't use the news feature anywhere.  Disable it to avoid useless runtime
 # overhead (especially with locking checks).
 FEATURES="-news"
+
+# Languages are handled by Chrome, and localization is not required
+# from individual packages.
+LINGUAS="en"

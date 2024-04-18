@@ -1,9 +1,9 @@
 # Copyright 1999-2018 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=6
+EAPI=7
 
-inherit systemd toolchain-funcs
+inherit systemd tmpfiles toolchain-funcs
 
 DESCRIPTION="A modern version of the Layer 2 Tunneling Protocol (L2TP) daemon"
 HOMEPAGE="https://github.com/xelerance/xl2tpd"
@@ -38,7 +38,7 @@ src_install() {
 	newinitd "${FILESDIR}"/xl2tpd-init-r1 xl2tpd
 
 	systemd_dounit "${FILESDIR}"/xl2tpd.service
-	systemd_dotmpfilesd "${FILESDIR}"/xl2tpd.conf
+	dotmpfiles "${FILESDIR}"/xl2tpd.conf
 
 	einstalldocs
 

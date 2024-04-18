@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -23,7 +23,3 @@ KEYWORDS="~*"
 
 DEPEND="
 	chromeos-base/perfetto:="
-
-src_install() {
-	dobin "${OUT}"/perfetto_simple_producer
-}

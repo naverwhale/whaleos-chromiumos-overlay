@@ -1,0 +1,29 @@
+From d56cd8bad068e596448553d149e9f9f7cc780871 Mon Sep 17 00:00:00 2001
+From: Yunke Cao <yunkec@chromium.org>
+Date: Fri, 4 Aug 2023 11:04:33 +0900
+Subject: [PATCH 3/5] BACKPORT: FROMLIST: media: v4l2_ctrl: Add
+ V4L2_CTRL_TYPE_RECT
+
+Copied the definition of V4L2_CTRL_TYPE_RECT
+from https://patchwork.kernel.org/project/linux-media/patch/20230426082923.132909-2-yunkec@google.com/
+
+Signed-off-by: Yunke Cao <yunkec@google.com>
+---
+ include/uapi/linux/videodev2.h | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index e043a32..396a603 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -1740,6 +1740,7 @@ enum v4l2_ctrl_type {
+ 	V4L2_CTRL_TYPE_U8	     = 0x0100,
+ 	V4L2_CTRL_TYPE_U16	     = 0x0101,
+ 	V4L2_CTRL_TYPE_U32	     = 0x0102,
++	V4L2_CTRL_TYPE_RECT	     = 0x0107,
+ 
+ 	V4L2_CTRL_TYPE_H264_SPS             = 0x0200,
+ 	V4L2_CTRL_TYPE_H264_PPS		    = 0x0201,
+-- 
+2.41.0.585.gd2178a4bd4-goog
+

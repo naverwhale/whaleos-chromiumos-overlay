@@ -1,4 +1,4 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -12,12 +12,13 @@ CROS_WORKON_SUBTREE="common-mk arc/container/bundle .gn"
 inherit cros-workon user
 
 DESCRIPTION="Container to run Android."
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/arc/container/bundle"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/arc/container/bundle"
 
 LICENSE="BSD-Google"
 KEYWORDS="~*"
 
 IUSE="
+	android-container-rvc
 	arcpp
 	arcvm
 	"
@@ -32,7 +33,16 @@ CONTAINER_ROOTFS="/opt/google/containers/android/rootfs"
 src_install() {
 	if use arcpp; then
 		insinto /opt/google/containers/android
-		doins arc/container/bundle/pi/config.json
+		if use android-container-rvc; then
+			doins arc/container/bundle/rvc/config.json
+		else
+			doins arc/container/bundle/pi/config.json
+		fi
+
+		if use android-container-rvc; then
+			insinto /lib/udev/rules.d
+			doins arc/container/bundle/rvc/95-arcinput.rules
+		fi
 
 		# Install exception file for FIFO blocking policy on stateful partition.
 		insinto /usr/share/cros/startup/fifo_exceptions

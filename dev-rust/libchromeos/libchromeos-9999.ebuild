@@ -1,4 +1,4 @@
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -19,27 +19,27 @@ LICENSE="BSD-Google"
 KEYWORDS="~*"
 IUSE="test"
 
-COMMON_DEPEND="chromeos-base/vboot_reference:="
-
-DEPEND="${COMMON_DEPEND}
-	dev-rust/data_model:=
-	=dev-rust/dbus-0.9*:=
-	=dev-rust/futures-0.3*:=
-	=dev-rust/getopts-0.2*:=
-	=dev-rust/intrusive-collections-0.9*:=
-	>=dev-rust/lazy_static-1.4.0:= <dev-rust/lazy_static-2.0.0
-	=dev-rust/libc-0.2*:=
-	=dev-rust/log-0.4*:=
-	>=dev-rust/pkg-config-0.3.11:= <dev-rust/pkg-config-0.4.0:=
-	>=dev-rust/protobuf-2.1:= !>=dev-rust/protobuf-3.0:=
-	dev-rust/sys_util:=
+COMMON_DEPEND="
+	dev-rust/third-party-crates-src:=
+	>=dev-rust/poll_token_derive-0.1.1:=
 	dev-rust/system_api:=
-	>=dev-rust/thiserror-1.0.20:= <dev-rust/thiserror-2.0.0
-	>=dev-rust/zeroize-1.2.0:= <dev-rust/zeroize-2.0.0
+	dev-rust/vboot_reference-sys:=
+	sys-apps/dbus:=
 "
 
-RDEPEND="${COMMON_DEPEND}
-	!!<=dev-rust/libchromeos-0.1.0-r2"
+DEPEND="
+	${COMMON_DEPEND}
+	virtual/bindgen:=
+"
+
+RDEPEND="
+	${COMMON_DEPEND}
+	!!<=dev-rust/libchromeos-0.1.0-r2
+"
+
+BDEPEND="
+	dev-rust/bindgen
+"
 
 src_compile() {
 	# Make sure the build works with default features.

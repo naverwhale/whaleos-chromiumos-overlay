@@ -7,10 +7,6 @@
 # doesn't compile for arm yet.
 chromeos-base/chromeos-chrome authpolicy
 
-# Denis Nikitin <denik@chromium.org> (1 Feb 2021)
-# Mask debug fission on 64-bit targets, b/178492639.
-chromeos-base/chromeos-chrome debug_fission
-
 # Markus Meier <maekke@gentoo.org> (27 Sep 2009)
 # mask media-gfx/imagemagick[autotrace] as autotrace is not keyworded
 media-gfx/imagemagick autotrace
@@ -37,6 +33,3 @@ media-plugins/gst-plugins-meta lame taglib
 # David Hendricks <dhendrix@chromium.org> (10 Oct 2011)
 # libpci will cause program to exit(1) during init if PCI not present in system
 sys-apps/flashrom drkaiser gfxnvidia nicintel nicintel_spi nicrealtek ogp_spi satasii
-
-# Masking as Lacros isn't supported on this arch.
-virtual/target-chromium-os lacros_rootfs

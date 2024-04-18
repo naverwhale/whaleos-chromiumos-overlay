@@ -1,7 +1,8 @@
-DEFINED_PHASES=compile configure info install postinst postrm setup test unpack
-DEPEND=dev-haskell/aeson:=[profile?] >=dev-haskell/diff-0.2.0:=[profile?] >=dev-haskell/mtl-2.2.1:=[profile?] >=dev-haskell/parsec-3.0:=[profile?] >=dev-haskell/quickcheck-2.7.4:2=[template_haskell,profile?] dev-haskell/regex-tdfa:=[profile?] dev-haskell/semigroups:=[profile?] >=dev-lang/ghc-7.8.2:= >=dev-haskell/cabal-1.18.1.3 <dev-haskell/cabal-2.5 dev-libs/gmp[static-libs] dev-libs/libffi[static-libs] doc? ( || ( dev-haskell/haddock >=dev-lang/ghc-7.10.2 ) ) hscolour? ( dev-haskell/hscolour )
+BDEPEND=dev-vcs/git app-misc/jq app-text/dos2unix
+DEFINED_PHASES=compile configure info install postinst postrm prepare setup test unpack
+DEPEND=>=dev-haskell/aeson-1.4.0:=[profile?] <dev-haskell/aeson-2.2:=[profile?] >=dev-haskell/diff-0.4.0:=[profile?] <dev-haskell/diff-0.5:=[profile?] >=dev-haskell/mtl-2.2.1:=[profile?] >=dev-haskell/parsec-3.0:=[profile?] >=dev-haskell/quickcheck-2.14.2:2=[template-haskell,profile?] <dev-haskell/quickcheck-2.15:2=[profile?] >=dev-haskell/regex-tdfa-1.2.0:=[profile?] <dev-haskell/regex-tdfa-1.4:=[profile?] dev-haskell/semigroups:=[profile?] >=dev-lang/ghc-8.10.1:= >=dev-haskell/cabal-3.0.0.0 dev-libs/gmp[static-libs] dev-libs/libffi[static-libs] hscolour? ( dev-haskell/hscolour )
 DESCRIPTION=Shell script analysis tool
-EAPI=6
+EAPI=7
 HOMEPAGE=https://www.shellcheck.net/
 IUSE=cros_host cros_workon_tree_ doc hscolour profile test
 KEYWORDS=~*
@@ -9,5 +10,5 @@ LICENSE=GPL-3
 PROPERTIES=live
 RESTRICT=!test? ( test )
 SLOT=0/9999
-_eclasses_=cros-constants	bf71cd1168b6441b64a8cdbc06c36eda	cros-credentials	4fd98ebbff6a1534ca9a89547e13dc92	cros-workon	ff100259492312ff6570e490bcb9a320	desktop	b1d22ac8bdd4679ab79c71aca235009d	eapi7-ver	756b3f27d8e46131d5cf3c51bd876446	epatch	ed88001f77c6dd0d5f09e45c1a5b480e	estack	686eaab303305a908fd57b2fd7617800	eutils	fcb2aa98e1948b835b5ae66ca52868c5	flag-o-matic	5d5921a298e95441da2f85be419894c0	ghc-package	cfc8267c6151d804d0c34bf9e180533f	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	haskell-cabal	433b5153bec6b0ffe21c7be2210e8396	ltprune	2729691420b6deeda2a90b1f1183fb55	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	preserve-libs	ef207dc62baddfddfd39a164d9797648	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	vcs-clean	2a0f74a496fa2b1552c4f3398258b7bf
-_md5_=6b3be2cd504ce526a33c180b6eb5b232
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-subtool	33cbd2873ed95f1f5b811cef24258032	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	ghc-package	dbe1a8d17cacb390a3df7bbba6617679	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	haskell-cabal	13a2f21e4152733139de87f74c2f99dd	multilib	2477ebe553d3e4d2c606191fe6c33602	multiprocessing	c3cf317581e5bd068a4b851f03dd8cba	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=b5553635b3d993d6accf89b9b5989ba1

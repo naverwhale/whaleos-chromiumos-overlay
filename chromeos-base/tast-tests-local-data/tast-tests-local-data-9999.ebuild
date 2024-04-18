@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -7,7 +7,8 @@ EAPI=7
 CROS_WORKON_PROJECT=("chromiumos/platform/tast-tests")
 CROS_WORKON_LOCALNAME=("platform/tast-tests")
 CROS_WORKON_DESTDIR=("${S}")
-CROS_WORKON_SUBTREE=("src/chromiumos/tast/local")
+CROS_WORKON_SUBTREE=("src/go.chromium.org/tast-tests/cros/local")
+TAST_BUNDLE_ROOT="go.chromium.org/tast-tests/cros"
 
 inherit cros-workon tast-bundle-data
 

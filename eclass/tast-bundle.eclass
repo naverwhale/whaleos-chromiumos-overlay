@@ -1,12 +1,12 @@
-# Copyright 2018 The Chromium OS Authors. All rights reserved.
+# Copyright 2018 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 # @ECLASS: tast-bundle.eclass
 # @MAINTAINER:
-# The Chromium OS Authors <chromium-os-dev@chromium.org>
+# The ChromiumOS Authors <chromium-os-dev@chromium.org>
 # @BUGREPORTS:
 # Please report bugs via https://crbug.com/new (with component "Tests>Tast")
-# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/master/eclass/@ECLASS@
+# @VCSURL: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/eclass/@ECLASS@
 # @BLURB: Eclass for building and installing Tast test bundles.
 # @DESCRIPTION:
 # Installs Tast integration test bundles.
@@ -21,7 +21,7 @@
 # images.
 # Only local tests can be marked private; remote test bundles are always
 # installed to the chroot.
-: ${TAST_BUNDLE_PRIVATE:=0}
+: "${TAST_BUNDLE_PRIVATE:=0}"
 
 # @ECLASS-VARIABLE: TAST_BUNDLE_EXCLUDE_DATA_FILES
 # @DESCRIPTION:
@@ -30,12 +30,17 @@
 # and that eclass copies the data files instead.
 : "${TAST_BUNDLE_EXCLUDE_DATA_FILES:=0}"
 
-inherit cros-go
+# @ECLASS-VARIABLE: TAST_BUNDLE_ROOT
+# @DESCRIPTION:
+# It is the root of the full path of the Tast bundle to be installed.
+: "${TAST_BUNDLE_ROOT:="go.chromium.org/tast-tests/cros"}"
+
+inherit cros-workon cros-go
 
 DEPEND="dev-go/crypto"
 RDEPEND="app-arch/tar"
 
-if ! [[ "${PN}" =~ ^tast-(local|remote)-tests-[a-z]+$ ]]; then
+if ! [[ "${PN}" =~ ^tast-(local|remote)-tests-[a-z_]+$ ]]; then
 	die "Package \"${PN}\" not of form \"tast-<type>-tests-<name>\""
 fi
 
@@ -54,18 +59,17 @@ tast-bundle_pkg_setup() {
 	# Decide if this is a private bundle.
 	TAST_BUNDLE_PREFIX=/usr
 	if [[ "${TAST_BUNDLE_PRIVATE}" = 1 ]]; then
-		if [[ "${TAST_BUNDLE_TYPE}" != local ]]; then
-			die "Remote test bundles can not be marked private"
+		if [[ "${TAST_BUNDLE_TYPE}" == local ]]; then
+			TAST_BUNDLE_PREFIX=/build
 		fi
-		TAST_BUNDLE_PREFIX=/build
 	fi
 
 	# The path to the test bundle code relative to the src/ directory.
-	TAST_BUNDLE_PATH="chromiumos/tast/${TAST_BUNDLE_TYPE}/bundles/${TAST_BUNDLE_NAME}"
+	TAST_BUNDLE_PATH="${TAST_BUNDLE_ROOT}/${TAST_BUNDLE_TYPE}/bundles/${TAST_BUNDLE_NAME}"
 
 	# Install the bundle under /{usr|build}/libexec/tast/bundles/<type>.
 	CROS_GO_BINARIES=(
-		"chromiumos/tast/${TAST_BUNDLE_TYPE}/bundles/${TAST_BUNDLE_NAME}:${TAST_BUNDLE_PREFIX}/libexec/tast/bundles/${TAST_BUNDLE_TYPE}/${TAST_BUNDLE_NAME}"
+		"${TAST_BUNDLE_ROOT}/${TAST_BUNDLE_TYPE}/bundles/${TAST_BUNDLE_NAME}:${TAST_BUNDLE_PREFIX}/libexec/tast/bundles/${TAST_BUNDLE_TYPE}/${TAST_BUNDLE_NAME}"
 	)
 
 	CROS_GO_VET_FLAGS=(
@@ -85,6 +89,8 @@ tast-bundle_src_prepare() {
 	# https://github.com/golang/go/issues/30986#issuecomment-475626018
 	export CGO_ENABLED=0
 	export GOPIE=0
+	# Workaround to unblock Go uprevs until ChromeOS packages are converted to modules
+	export GO111MODULE=off
 
 	default
 }
@@ -103,9 +109,9 @@ tast-bundle_src_compile() {
 		add' > "${TAST_BUNDLE_NAME}.sig.json" || die "Generating signatures failed"
 
 	# Build bundle executable for the host arch and get metadata dump.
-	local source="chromiumos/tast/${TAST_BUNDLE_TYPE}/bundles/${TAST_BUNDLE_NAME}"
+	local source="${TAST_BUNDLE_ROOT}/${TAST_BUNDLE_TYPE}/bundles/${TAST_BUNDLE_NAME}"
 	local host_exec="host_${TAST_BUNDLE_NAME}"
-	GOPATH="$(cros-go_gopath)" go build -v \
+	GO111MODULE=off GOPATH="$(cros-go_gopath)" go build -v \
 		${CROS_GO_VERSION:+"-ldflags=-X main.Version=${CROS_GO_VERSION}"} \
 		-o "${host_exec}" \
 		"${source}" || die "Generating bundle for host"

@@ -1,0 +1,83 @@
+From b617cfc858161140d69cc0b5cc211996b557a1c7 Mon Sep 17 00:00:00 2001
+From: Thomas Gleixner <tglx@linutronix.de>
+Date: Sun, 29 Apr 2018 15:20:11 +0200
+Subject: [PATCH] prctl: Add speculation control prctls
+
+Add two new prctls to control aspects of speculation related vulnerabilites
+and their mitigations to provide finer grained control over performance
+impacting mitigations.
+
+PR_GET_SPECULATION_CTRL returns the state of the speculation misfeature
+which is selected with arg2 of prctl(2). The return value uses bit 0-2 with
+the following meaning:
+
+Bit  Define           Description
+0    PR_SPEC_PRCTL    Mitigation can be controlled per task by
+                      PR_SET_SPECULATION_CTRL
+1    PR_SPEC_ENABLE   The speculation feature is enabled, mitigation is
+                      disabled
+2    PR_SPEC_DISABLE  The speculation feature is disabled, mitigation is
+                      enabled
+
+If all bits are 0 the CPU is not affected by the speculation misfeature.
+
+If PR_SPEC_PRCTL is set, then the per task control of the mitigation is
+available. If not set, prctl(PR_SET_SPECULATION_CTRL) for the speculation
+misfeature will fail.
+
+PR_SET_SPECULATION_CTRL allows to control the speculation misfeature, which
+is selected by arg2 of prctl(2) per task. arg3 is used to hand in the
+control value, i.e. either PR_SPEC_ENABLE or PR_SPEC_DISABLE.
+
+The common return values are:
+
+EINVAL  prctl is not implemented by the architecture or the unused prctl()
+        arguments are not 0
+ENODEV  arg2 is selecting a not supported speculation misfeature
+
+PR_SET_SPECULATION_CTRL has these additional return values:
+
+ERANGE  arg3 is incorrect, i.e. it's not either PR_SPEC_ENABLE or PR_SPEC_DISABLE
+ENXIO   prctl control of the selected speculation misfeature is disabled
+
+The first supported controlable speculation misfeature is
+PR_SPEC_STORE_BYPASS. Add the define so this can be shared between
+architectures.
+
+Based on an initial patch from Tim Chen and mostly rewritten.
+
+Signed-off-by: Thomas Gleixner <tglx@linutronix.de>
+Reviewed-by: Ingo Molnar <mingo@kernel.org>
+Reviewed-by: Konrad Rzeszutek Wilk <konrad.wilk@oracle.com>
+---
+ Documentation/userspace-api/index.rst     |  1 +
+ Documentation/userspace-api/spec_ctrl.rst | 86 +++++++++++++++++++++++
+ include/linux/nospec.h                    |  5 ++
+ include/uapi/linux/prctl.h                | 11 +++
+ kernel/sys.c                              | 22 ++++++
+ 5 files changed, 125 insertions(+)
+ create mode 100644 Documentation/userspace-api/spec_ctrl.rst
+
+diff --git a/include/uapi/linux/prctl.h b/include/uapi/linux/prctl.h
+index af5f8c2df87a..ebf057ac1346 100644
+--- a/include/uapi/linux/prctl.h
++++ b/include/uapi/linux/prctl.h
+@@ -207,4 +207,15 @@ struct prctl_mm_map {
+ # define PR_SVE_VL_LEN_MASK		0xffff
+ # define PR_SVE_VL_INHERIT		(1 << 17) /* inherit across exec */
+ 
++/* Per task speculation control */
++#define PR_GET_SPECULATION_CTRL		52
++#define PR_SET_SPECULATION_CTRL		53
++/* Speculation control variants */
++# define PR_SPEC_STORE_BYPASS		0
++/* Return and control values for PR_SET/GET_SPECULATION_CTRL */
++# define PR_SPEC_NOT_AFFECTED		0
++# define PR_SPEC_PRCTL			(1UL << 0)
++# define PR_SPEC_ENABLE			(1UL << 1)
++# define PR_SPEC_DISABLE		(1UL << 2)
++
+ #endif /* _LINUX_PRCTL_H */
+-- 
+2.41.0.694.ge786442a9b-goog
+

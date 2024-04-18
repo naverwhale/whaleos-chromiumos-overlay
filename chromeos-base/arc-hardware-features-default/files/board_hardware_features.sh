@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright 2019 The Chromium OS Authors. All rights reserved.
+# Copyright 2019 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
@@ -51,7 +51,8 @@ has_gyro() {
 
 has_light_sensor () {
   has_hardware_property has-base-light-sensor ||
-      has_hardware_property has-lid-light-sensor
+      has_hardware_property has-lid-light-sensor ||
+      has_hardware_property has-camera-light-sensor
 }
 
 has_multicamera() {

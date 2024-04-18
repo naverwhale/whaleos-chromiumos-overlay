@@ -1,0 +1,33 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+# Metadata information for which CVEs have been patched in.
+#
+# For more information, see:
+#     http://go/third-party-package-remediation-playbook#special-case-back-ported-patches
+third_party {
+  version: "2.06"
+  security {
+    tag: "cpe:/a:gnu:grub2:2.06"
+
+    # All patches from the 2022/06/07 announcement are applied:
+    # https://lists.gnu.org/archive/html/grub-devel/2022-06/msg00035.html
+    mitigated_security_patch: "CVE-2021-3695"
+    mitigated_security_patch: "CVE-2021-3697"
+    mitigated_security_patch: "CVE-2022-28733"
+    mitigated_security_patch: "CVE-2022-28734"
+    mitigated_security_patch: "CVE-2022-28735"
+    mitigated_security_patch: "CVE-2022-28736"
+    mitigated_security_patch: "CVE-2022-28737"
+
+    # All patches from the 2022/11/15 announcement are applied:
+    # https://lists.gnu.org/archive/html/grub-devel/2022-11/msg00059.html
+    mitigated_security_patch: "CVE-2022-2601"
+    mitigated_security_patch: "CVE-2022-3775"
+
+    # All patches from the 2023/10/03 announcement are applied:
+    # https://lists.gnu.org/archive/html/grub-devel/2023-10/msg00028.html
+    mitigated_security_patch: "CVE-2023-4692"
+    mitigated_security_patch: "CVE-2023-4693"
+  }
+}

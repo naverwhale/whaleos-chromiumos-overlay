@@ -1,9 +1,9 @@
-# Copyright 2020 The Chromium OS Authors. All rights reserved.
+# Copyright 2020 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2.
 
 EAPI=7
 
-CROS_GO_SOURCE="github.com/abema/go-mp4 9f0321600240dd93cb681da2d8d5adbfd87913a6"
+CROS_GO_SOURCE="github.com/abema/go-mp4 5bdb34118acfef5536b63c4b70ce4314b5373f87"
 
 CROS_GO_PACKAGES=(
 	"github.com/abema/go-mp4/..."
@@ -21,5 +21,14 @@ KEYWORDS="*"
 IUSE=""
 RESTRICT="binchecks strip"
 
-DEPEND=""
-RDEPEND=""
+DEPEND="
+	dev-go/bufseekio
+	dev-go/writeseeker
+	dev-go/crypto
+	dev-go/go-spew
+	dev-go/uuid
+	dev-go/testify
+	dev-go/go-billy
+	dev-go/yaml:0
+"
+RDEPEND="${DEPEND}"

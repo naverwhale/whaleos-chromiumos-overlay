@@ -1,0 +1,25 @@
+From c4e6539a1acd4250eebebb190159b34d616c46c5 Mon Sep 17 00:00:00 2001
+From: Tianshu Qiu <tian.shu.qiu@intel.com>
+Date: Thu, 3 Jun 2021 19:10:08 +0800
+Subject: [PATCH] CHROMIUM: udev: bypass v4l_id query for mipi camera related
+ devices
+
+---
+ rules.d/60-persistent-v4l.rules | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/rules.d/60-persistent-v4l.rules b/rules.d/60-persistent-v4l.rules
+index 93c5ee8c27..5502681eef 100644
+--- a/rules.d/60-persistent-v4l.rules
++++ b/rules.d/60-persistent-v4l.rules
+@@ -3,6 +3,7 @@
+ ACTION=="remove", GOTO="persistent_v4l_end"
+ SUBSYSTEM!="video4linux", GOTO="persistent_v4l_end"
+ ENV{MAJOR}=="", GOTO="persistent_v4l_end"
++SUBSYSTEM=="video4linux", SUBSYSTEMS=="i2c", GOTO="persistent_v4l_end"
+ 
+ IMPORT{program}="v4l_id $devnode"
+ 
+-- 
+2.39.2
+

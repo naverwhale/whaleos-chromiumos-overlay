@@ -1,7 +1,7 @@
 # Copyright 1999-2017 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=5
+EAPI=7
 
 inherit autotools flag-o-matic user systemd linux-info
 
@@ -29,7 +29,7 @@ CDEPEND="
 		iproute2? ( sys-apps/iproute2[-minimal] )
 		!iproute2? ( >=sys-apps/net-tools-1.60_p20160215155418 )
 	)
-	pam? ( virtual/pam )
+	pam? ( sys-libs/pam )
 	ssl? (
 		!mbedtls? (
 			!libressl? ( >=dev-libs/openssl-0.9.8:0= )
@@ -53,11 +53,20 @@ pkg_setup()  {
 }
 
 src_prepare() {
-	epatch "${FILESDIR}/${PN}-external-cmocka.patch"
-	epatch "${FILESDIR}/${PN}-2.4.1-large-passwords.patch"
-	epatch "${FILESDIR}/${PN}-2.4.1-pkcs11-slot.patch"
-	epatch "${FILESDIR}/${PN}-2.4.1-redirect-gateway.patch"
-	epatch "${FILESDIR}/${PN}-2.4.4-fix-illegal-client-float-CVE-2020-11810.patch"
+	eapply "${FILESDIR}/${PN}-external-cmocka.patch"
+	eapply "${FILESDIR}/${PN}-2.4.1-large-passwords.patch"
+	eapply "${FILESDIR}/${PN}-2.4.1-pkcs11-slot.patch"
+	eapply "${FILESDIR}/${PN}-2.4.1-redirect-gateway.patch"
+	eapply "${FILESDIR}/${PN}-2.4.4-fix-illegal-client-float-CVE-2020-11810.patch"
+	# Temporary patch for the purpose of collecting cipher algorithm metrics.
+	# Can be removed after b/197839464 is done.
+	eapply "${FILESDIR}/${PN}-cipher-in-status.patch"
+
+	# Use a `#define` to avoid re-defining a redundant symbol in openssl_compat.h
+	# that OpenSSL 3 exposes but which OpenSSL 1 does not. In OpenVPN versions
+	# newer than 2.4.4, this appears not to be necessary and can be removed when
+	# we upgrade. See b/272809527.
+	append-cppflags "-DHAVE_EVP_PKEY_ID=1"
 
 	default
 	eautoreconf
@@ -120,12 +129,6 @@ src_install() {
 }
 
 pkg_postinst() {
-	# Add openvpn user so openvpn servers can drop privs
-	# Clients should run as root so they can change ip addresses,
-	# dns information and other such things.
-	enewgroup openvpn
-	enewuser openvpn "" "" "" openvpn
-
 	if grep -Eq "^[ \t]*(up|down)[ \t].*" "${ROOT}/etc/openvpn"/*.conf 2>/dev/null ; then
 		ewarn ""
 		ewarn "WARNING: If you use the remote keyword then you are deemed to be"

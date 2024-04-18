@@ -2,27 +2,22 @@
 # Distributed under the terms of the GNU General Public License v2
 # Based on gentoo's modemmanager ebuild
 
-EAPI=6
+EAPI=7
 CROS_WORKON_PROJECT="chromiumos/third_party/modemmanager-next"
-CROS_WORKON_EGIT_BRANCH="master"
 
-inherit eutils autotools cros-sanitizers cros-workon flag-o-matic systemd udev user
-
-# ModemManager likes itself with capital letters
-MY_P=${P/modemmanager/ModemManager}
+inherit meson cros-sanitizers cros-workon flag-o-matic udev user cros-fuzzer
 
 DESCRIPTION="Modem and mobile broadband management libraries"
-HOMEPAGE="http://mail.gnome.org/archives/networkmanager-list/2008-July/msg00274.html"
+HOMEPAGE="https://www.freedesktop.org/wiki/Software/ModemManager/"
 #SRC_URI not defined because we get our source locally
 
 LICENSE="GPL-2"
 SLOT="0"
 KEYWORDS="~*"
-IUSE="doc mbim systemd qmi qrtr"
+IUSE="bash-completion doc mbim qmi qrtr fuzzer"
 
 RDEPEND=">=dev-libs/glib-2.36
 	>=sys-apps/dbus-1.2
-	dev-libs/dbus-glib
 	net-dialup/ppp
 	mbim? ( net-libs/libmbim )
 	qmi? ( net-libs/libqmi )
@@ -31,11 +26,16 @@ RDEPEND=">=dev-libs/glib-2.36
 
 DEPEND="${RDEPEND}
 	virtual/libgudev
-	dev-util/pkgconfig
-	dev-util/intltool
-	>=dev-util/gtk-doc-1.13
 	!net-misc/modemmanager-next-interfaces
 	!net-misc/modemmanager"
+
+BDEPEND="
+	bash-completion? ( >=app-shells/bash-completion-2.0 )
+	chromeos-base/minijail
+	dev-libs/libxslt
+	dev-util/gdbus-codegen
+	dev-util/glib-utils
+	>=sys-devel/gettext-0.19.8"
 
 DOCS="AUTHORS NEWS README"
 
@@ -70,41 +70,51 @@ src_prepare() {
 	# [2] http://crosreview.com/294115
 	find introspection -type f -name 'org.freedesktop.ModemManager1.*.xml' \
 		-exec sed -i 's/^<node name="\/"/<node/' {} +
-
-	gtkdocize
-	eautopoint
-	eautoreconf
-	intltoolize --force
 }
 
 src_configure() {
-	sanitizers-setup-env
-	append-flags -Xclang-only=-Wno-unneeded-internal-declaration
-	append-flags -DWITH_NEWEST_QMI_COMMANDS
-	# TODO(b/183029202): Remove this once we have support for IPv6 only network
-	append-flags -DSUPPORT_MBIM_IPV6_WITH_IPV4_ROAMING
-	econf \
-		--with-html-dir="\${datadir}/doc/${PF}/html" \
-		--enable-compile-warnings=yes \
-		--enable-introspection=no \
-		"$(use_enable {,gtk-}doc)" \
-		"$(use_with mbim)" \
-		"$(use_enable qrtr plugin-qcom-soc)" \
-		"$(use_with qmi)"
-}
+	# https://github.com/pkgconf/pkgconf/issues/205
+	local -x PKG_CONFIG_FDO_SYSROOT_RULES=1
 
-src_test() {
-	# TODO(b/180536539): Run unit tests for non-x86 platforms via qemu.
-	if [[ "${ARCH}" == "x86" || "${ARCH}" == "amd64" ]] ; then
-		# This is an ugly hack that happens to work, but should not be copied.
-		PATH="${SYSROOT}/usr/bin:${PATH}" \
-		LD_LIBRARY_PATH="${SYSROOT}/usr/$(get_libdir):${SYSROOT}/$(get_libdir)" \
-		emake check
-	fi
+	sanitizers-setup-env
+	# TODO(b/183029202): Remove this once we have support for IPv6 only network
+	append-cppflags -DSUPPORT_MBIM_IPV6_WITH_IPV4_ROAMING
+	append-cppflags -DMBIM_FIBOCOM_SAR_HACK
+
+	append-cppflags -DMM_DISABLE_DEPRECATED
+	append-cppflags -DQMI_DISABLE_DEPRECATED
+	append-cppflags -DMBIM_DISABLE_DEPRECATED
+
+	local plugins=(
+		-Dplugin_fibocom="enabled"
+		-Dplugin_generic="enabled"
+		-Dplugin_intel="enabled"
+		-Dplugin_quectel="enabled"
+	)
+
+	local emesonargs=(
+		-Dauto_features="disabled"
+		-Dintrospection=false
+		-Dpolkit="no"
+		-Dpowerd_suspend_resume=true
+		-Dsystemd_journal=false
+		-Dsystemd_suspend_resume=false
+		-Dsystemdsystemunitdir="no"
+		-Dbuiltin_plugins=true
+		$(meson_use bash-completion bash_completion)
+		$(meson_use fuzzer)
+		$(meson_use mbim)
+		$(meson_use qmi)
+		$(meson_use qmi qrtr)
+		$(meson_feature qrtr plugin_qcom_soc)
+
+		"${plugins[@]}"
+	)
+	meson_src_configure
 }
 
 src_install() {
-	default
+	meson_src_install
 	# Remove useless .la files
 	find "${D}" -name '*.la' -delete
 
@@ -113,46 +123,13 @@ src_install() {
 	# service is received. We do not want this behaviour.
 	find "${D}" -name 'org.freedesktop.ModemManager1.service' -delete
 
-	# Only install the following plugins for supported modems to conserve
-	# space on the root filesystem.
-	local plugins=(
-		altair-lte
-		generic
-		huawei
-		longcheer
-		novatel-lte
-		samsung
-		telit
-		zte
-	)
-	if use qrtr; then
-		plugins+=(qcom-soc)
-	fi
-
-	local plugins_regex=".*/libmm-plugin-($(IFS='|'; echo "${plugins[*]}")).so"
-
-	find "${D}" -regextype posix-extended \
-		-name 'libmm-plugin-*.so' \
-		! -regex "${plugins_regex}" \
-		-delete
-
-	local found_plugins="$(find "${D}" -regextype posix-extended \
-		-regex "${plugins_regex}" | wc -l)"
-	[[ "${found_plugins}" == "${#plugins[@]}" ]] || \
-		die "Expects ${#plugins[@]} plugins, but ${found_plugins} found."
-
 	# Seccomp policy file.
 	insinto /usr/share/policy
 	newins "${FILESDIR}/modemmanager-${ARCH}.policy" modemmanager.policy
 
 	# Install init scripts.
-	if use systemd; then
-		systemd_dounit "${FILESDIR}/modemmanager.service"
-		systemd_enable_service system-services.target modemmanager.service
-	else
-		insinto /etc/init
-		doins "${FILESDIR}/modemmanager.conf"
-	fi
+	insinto /etc/init
+	doins "${FILESDIR}/modemmanager.conf"
 
 	# Override the ModemManager DBus configuration file to constrain how
 	# ModemManager exposes its DBus service on Chrome OS.
@@ -161,10 +138,21 @@ src_install() {
 
 	# Install Chrome OS specific udev rules.
 	udev_dorules "${FILESDIR}/52-mm-modem-permissions.rules"
-	udev_dorules "${FILESDIR}/77-mm-fibocom-port-types.rules"
-	udev_dorules "${FILESDIR}/77-mm-huawei-configuration.rules"
-	exeinto "$(get_udevdir)"
-	doexe "${FILESDIR}/mm-huawei-configuration-switch.sh"
+
+	if use fuzzer; then
+		local fuzzer_build_path="${BUILD_DIR}/src/tests"
+		# ChromeOS/Platform/Connectivity/Cellular
+		local fuzzer_component_id="167157"
+		fuzzer_install "${S}/OWNERS" \
+			"${fuzzer_build_path}/test-sms-part-3gpp-fuzzer" \
+			--comp "${fuzzer_component_id}"
+		fuzzer_install "${S}/OWNERS" \
+			"${fuzzer_build_path}/test-sms-part-3gpp-tr-fuzzer" \
+			--comp "${fuzzer_component_id}"
+		fuzzer_install "${S}/OWNERS" \
+			"${fuzzer_build_path}/test-sms-part-cdma-fuzzer" \
+			--comp "${fuzzer_component_id}"
+	fi
 }
 
 pkg_preinst() {

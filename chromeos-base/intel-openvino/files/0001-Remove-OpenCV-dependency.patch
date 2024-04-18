@@ -1,0 +1,235 @@
+From 864c0800d861e568c4362292aa02237584fb8c08 Mon Sep 17 00:00:00 2001
+From: Ritul Jasuja <ritul.jasuja@intel.com>
+Date: Mon, 24 Jul 2023 06:17:54 +0000
+Subject: [PATCH] Remove OpenCV dependency
+
+Removes opencv dependency by removing optional dependency
+This optional dependency links opencv finds the library from chroot
+
+Signed-off-by: Ritul Jasuja <ritul.jasuja@intel.com>
+---
+ docs/snippets/CMakeLists.txt                  | 10 +++++----
+ .../c/common/opencv_c_wrapper/CMakeLists.txt  | 12 +++++-----
+ samples/cpp/benchmark_app/CMakeLists.txt      | 14 +++++++-----
+ .../cpp/common/format_reader/CMakeLists.txt   | 22 ++++++++++---------
+ .../template_extension/old/CMakeLists.txt     | 14 +++++++-----
+ .../template/tests/functional/CMakeLists.txt  | 17 ++++++++------
+ .../unit/inference_engine/CMakeLists.txt      | 12 +++++-----
+ tools/legacy/benchmark_app/CMakeLists.txt     | 14 +++++++-----
+ 8 files changed, 67 insertions(+), 48 deletions(-)
+
+diff --git a/docs/snippets/CMakeLists.txt b/docs/snippets/CMakeLists.txt
+index f9ef8ef079e9..27499fa26c6a 100644
+--- a/docs/snippets/CMakeLists.txt
++++ b/docs/snippets/CMakeLists.txt
+@@ -71,7 +71,7 @@ endif()
+ 
+ # remove OpenCV related sources
+ find_package(OpenCV QUIET COMPONENTS core imgcodecs)
+-if(NOT OpenCV_FOUND)
++if(NOT ENABLE_OPENCV)
+     list(REMOVE_ITEM SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/ShapeInference.cpp")
+ endif()
+ 
+@@ -110,9 +110,11 @@ if(OpenCL_FOUND AND OpenCL_HEADERS)
+     endif()
+ endif()
+ 
+-if(OpenCV_FOUND)
+-    target_include_directories(${TARGET_NAME} SYSTEM PRIVATE ${OpenCV_INCLUDE_DIRS})
+-    target_link_libraries(${TARGET_NAME} PRIVATE opencv_core)
++if(ENABLE_OPENCV)
++    if(OpenCV_FOUND)
++        target_include_directories(${TARGET_NAME} SYSTEM PRIVATE ${OpenCV_INCLUDE_DIRS})
++        target_link_libraries(${TARGET_NAME} PRIVATE opencv_core)
++    endif()
+ endif()
+ 
+ # ov_ncc_naming_style(FOR_TARGET "${TARGET_NAME}"
+diff --git a/samples/c/common/opencv_c_wrapper/CMakeLists.txt b/samples/c/common/opencv_c_wrapper/CMakeLists.txt
+index f27e934793ef..af0765c67847 100644
+--- a/samples/c/common/opencv_c_wrapper/CMakeLists.txt
++++ b/samples/c/common/opencv_c_wrapper/CMakeLists.txt
+@@ -12,11 +12,13 @@ file(GLOB HEADERS ${CMAKE_CURRENT_SOURCE_DIR}/*.h)
+ add_library(${TARGET_NAME} SHARED ${HEADERS} ${SOURCES})
+ 
+ # Find OpenCV components if exist
+-find_package(OpenCV QUIET COMPONENTS core imgproc imgcodecs)
+-if(NOT OpenCV_FOUND)
+-    message(WARNING "OPENCV is disabled or not found, ${TARGET_NAME} is built without OPENCV support")
+-else()
+-    target_compile_definitions(${TARGET_NAME} PRIVATE USE_OPENCV)
++if(ENABLE_OPENCV)
++    find_package(OpenCV QUIET COMPONENTS core imgproc imgcodecs)
++    if(NOT OpenCV_FOUND)
++        message(WARNING "OPENCV is disabled or not found, ${TARGET_NAME} is built without OPENCV support")
++    else()
++        target_compile_definitions(${TARGET_NAME} PRIVATE USE_OPENCV)
++    endif()
+ endif()
+ 
+ target_link_libraries(${TARGET_NAME} PRIVATE ${OpenCV_LIBRARIES})
+diff --git a/samples/cpp/benchmark_app/CMakeLists.txt b/samples/cpp/benchmark_app/CMakeLists.txt
+index 7f40d1fabb7b..380b06e2be79 100644
+--- a/samples/cpp/benchmark_app/CMakeLists.txt
++++ b/samples/cpp/benchmark_app/CMakeLists.txt
+@@ -151,10 +151,12 @@ endif()
+ 
+ # Optional OpenCV dependency
+ 
+-find_package(OpenCV QUIET COMPONENTS core)
+-if(NOT OpenCV_FOUND)
+-    message(WARNING "OpenCV is disabled or not found, ${TARGET_NAME} will be built without OpenCV support. Set OpenCV_DIR")
+-else()
+-    target_compile_definitions(${TARGET_NAME} PRIVATE USE_OPENCV)
+-    target_link_libraries(${TARGET_NAME} PRIVATE opencv_core)
++if(ENABLE_OPENCV)
++    find_package(OpenCV QUIET COMPONENTS core)
++    if(NOT OpenCV_FOUND)
++        message(WARNING "OpenCV is disabled or not found, ${TARGET_NAME} will be built without OpenCV support. Set OpenCV_DIR")
++    else()
++        target_compile_definitions(${TARGET_NAME} PRIVATE USE_OPENCV)
++        target_link_libraries(${TARGET_NAME} PRIVATE opencv_core)
++    endif()
+ endif()
+diff --git a/samples/cpp/common/format_reader/CMakeLists.txt b/samples/cpp/common/format_reader/CMakeLists.txt
+index 44d94e8a27f4..cda8cf08989a 100644
+--- a/samples/cpp/common/format_reader/CMakeLists.txt
++++ b/samples/cpp/common/format_reader/CMakeLists.txt
+@@ -16,17 +16,19 @@ source_group("include" FILES ${LIBRARY_HEADERS})
+ add_library(${TARGET_NAME} SHARED ${MAIN_SRC} ${LIBRARY_HEADERS})
+ 
+ # Find OpenCV components if exist
+-find_package(OpenCV QUIET COMPONENTS core imgproc imgcodecs)
+-if(NOT OpenCV_FOUND)
+-    message(WARNING "OpenCV is disabled or not found, ${TARGET_NAME} will be built without OpenCV support")
+-else()
+-    target_link_libraries(${TARGET_NAME} PRIVATE ${OpenCV_LIBRARIES} ie_samples_utils)
+-    if(UNIX AND NOT APPLE)
+-        # Workaround issue that rpath-link is missing for PRIVATE dependencies
+-        # Fixed in cmake 3.16.0 https://gitlab.kitware.com/cmake/cmake/issues/19556
+-        target_link_libraries(${TARGET_NAME} INTERFACE "-Wl,-rpath-link,${OpenCV_INSTALL_PATH}/lib")
++if(ENABLE_OPENCV)
++    find_package(OpenCV QUIET COMPONENTS core imgproc imgcodecs)
++    if(NOT OpenCV_FOUND)
++        message(WARNING "OpenCV is disabled or not found, ${TARGET_NAME} will be built without OpenCV support")
++    else()
++        target_link_libraries(${TARGET_NAME} PRIVATE ${OpenCV_LIBRARIES} ie_samples_utils)
++        if(UNIX AND NOT APPLE)
++            # Workaround issue that rpath-link is missing for PRIVATE dependencies
++            # Fixed in cmake 3.16.0 https://gitlab.kitware.com/cmake/cmake/issues/19556
++            target_link_libraries(${TARGET_NAME} INTERFACE "-Wl,-rpath-link,${OpenCV_INSTALL_PATH}/lib")
++        endif()
++        target_compile_definitions(${TARGET_NAME} PRIVATE USE_OPENCV)
+     endif()
+-    target_compile_definitions(${TARGET_NAME} PRIVATE USE_OPENCV)
+ endif()
+ 
+ target_compile_definitions(${TARGET_NAME} PRIVATE IMPLEMENT_FORMAT_READER)
+diff --git a/src/core/template_extension/old/CMakeLists.txt b/src/core/template_extension/old/CMakeLists.txt
+index 733c3a92ff45..d240d580d3c5 100644
+--- a/src/core/template_extension/old/CMakeLists.txt
++++ b/src/core/template_extension/old/CMakeLists.txt
+@@ -12,15 +12,19 @@ find_package(OpenCV QUIET COMPONENTS core)
+ 
+ set(SRC cpu_kernel.cpp extension.cpp op.cpp)
+ 
+-if(OpenCV_FOUND)
+-    set(SRC ${SRC} fft_kernel.cpp fft_op.cpp)
++if(ENABLE_OPENCV)
++    if(OpenCV_FOUND)
++        set(SRC ${SRC} fft_kernel.cpp fft_op.cpp)
++    endif()
+ endif()
+ 
+ add_library(${TARGET_NAME} MODULE ${SRC})
+ 
+-if(OpenCV_FOUND)
+-    target_compile_definitions(${TARGET_NAME} PRIVATE OPENCV_IMPORT_ENABLED)
+-    target_link_libraries(${TARGET_NAME} PRIVATE opencv_core)
++if(ENABLE_OPENCV)
++    if(OpenCV_FOUND)
++        target_compile_definitions(${TARGET_NAME} PRIVATE OPENCV_IMPORT_ENABLED)
++        target_link_libraries(${TARGET_NAME} PRIVATE opencv_core)
++    endif()
+ endif()
+ 
+ target_compile_definitions(${TARGET_NAME} PRIVATE IMPLEMENT_INFERENCE_EXTENSION_API)
+diff --git a/src/plugins/template/tests/functional/CMakeLists.txt b/src/plugins/template/tests/functional/CMakeLists.txt
+index 5f8fee9f849e..5f55854c82af 100644
+--- a/src/plugins/template/tests/functional/CMakeLists.txt
++++ b/src/plugins/template/tests/functional/CMakeLists.txt
+@@ -25,14 +25,17 @@ ov_add_test_target(
+             TEMPLATE
+ )
+ 
+-find_package(OpenCV QUIET COMPONENTS core imgproc)
+ 
+-if(OpenCV_FOUND)
+-    message("-- Reference preprocessing: OpenCV tests are enabled")
+-    target_compile_definitions(${TARGET_NAME} PRIVATE OPENCV_TEMPLATE_TESTS)
+-    target_link_libraries(${TARGET_NAME} PRIVATE opencv_imgproc opencv_core)
+-else()
+-    message("-- Reference preprocessing: OpenCV tests are disabled")
++if(ENABLE_OPENCV)
++    find_package(OpenCV QUIET COMPONENTS core imgproc)
++
++    if(OpenCV_FOUND)
++        message("-- Reference preprocessing: OpenCV tests are enabled")
++        target_compile_definitions(${TARGET_NAME} PRIVATE OPENCV_TEMPLATE_TESTS)
++        target_link_libraries(${TARGET_NAME} PRIVATE opencv_imgproc opencv_core)
++    else()
++        message("-- Reference preprocessing: OpenCV tests are disabled")
++    endif()
+ endif()
+ 
+ # [cmake:functional_tests]
+diff --git a/src/tests/unit/inference_engine/CMakeLists.txt b/src/tests/unit/inference_engine/CMakeLists.txt
+index 8796a7c0ddbc..3597d24c90bc 100644
+--- a/src/tests/unit/inference_engine/CMakeLists.txt
++++ b/src/tests/unit/inference_engine/CMakeLists.txt
+@@ -5,11 +5,13 @@
+ set(TARGET_NAME ieUnitTests)
+ 
+ # Find OpenCV components if exist
+-find_package(OpenCV QUIET COMPONENTS core)
+-if(NOT OpenCV_FOUND)
+-    message(WARNING "OPENCV is disabled or not found, ${TARGET_NAME} needs OpenCV for its build")
+-else()
+-    add_definitions(-DUSE_OPENCV)
++if(ENABLE_OPENCV)
++    find_package(OpenCV QUIET COMPONENTS core)
++    if(NOT OpenCV_FOUND)
++        message(WARNING "OPENCV is disabled or not found, ${TARGET_NAME} needs OpenCV for its build")
++    else()
++        add_definitions(-DUSE_OPENCV)
++    endif()
+ endif()
+ 
+ addIeTargetTest(
+diff --git a/tools/legacy/benchmark_app/CMakeLists.txt b/tools/legacy/benchmark_app/CMakeLists.txt
+index 58bedb0f7594..a3efb6da2ef1 100644
+--- a/tools/legacy/benchmark_app/CMakeLists.txt
++++ b/tools/legacy/benchmark_app/CMakeLists.txt
+@@ -32,10 +32,12 @@ find_package(Threads REQUIRED)
+ 
+ target_link_libraries(${TARGET_NAME} PRIVATE openvino::runtime format_reader gflags Threads::Threads)
+ 
+-find_package(OpenCV QUIET COMPONENTS core)
+-if(NOT OpenCV_FOUND)
+-    message(WARNING "OpenCV is disabled or not found, ${TARGET_NAME} will be built without OpenCV support. Set OpenCV_DIR")
+-else()
+-    target_compile_definitions(${TARGET_NAME} PRIVATE USE_OPENCV)
+-    target_link_libraries(${TARGET_NAME} PRIVATE opencv_core)
++if(ENABLE_OPENCV)
++    find_package(OpenCV QUIET COMPONENTS core)
++    if(NOT OpenCV_FOUND)
++        message(WARNING "OpenCV is disabled or not found, ${TARGET_NAME} will be built without OpenCV support. Set OpenCV_DIR")
++    else()
++        target_compile_definitions(${TARGET_NAME} PRIVATE USE_OPENCV)
++        target_link_libraries(${TARGET_NAME} PRIVATE opencv_core)
++    endif()
+ endif()
+-- 
+2.39.2
+

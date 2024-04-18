@@ -1,7 +1,7 @@
-From cefc92544f8db5b4a134bb9aed69aad188849e8b Mon Sep 17 00:00:00 2001
+From aac3e38bfc48987a242ee8ff21aa1487260ed618 Mon Sep 17 00:00:00 2001
 From: Sean Kau <skau@chromium.org>
 Date: Wed, 4 Aug 2021 10:09:54 -0700
-Subject: [PATCH] Disallow loading of Postscript libraries
+Subject: [PATCH 09/10] Disallow loading of Postscript libraries
 
 This removes handling of the GS_LIB environment variable and the
 -I command line flag for loading libararies.
@@ -10,7 +10,7 @@ This removes handling of the GS_LIB environment variable and the
  1 file changed, 1 insertion(+), 37 deletions(-)
 
 diff --git a/psi/imainarg.c b/psi/imainarg.c
-index 43834d647..17afd8cd5 100644
+index 69e274402..75ec6ffa1 100644
 --- a/psi/imainarg.c
 +++ b/psi/imainarg.c
 @@ -148,25 +148,6 @@ gs_main_init_with_args01(gs_main_instance * minst, int argc, char *argv[])
@@ -68,5 +68,5 @@ index 43834d647..17afd8cd5 100644
              {
                  long msize = 0;
 -- 
-2.32.0.605.g8dce9f2422-goog
+2.39.1
 

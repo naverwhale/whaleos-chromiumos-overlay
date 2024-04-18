@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright 2011 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -13,7 +13,7 @@ PLATFORM_SUBDIR="modem-utilities"
 inherit cros-workon tmpfiles platform
 
 DESCRIPTION="Chromium OS modem utilities"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/modem-utilities/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/modem-utilities/"
 SRC_URI=""
 LICENSE="BSD-Google"
 KEYWORDS="~*"
@@ -25,13 +25,7 @@ RDEPEND="${COMMON_DEPEND}"
 DEPEND="${COMMON_DEPEND}"
 
 src_install() {
-	dobin modem
-	dobin connectivity
-	dobin config_net_log
-
-	exeinto /usr/lib
-	doexe modem-common.sh
-	doexe connectivity-common.sh
+	platform_src_install
 
 	dotmpfiles tmpfiles.d/*.conf
 }

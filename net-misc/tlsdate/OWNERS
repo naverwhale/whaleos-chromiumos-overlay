@@ -1,1 +1,1 @@
-include /OWNERS.security
+include chromiumos/third_party/tlsdate:master:/OWNERS

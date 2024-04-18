@@ -1,9 +1,11 @@
-# Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
+# Copyright 2010 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=5
+EAPI=7
 
-inherit cros-constants
+PYTHON_COMPAT=( python3_{8..11} )
+
+inherit cros-constants python-any-r1
 
 DESCRIPTION="Meta ebuild for all packages providing tests"
 HOMEPAGE="http://www.chromium.org"
@@ -11,7 +13,7 @@ HOMEPAGE="http://www.chromium.org"
 LICENSE="GPL-2"
 SLOT=0
 KEYWORDS="*"
-IUSE="cheets -chromeless_tests +bluetooth +cellular +cras +cros_p2p +debugd -chromeless_tty kvm_host +power_management +shill +tpm tpm2"
+IUSE="cheets -chromeless_tests +bluetooth +cras +debugd -chromeless_tty kvm_host +power_management +shill +tpm tpm2"
 
 RDEPEND="
 	chromeos-base/autotest-client
@@ -21,8 +23,10 @@ RDEPEND="
 	chromeos-base/autotest-tests
 	chromeos-base/autotest-tests-security
 	chromeos-base/autotest-tests-toolchain
-	bluetooth? ( chromeos-base/autotest-server-tests-bluetooth )
-	cellular? ( chromeos-base/autotest-tests-cellular )
+	bluetooth? (
+		chromeos-base/autotest-server-tests-bluetooth
+		chromeos-base/autotest-tests-bluetooth
+	)
 	cheets? ( chromeos-base/autotest-tests-arc-public )
 	!chromeless_tty? (
 		chromeos-base/autotest-tests-cryptohome
@@ -35,7 +39,6 @@ RDEPEND="
 		)
 	)
 	cras? ( chromeos-base/autotest-tests-audio )
-	cros_p2p? ( chromeos-base/autotest-tests-p2p )
 	debugd? ( chromeos-base/autotest-tests-debugd )
 	kvm_host? ( chromeos-base/autotest-tests-vm-host )
 	power_management? ( chromeos-base/autotest-tests-power )
@@ -60,7 +63,7 @@ src_unpack() {
 
 src_install() {
 	# So that this package properly owns the file
-	insinto ${AUTOTEST_BASE}/test_suites
+	insinto "${AUTOTEST_BASE}"/test_suites
 	doins "${SUITE_DEPENDENCIES_FILE}"
 	doins "${SUITE_TO_CONTROL_MAP}"
 }
@@ -68,12 +71,14 @@ src_install() {
 # Pre-processes control files and installs DEPENDENCIES info.
 pkg_postinst() {
 	local root_autotest_dir="${ROOT}${AUTOTEST_BASE}"
-	PYTHONDONTWRITEBYTECODE=1 \
-	"${root_autotest_dir}/site_utils/suite_preprocessor.py" \
+	export PYTHONDONTWRITEBYTECODE=1
+	"${EPYTHON}" "${root_autotest_dir}/site_utils/suite_preprocessor.py" \
 		-a "${root_autotest_dir}" \
 		-o "${root_autotest_dir}/test_suites/${SUITE_DEPENDENCIES_FILE}" || die
-	PYTHONDONTWRITEBYTECODE=1 \
-	"${root_autotest_dir}/site_utils/control_file_preprocessor.py" \
+	"${EPYTHON}" "${root_autotest_dir}/site_utils/control_file_preprocessor.py" \
 		-a "${root_autotest_dir}" \
 		-o "${root_autotest_dir}/test_suites/${SUITE_TO_CONTROL_MAP}" || die
+	"${EPYTHON}" "${root_autotest_dir}/utils/generate_metadata.py" \
+		-autotest_path "${root_autotest_dir}" \
+		-output_file="${root_autotest_dir}"/autotest_metadata.pb || die
 }

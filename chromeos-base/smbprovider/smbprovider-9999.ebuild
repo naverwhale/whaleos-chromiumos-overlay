@@ -1,4 +1,4 @@
-# Copyright 2017 The Chromium OS Authors. All rights reserved.
+# Copyright 2017 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -15,7 +15,7 @@ PLATFORM_SUBDIR="smbprovider"
 inherit cros-workon platform user
 
 DESCRIPTION="Provides access to Samba file share"
-HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/master/smbprovider/"
+HOMEPAGE="https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/smbprovider/"
 
 LICENSE="BSD-Google"
 SLOT="0/0"
@@ -37,6 +37,11 @@ DEPEND="
 	chromeos-base/libpasswordprovider:=
 "
 
+BDEPEND="
+	chromeos-base/chromeos-dbus-bindings
+	chromeos-base/minijail
+"
+
 pkg_setup() {
 	# Has to be done in pkg_setup() instead of pkg_preinst() since
 	# src_install() needs smbproviderd:smbproviderd.
@@ -46,19 +51,7 @@ pkg_setup() {
 }
 
 src_install() {
-	dosbin "${OUT}"/smbproviderd
-
-	insinto /etc/dbus-1/system.d
-	doins etc/dbus-1/org.chromium.SmbProvider.conf
-
-	insinto /usr/share/dbus-1/system-services
-	doins org.chromium.SmbProvider.service
-
-	insinto /etc/init
-	doins etc/init/smbproviderd.conf
-
-	insinto /usr/share/policy
-	newins seccomp_filters/smbprovider-seccomp-"${ARCH}".policy smbprovider-seccomp.policy
+	platform_src_install
 
 	# fuzzer_component_id is unknown/unlisted
 	platform_fuzzer_install "${S}"/OWNERS "${OUT}"/netbios_packet_fuzzer
@@ -70,11 +63,5 @@ src_install() {
 }
 
 platform_pkg_test() {
-	local tests=(
-		smbprovider_test
-	)
-	local test_bin
-	for test_bin in "${tests[@]}"; do
-		platform_test "run" "${OUT}/${test_bin}"
-	done
+	platform test_all
 }

@@ -1,10 +1,9 @@
 # Copyright 1999-2010 Gentoo Foundation
 # Distributed under the terms of the GNU General Public License v2
-# $Header: $
 
-EAPI="6"
+EAPI=7
 
-inherit arc-build-constants
+inherit arc-build-constants tmpfiles
 
 DESCRIPTION="Ureadahead - Read files in advance during boot"
 HOMEPAGE="https://launchpad.net/ureadahead"
@@ -18,11 +17,13 @@ IUSE="arcvm"
 RDEPEND="
 	sys-apps/util-linux
 	>=sys-fs/e2fsprogs-1.41
-	sys-libs/libnih"
-
-DEPEND="${RDEPEND}
-	dev-util/pkgconfig
-	sys-devel/gettext"
+	sys-libs/libnih
+"
+DEPEND="${RDEPEND}"
+BDEPEND="
+	sys-devel/gettext
+	sys-devel/gnuconfig
+"
 
 PATCHES=(
 	"${FILESDIR}"/${P}-11.patch   # Downloaded from upstream
@@ -36,6 +37,8 @@ PATCHES=(
 	"${FILESDIR}"/${P}-16.patch   # Downloaded from upstream
 	"${FILESDIR}"/${P}-no-debug-tracing.patch
 	"${FILESDIR}"/${P}-force-ssd-mode.patch
+	"${FILESDIR}"/${P}-tracefs.patch
+	"${FILESDIR}"/${P}-use-existing-trace-events.patch
 )
 
 src_configure() {
@@ -50,9 +53,13 @@ src_install() {
 	insinto /etc/init
 	doins "${FILESDIR}"/init/*.conf
 
-	# install executable into guest vendor image for ARCVM
+	dotmpfiles "${FILESDIR}"/tmpfiles.d/*
+
+	# stage executable into guest vendor image for ARCVM to be installed into
+	# system image via board_specific_setup.py
 	if use arcvm; then
 		arc-build-constants-configure
+		# shellcheck disable=SC2154 # Defined in arc-build-constants.eclass.
 		exeinto "${ARC_VM_VENDOR_DIR}/bin"
 		doexe "${WORKDIR}/${P}/src/ureadahead"
 	fi

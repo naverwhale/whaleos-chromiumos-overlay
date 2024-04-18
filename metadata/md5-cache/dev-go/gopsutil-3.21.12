@@ -1,0 +1,15 @@
+BDEPEND=dev-lang/go
+DEFINED_PHASES=compile install nofetch postinst test unpack
+DEPEND=dev-go/cmp dev-go/errcheck dev-go/go-sys dev-go/go-sysconf dev-go/testify
+DESCRIPTION=Cross-platform lib for process and system monitoring in Go
+EAPI=7
+HOMEPAGE=https://github.com/shirou/gopsutil
+IUSE=test
+KEYWORDS=*
+LICENSE=BSD
+RDEPEND=dev-go/cmp dev-go/errcheck dev-go/go-sys dev-go/go-sysconf dev-go/testify
+RESTRICT=binchecks strip
+SLOT=0
+SRC_URI=https://github.com/shirou/gopsutil/archive/v3.21.12.tar.gz -> github.com-shirou-gopsutil-v3.21.12.tar.gz
+_eclasses_=cros-go	77ba1c1ddf5c20dab7e47e19efeffef7	flag-o-matic	ad475baa777c9978fa035216c8264a10	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e
+_md5_=c5bfba8c654202fe062da201cdebc373

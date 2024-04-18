@@ -1,0 +1,13 @@
+BDEPEND=dev-lang/perl sys-apps/checkpolicy sys-apps/secilc sys-devel/m4 dev-vcs/git app-misc/jq virtual/pkgconfig
+DEFINED_PHASES=compile info install setup test unpack
+DEPEND=android-container-pi? ( chromeos-base/android-container-pi:0= ) android-container-rvc? ( chromeos-base/android-container-rvc:0= ) android-vm-master? ( chromeos-base/android-vm-master:0= ) android-vm-rvc? ( chromeos-base/android-vm-rvc:0= ) android-vm-sc? ( chromeos-base/android-vm-sc:0= ) android-vm-tm? ( chromeos-base/android-vm-tm:0= )
+DESCRIPTION=Chrome OS SELinux Policy Package
+EAPI=7
+IUSE=android-container-pi android-container-rvc android-vm-master android-vm-rvc android-vm-sc android-vm-tm selinux_audit_all selinux_develop selinux_experimental arc_first_release_n nocheck cheets_user cheets_user_64 cros_host cros_workon_tree_7cab21a3c2a05421b90c9804b255fd8a0229d14a
+KEYWORDS=*
+LICENSE=BSD-Google
+PROPERTIES=live
+RDEPEND=android-container-pi? ( chromeos-base/android-container-pi:0= ) android-container-rvc? ( chromeos-base/android-container-rvc:0= ) android-vm-master? ( chromeos-base/android-vm-master:0= ) android-vm-rvc? ( chromeos-base/android-vm-rvc:0= ) android-vm-sc? ( chromeos-base/android-vm-sc:0= ) android-vm-tm? ( chromeos-base/android-vm-tm:0= ) sys-apps/restorecon sys-process/audit
+SLOT=0/0.0.1-r579
+_eclasses_=cros-constants	676fcfd1679a06bba553adf90e231454	cros-credentials	dd20060574e24cba5fa46d205f9aba0c	cros-workon	247d4700539e27bc12026f785ec53757	flag-o-matic	ad475baa777c9978fa035216c8264a10	git-2	d6a1d7d3b4c4fff2fba86e3f53beeb0f	multilib	2477ebe553d3e4d2c606191fe6c33602	toolchain-funcs	528ab0a9e1ee02c57524ad3bede3c57e	udev	eec0bbab06977f1cfc5597269c1fa152
+_md5_=0740ee90bf8036153ca0702f11abd1dc

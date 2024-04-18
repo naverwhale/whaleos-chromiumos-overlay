@@ -1,7 +1,7 @@
-# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Copyright 2013 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
-EAPI=5
+EAPI=7
 CROS_WORKON_PROJECT="chromiumos/third_party/autotest"
 
 inherit cros-workon autotest
@@ -20,8 +20,6 @@ IUSE="
 	+cellular
 	drm_atomic
 	+shill
-	+tpm
-	tpm2
 	vaapi
 "
 
@@ -29,30 +27,38 @@ RDEPEND="
 	!chromeos-base/autotest-telemetry
 	!<chromeos-base/autotest-tests-0.0.4
 	!<chromeos-base/autotest-tests-cellular-0.0.1-r3203
-	chromeos-base/autotest-deps-graphics
 	chromeos-base/autotest-deps-policy
-	chromeos-base/autotest-deps-webgl-mpd
 	chromeos-base/chromeos-chrome
+	dev-python/grpcio
 	dev-python/mkvparse
 	shill? ( chromeos-base/shill-test-scripts )
 	chromeos-base/telemetry
 	sys-apps/ethtool
 	vaapi? ( x11-libs/libva )
-	tests_graphics_WebGLAquarium? ( app-benchmarks/microbenchmarks dev-util/memory-eater-locked )
 	virtual/autotest-private-libs
 "
 
 DEPEND="${RDEPEND}"
 
+BDEPEND="
+	dev-python/btsocket
+	dev-python/dbus-python
+	dev-python/grpcio
+	dev-python/numpy
+	dev-python/pillow
+	dev-python/psutil
+	dev-python/pydbus
+	dev-python/pygobject
+	dev-python/pyyaml
+	dev-python/requests
+	media-libs/opencv
+"
+
 IUSE_TESTS=(
 	# Tests that depend on telemetry.
 	+tests_accessibility_Check
 	+tests_accessibility_ChromeVoxSound
-	+tests_audio_ActiveStreamStress
-	+tests_audio_AudioCorruption
 	+tests_audio_CrasCheck
-	+tests_audio_PlaybackPower
-	+tests_audio_SeekAudioFeedback
 	+tests_autoupdate_EOL
 	+tests_autoupdate_LoginStartUpdateLogout
 	+tests_autoupdate_StartOOBEUpdate
@@ -65,97 +71,29 @@ IUSE_TESTS=(
 	+tests_bluetooth_TurnOnOffUI
 	+tests_desktopui_AudioFeedback
 	+tests_desktopui_CheckRlzPingSent
-	+tests_desktopui_ChromeCheck
-	tests_desktopui_ConnectivityDiagnostics
-	+tests_desktopui_MediaAudioFeedback
-	+tests_desktopui_ScreenLocker
+	+tests_desktopui_RootfsLacros
 	+tests_desktopui_SimpleLogin
-	+tests_desktopui_UrlFetchWithChromeDriver
-	+tests_display_ClientChameleonConnection
-	+tests_display_DisplayContainEdid
-	+tests_enterprise_FakeEnrollment
-	+tests_enterprise_KioskEnrollment
-	+tests_enterprise_OnlineDemoModeEnrollment
-	+tests_enterprise_PowerManagement
-	+tests_enterprise_RemoraRequisition
-	+tests_graphics_Chrome
-	+tests_graphics_Stress
-	+tests_graphics_VideoRenderingPower
-	+tests_graphics_VTSwitch
-	+tests_graphics_WebGLAquarium
-	+tests_graphics_WebGLManyPlanetsDeep
-	tests_logging_AsanCrash
 	+tests_logging_CrashServices
-	+tests_logging_FeedbackReport
-	+tests_login_ChromeProfileSanitary
-	+tests_login_CryptohomeDataLeak
 	+tests_login_CryptohomeIncognito
-	+tests_login_GaiaLogin
 	+tests_login_LoginPin
 	+tests_login_LoginSuccess
 	+tests_login_OobeLocalization
 	+tests_login_SavePassword
-	+tests_login_UnicornLogin
-	+tests_login_UserPolicyKeys
-	+tests_longevity_Tracker
 	+tests_network_CastTDLS
 	+tests_network_ChromeWifiConfigure
-	+tests_platform_ChromeCgroups
 	+tests_platform_InitLoginPerf
-	+tests_platform_InputBrightness
-	+tests_platform_InputBrowserNav
-	+tests_platform_InputNewTab
-	+tests_platform_InputScreenshot
-	+tests_platform_InputVolume
-	+tests_platform_LogoutPerf
-	+tests_platform_LowMemoryTest
-	+tests_platform_MouseScrollTest
-	+tests_platform_PrintJob
-	+tests_platform_SessionManagerBlockDevmodeSetting
-	+tests_platform_ScrollTest
-	+tests_policy_ArcAudioCaptureAllowed
-	+tests_policy_ArcBackupRestoreServiceEnabled
-	+tests_policy_ArcExternalStorageDisabled
-	+tests_policy_ArcVideoCaptureAllowed
-	+tests_policy_ArcDisableScreenshots
-	+tests_policy_AutotestCheck
-	+tests_policy_ChromeOsLockOnIdleSuspend
-	+tests_policy_CookiesSessionOnlyForUrls
-	+tests_policy_DeveloperToolsAvailability
-	+tests_policy_DeviceAllowBluetooth
-	+tests_policy_DeviceAutoUpdateDisabled
-	+tests_policy_DeviceCharging
-	+tests_policy_DeviceDockMacAddressSource
-	+tests_policy_DeviceScheduledCharging
-	+tests_policy_DownloadDirectory
-	+tests_policy_DriveDisabled
-	+tests_policy_DeviceEphemeralUsersEnabled
-	+tests_policy_EnrollmentRetainment
-	+tests_policy_EnterpriseForceInstallCustom
-	+tests_policy_ExtensionPolicy
-	+tests_policy_ExternalStorageDisabled
-	+tests_policy_ExternalStorageReadOnly
-	+tests_policy_ForceYouTubeSafetyMode
-	+tests_policy_KeyPermissions
-	+tests_policy_KioskModeEnabled
-	+tests_policy_PlatformKeys
-	+tests_policy_PowerManagementIdleSettings
-	+tests_policy_ProxySettings
-	+tests_policy_ReportUploadFrequency
-	+tests_policy_RestoreOnStartupURLs
-	+tests_policy_WilcoOnNonWilcoDevice
 	+tests_policy_WilcoUSBPowershare
 	+tests_power_AudioDetector
+	+tests_power_BasicBrowsing
 	+tests_power_BatteryDrain
-	+tests_power_Consumption
+	+tests_power_CellularIdle
 	+tests_power_Display
-	+tests_power_FlashVideoSuspend
 	+tests_power_Idle
 	+tests_power_IdleSuspend
 	+tests_power_LoadTest
 	+tests_power_LowMemorySuspend
-	+tests_power_MeetClient
 	+tests_power_Speedometer2
+	+tests_power_SuspendType
 	+tests_power_ThermalLoad
 	+tests_power_UiResume
 	+tests_power_VideoCall
@@ -168,9 +106,6 @@ IUSE_TESTS=(
 	+tests_security_BundledExtensions
 	+tests_stub_IdleSuspend
 	+tests_telemetry_AFDOGenerateClient
-	+tests_telemetry_Check
-	+tests_telemetry_UnitTests
-	+tests_telemetry_UnitTestsServer
 	+tests_touch_GestureNav
 	+tests_touch_MouseScroll
 	+tests_touch_ScrollDirection
@@ -186,7 +121,6 @@ IUSE_TESTS=(
 IUSE_TESTS_CELLULAR="
 	cellular? (
 		+tests_cellular_ModemControl
-		+tests_cellular_SuspendResume
 		+tests_network_ChromeCellularEndToEnd
 		+tests_network_ChromeCellularNetworkPresent
 		+tests_network_ChromeCellularNetworkProperties
@@ -197,43 +131,26 @@ IUSE_TESTS_CELLULAR="
 IUSE_TESTS_SHILL="
 	shill? (
 		+tests_network_ChromeWifiEndToEnd
-		+tests_network_FirewallHolePunch
-		+tests_network_RackWiFiConnect
 		+tests_network_RoamSuspendEndToEnd
 		+tests_network_RoamWifiEndToEnd
-		+tests_policy_GlobalNetworkSettings
-		+tests_policy_WiFiAutoconnect
-		+tests_policy_WiFiPrecedence
-		+tests_policy_WiFiTypes
 	)
 "
 
-# This is here instead of in autotest-tests-tpm because it would be far more
-# work and duplication to add telemetry dependencies there.
-IUSE_TESTS_TPM="
-	tpm? ( +tests_platform_Pkcs11InitOnLogin )
-	tpm2? ( +tests_platform_Pkcs11InitOnLogin )
-"
-
 IUSE_TESTS_ARC="
-	+tests_graphics_Idle
 "
 
-IUSE_TESTS_ATOMIC="
-	drm_atomic? ( +tests_graphics_HwOverlays )
-"
 
 IUSE_TESTS_CHROMIUM="
 	+tests_chromium
+	+tests_chromium_Telemetry
+	+tests_chromium_Graphics
 "
 
 IUSE_TESTS="
 	${IUSE_TESTS[*]}
 	${IUSE_TESTS_CELLULAR}
 	${IUSE_TESTS_SHILL}
-	${IUSE_TESTS_TPM}
 	${IUSE_TESTS_ARC}
-	${IUSE_TESTS_ATOMIC}
 	${IUSE_TESTS_CHROMIUM}
 "
 

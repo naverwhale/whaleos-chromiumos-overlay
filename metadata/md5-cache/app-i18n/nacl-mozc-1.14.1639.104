@@ -1,0 +1,9 @@
+DEFINED_PHASES=install prepare
+DESCRIPTION=The Mozc engine for IME extension API
+EAPI=7
+HOMEPAGE=https://github.com/google/mozc
+KEYWORDS=*
+LICENSE=BSD-Google
+SLOT=0
+SRC_URI=https://commondatastorage.googleapis.com/chromeos-localmirror/distfiles/nacl-mozc-1.14.1639.104.tgz
+_md5_=0a63508e816fa8b813a8b68dc461cb7f

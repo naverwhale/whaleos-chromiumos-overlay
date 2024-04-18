@@ -1,4 +1,4 @@
-# Copyright (C) 2012 The Chromium OS Authors. All rights reserved.
+# Copyright 2012 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE.makefile file.
 
@@ -11,23 +11,41 @@
 # of the many models successfully builds.
 
 # Increment the "eclass bug workaround count" below when you change
-# "cros-ec.eclass" to work around http://crbug.com/220902.
+# "cros-ec.eclass" to work around https://issuetracker.google.com/201299127.
 #
-# eclass bug workaround count: 2
+# eclass bug workaround count: 8
 
 EAPI=7
 
 CROS_WORKON_PROJECT=(
 	"chromiumos/platform/ec"
 	"chromiumos/third_party/cryptoc"
+	"external/gitlab.com/libeigen/eigen"
+	"external/gob/boringssl/boringssl"
+	"external/github.com/google/googletest"
 )
 CROS_WORKON_LOCALNAME=(
 	"platform/ec"
 	"third_party/cryptoc"
+	"third_party/eigen3"
+	"third_party/boringssl"
+	"third_party/googletest"
 )
+
+CROS_WORKON_EGIT_BRANCH=(
+	"main"
+	"main"
+	"upstream/master"
+	"upstream/master"
+	"main"
+)
+
 CROS_WORKON_DESTDIR=(
 	"${S}/platform/ec"
 	"${S}/third_party/cryptoc"
+	"${S}/third_party/eigen3"
+	"${S}/third_party/boringssl"
+	"${S}/third_party/googletest"
 )
 
 inherit cros-ec cros-workon

@@ -1,0 +1,7 @@
+DEFINED_PHASES=install
+DESCRIPTION=Chromium Embedded Controller private files placeholder
+EAPI=7
+KEYWORDS=*
+LICENSE=BSD-Google
+SLOT=0
+_md5_=8d627367f32227153ee0112e82330156

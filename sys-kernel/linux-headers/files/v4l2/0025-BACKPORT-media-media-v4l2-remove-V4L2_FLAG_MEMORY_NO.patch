@@ -1,0 +1,98 @@
+From d78b48e9796e9b1aeac619e47d3e32c4087f40ec Mon Sep 17 00:00:00 2001
+From: Sergey Senozhatsky <sergey.senozhatsky@gmail.com>
+Date: Fri, 11 Sep 2020 05:07:58 +0200
+Subject: [PATCH] BACKPORT: media: media/v4l2: remove
+ V4L2_FLAG_MEMORY_NON_CONSISTENT flag
+
+The patch partially reverts some of the UAPI bits of the buffer
+cache management hints. Namely, the queue consistency (memory
+coherency) user-space hint because, as it turned out, the kernel
+implementation of this feature was misusing DMA_ATTR_NON_CONSISTENT.
+
+The patch reverts both kernel and user space parts: removes the
+DMA consistency attr functions, rolls back changes to v4l2_requestbuffers,
+v4l2_create_buffers structures and corresponding UAPI functions
+(plus compat32 layer) and cleans up the documentation.
+
+[hverkuil: fixed a few typos in the commit log]
+[hverkuil: fixed vb2_core_reqbufs call in drivers/media/dvb-core/dvb_vb2.c]
+[mchehab: fixed a typo in the commit log: revers->reverts]
+
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Sergey Senozhatsky <sergey.senozhatsky@gmail.com>
+Signed-off-by: Hans Verkuil <hverkuil-cisco@xs4all.nl>
+Signed-off-by: Mauro Carvalho Chehab <mchehab+huawei@kernel.org>
+(cherry picked from commit 129134e5415d46f38b9978b3809af94ed649b57d)
+
+Conflicts:
+   Documentation/media/uapi/v4l/buffer.rst
+   Documentation/media/uapi/v4l/vidioc-create-bufs.rst
+   Documentation/media/uapi/v4l/vidioc-reqbufs.rst
+   drivers/media/dvb-core/dvb_vb2.c
+   drivers/media/v4l2-core/v4l2-compat-ioctl32.c
+   drivers/media/v4l2-core/v4l2-ioctl.c
+   drivers/media/v4l2-core/videobuf2-core.c
+   drivers/media/v4l2-core/videobuf2-dma-contig.c
+   drivers/media/v4l2-core/videobuf2-dma-sg.c
+   drivers/media/v4l2-core/videobuf2-v4l2.c
+   include/media/videobuf2-core.h
+
+Non-uAPI changes dropped.
+
+BUG=b:278157861
+TEST=Check header
+
+Change-Id: I83f320b7a51fc519908c73225fa18ecf4cae0460
+Signed-off-by: Chen-Yu Tsai <wenst@chromium.org>
+---
+ include/uapi/linux/videodev2.h | 13 ++-----------
+ 1 file changed, 2 insertions(+), 11 deletions(-)
+
+diff --git a/include/uapi/linux/videodev2.h b/include/uapi/linux/videodev2.h
+index 41668e9a865e..7fba8c77bccd 100644
+--- a/include/uapi/linux/videodev2.h
++++ b/include/uapi/linux/videodev2.h
+@@ -182,8 +182,6 @@ enum v4l2_memory {
+ 	V4L2_MEMORY_DMABUF           = 4,
+ };
+ 
+-#define V4L2_FLAG_MEMORY_NON_CONSISTENT		(1 << 0)
+-
+ /* see also http://vektor.theorem.ca/graphics/ycbcr/ */
+ enum v4l2_colorspace {
+ 	/*
+@@ -854,10 +852,7 @@ struct v4l2_requestbuffers {
+ 	__u32			type;		/* enum v4l2_buf_type */
+ 	__u32			memory;		/* enum v4l2_memory */
+ 	__u32			capabilities;
+-	union {
+-		__u32		flags;
+-		__u32		reserved[1];
+-	};
++	__u32			reserved[1];
+ };
+ 
+ /* capabilities for struct v4l2_requestbuffers and v4l2_create_buffers */
+@@ -2338,9 +2333,6 @@ struct v4l2_dbg_chip_info {
+  * @memory:	enum v4l2_memory; buffer memory type
+  * @format:	frame format, for which buffers are requested
+  * @capabilities: capabilities of this buffer type.
+- * @flags:	additional buffer management attributes (ignored unless the
+- *		queue has V4L2_BUF_CAP_SUPPORTS_MMAP_CACHE_HINTS capability
+- *		and configured for MMAP streaming I/O).
+  * @reserved:	future extensions
+  */
+ struct v4l2_create_buffers {
+@@ -2349,8 +2341,7 @@ struct v4l2_create_buffers {
+ 	__u32			memory;
+ 	struct v4l2_format	format;
+ 	__u32			capabilities;
+-	__u32			flags;
+-	__u32			reserved[6];
++	__u32			reserved[7];
+ };
+ 
+ /*
+-- 
+2.40.1.606.ga4b1b128d6-goog
+

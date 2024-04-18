@@ -1,4 +1,4 @@
-# Copyright 2021 The Chromium OS Authors. All rights reserved.
+# Copyright 2021 The ChromiumOS Authors
 # Distributed under the terms of the GNU General Public License v2
 
 EAPI=7
@@ -10,7 +10,7 @@ inherit cros-go cros-workon
 CROS_GO_VERSION="${PF}"
 
 CROS_GO_PACKAGES=(
-	"chromiumos/tast/framework/protocol/..."
+	"go.chromium.org/tast/core/framework/protocol/..."
 )
 
 CROS_GO_TEST=(
@@ -25,7 +25,11 @@ SLOT="0/0"
 KEYWORDS="~*"
 IUSE=""
 
-DEPEND=""
+DEPEND="
+	chromeos-base/cros-config-api
+	dev-go/protobuf-legacy-api
+	dev-go/text
+"
 
 RDEPEND=""
 

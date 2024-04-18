@@ -1,0 +1,1 @@
+epson-receipt-printer-thermal-3.0.0.0.ebuild

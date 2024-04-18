@@ -1,0 +1,51 @@
+commit 831e2a53c353a3a546ad8651de8a04197a9f8dd2
+Author: Nicholas Bishop <nicholasbishop@google.com>
+Date:   Tue Aug 8 16:02:31 2023 -0400
+
+    make: add option to disable building/installing the docs
+    
+    ENABLE_DOCS=0 make will remove the man page files from the list of
+    targets to build and install. This is useful if the target OS does not
+    ship manpages and so the builder doesn't have mandoc.
+    
+    Signed-off-by: Nicholas Bishop <nicholasbishop@google.com>
+
+diff --git a/Make.defaults b/Make.defaults
+index 05aadd0..f8be19b 100644
+--- a/Make.defaults
++++ b/Make.defaults
+@@ -101,3 +101,7 @@ ifeq ($(ARCH), x86_64)
+     ARCH3264 := -m64
+   endif
+ endif
++
++# Docs are enabled by default. Set ENABLE_DOCS=0 to disable
++# building/installing docs.
++ENABLE_DOCS ?= 1
+diff --git a/src/Makefile b/src/Makefile
+index b9b668d..79d3bc2 100644
+--- a/src/Makefile
++++ b/src/Makefile
+@@ -11,7 +11,10 @@ CFGTARGETS=tmpfiles.conf
+ SVCTARGETS=pesign.sysvinit pesign.service
+ MAN1TARGETS=authvar.1 efikeygen.1 pesigcheck.1 pesign-client.1 pesign.1
+ 
+-TARGETS=$(BINTARGETS) $(SVCTARGETS) $(MAN1TARGETS) $(CFGTARGETS)
++TARGETS=$(BINTARGETS) $(SVCTARGETS) $(CFGTARGETS)
++ifeq ($(ENABLE_DOCS), 1)
++TARGETS += $(MAN1TARGETS)
++endif
+ 
+ all : deps $(TARGETS)
+ 
+@@ -94,8 +97,10 @@ install :
+ 	$(INSTALL) -m 755 pesigcheck $(INSTALLROOT)$(bindir)
+ 	$(INSTALL) -d -m 755 $(INSTALLROOT)/etc/popt.d/
+ 	$(INSTALL) -m 644 pesign.popt $(INSTALLROOT)/etc/popt.d/
++ifeq ($(ENABLE_DOCS), 1)
+ 	$(INSTALL) -d -m 755 $(INSTALLROOT)$(mandir)man1/
+ 	$(INSTALL) -m 644 $(MAN1TARGETS) $(INSTALLROOT)$(mandir)man1/
++endif
+ 	$(INSTALL) -d -m 755 $(INSTALLROOT)/etc/rpm/
+ 	$(INSTALL) -m 644 macros.pesign $(INSTALLROOT)/etc/rpm/
+ 	$(INSTALL) -d -m 755 $(INSTALLROOT)$(libexecdir)/pesign/
